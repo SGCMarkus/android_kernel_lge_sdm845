@@ -107,7 +107,7 @@
 #define QPNP_VADC_CONV_TIMEOUT_ERR				2
 #define QPNP_VADC_CONV_TIME_MIN					1000
 #define QPNP_VADC_CONV_TIME_MAX					1100
-#define QPNP_ADC_COMPLETION_TIMEOUT		msecs_to_jiffies(100)
+#define QPNP_ADC_COMPLETION_TIMEOUT		                1000
 #define QPNP_VADC_ERR_COUNT					150
 #define QPNP_OP_MODE_SHIFT					3
 
@@ -445,7 +445,7 @@ static int qpnp_vadc_wait_for_eoc(struct qpnp_vadc_chip *vadc)
 	} else {
 		ret = wait_for_completion_timeout(
 			&vadc->adc->adc_rslt_completion,
-			QPNP_ADC_COMPLETION_TIMEOUT);
+			msecs_to_jiffies(QPNP_ADC_COMPLETION_TIMEOUT));
 		if (!ret) {
 			ret = qpnp_vadc_hc_check_conversion_status(vadc, false);
 			if (ret < 0) {
@@ -2147,7 +2147,7 @@ recalibrate:
 	} else {
 		rc = wait_for_completion_timeout(
 					&vadc->adc->adc_rslt_completion,
-					QPNP_ADC_COMPLETION_TIMEOUT);
+					msecs_to_jiffies(QPNP_ADC_COMPLETION_TIMEOUT));
 		if (!rc) {
 			rc = qpnp_vadc_read_reg(vadc, QPNP_VADC_STATUS1,
 							&status1, 1);

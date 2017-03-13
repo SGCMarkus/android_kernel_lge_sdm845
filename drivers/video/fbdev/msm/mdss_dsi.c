@@ -2622,7 +2622,7 @@ static void mdss_dsi_dba_work(struct work_struct *work)
 	} else {
 		pr_debug("%s: dba device not ready, queue again\n", __func__);
 		queue_delayed_work(ctrl_pdata->workq,
-				&ctrl_pdata->dba_work, HZ);
+				&ctrl_pdata->dba_work, msecs_to_jiffies(1000));
 	}
 }
 #else
@@ -2878,6 +2878,7 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 			pdata->panel_info.is_dba_panel) {
 			queue_delayed_work(ctrl_pdata->workq,
 				&ctrl_pdata->dba_work, HZ);
+                                    &ctrl_pdata->dba_work, msecs_to_jiffies(1000));
 		}
 		break;
 	default:
