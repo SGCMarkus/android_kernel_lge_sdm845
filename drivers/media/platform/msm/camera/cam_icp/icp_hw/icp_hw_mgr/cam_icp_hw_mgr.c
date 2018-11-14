@@ -4059,16 +4059,10 @@ static int cam_icp_mgr_create_handle(uint32_t dev_type,
 	if (!task)
 		return -ENOMEM;
 
-	create_handle = kzalloc(sizeof(struct hfi_cmd_create_handle), GFP_KERNEL);
-	if (!create_handle) {
-		rc = -ENOMEM;
-		return rc;
-	}
-
-	create_handle->size = sizeof(struct hfi_cmd_create_handle);
-	create_handle->pkt_type = HFI_CMD_IPEBPS_CREATE_HANDLE;
-	create_handle->handle_type = dev_type;
-	create_handle->user_data1 = (uint64_t)ctx_data;
+	create_handle.size = sizeof(struct hfi_cmd_create_handle);
+	create_handle.pkt_type = HFI_CMD_IPEBPS_CREATE_HANDLE;
+	create_handle.handle_type = dev_type;
+	create_handle.user_data1 = (uint64_t)ctx_data;
 	reinit_completion(&ctx_data->wait_complete);
 	task_data = (struct hfi_cmd_work_data *)task->payload;
 	task_data->data = (void *)create_handle;
@@ -4113,15 +4107,9 @@ static int cam_icp_mgr_send_ping(struct cam_icp_hw_ctx_data *ctx_data)
 		return -ENOMEM;
 	}
 
-	ping_pkt = kzalloc(sizeof(struct hfi_cmd_ping_pkt), GFP_KERNEL);
-	if (!ping_pkt) {
-		rc = -ENOMEM;
-		return rc;
-	}
-
-	ping_pkt->size = sizeof(struct hfi_cmd_ping_pkt);
-	ping_pkt->pkt_type = HFI_CMD_SYS_PING;
-	ping_pkt->user_data = (uint64_t)ctx_data;
+	ping_pkt.size = sizeof(struct hfi_cmd_ping_pkt);
+	ping_pkt.pkt_type = HFI_CMD_SYS_PING;
+	ping_pkt.user_data = (uint64_t)ctx_data;
 	init_completion(&ctx_data->wait_complete);
 	task_data = (struct hfi_cmd_work_data *)task->payload;
 	task_data->data = (void *)ping_pkt;

@@ -206,7 +206,6 @@ enum cam_cci_state_t {
  * @lock_status: to protect changes to irq_status1
  * @is_burst_read: Flag to determine if we are performing
  *                 a burst read operation or not
- * @irqs_disabled: Mask for IRQs that are disabled
  */
 struct cci_device {
 	struct v4l2_subdev subdev;

@@ -1109,7 +1109,6 @@ static int cam_fd_mgr_hw_get_caps(void *hw_mgr_priv, void *hw_get_caps_args)
 	struct cam_query_cap_cmd *query = hw_get_caps_args;
 	struct cam_fd_query_cap_cmd query_fd;
 
-	memset(&query_fd, 0, sizeof(query_fd));
 	if (copy_from_user(&query_fd, (void __user *)query->caps_handle,
 		sizeof(struct cam_fd_query_cap_cmd))) {
 		CAM_ERR(CAM_FD, "Failed in copy from user, rc=%d", rc);

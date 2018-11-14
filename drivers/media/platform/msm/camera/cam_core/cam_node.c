@@ -305,8 +305,7 @@ destroy_dev_hdl:
 	if (rc)
 		CAM_ERR(CAM_CORE, "destroy device hdl failed for node %s",
 			node->name);
-
-	CAM_INFO(CAM_CORE, "[%s] Release ctx_id=%d, refcount=%d",
+	CAM_DBG(CAM_CORE, "[%s] Release ctx_id=%d, refcount=%d",
 		node->name, ctx->ctx_id,
 		atomic_read(&(ctx->refcount.refcount)));
 
