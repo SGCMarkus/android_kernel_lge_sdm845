@@ -1663,7 +1663,7 @@ static struct msm_dir_conn sdm845_dir_conn[] = {
 	{24, 517},
 	{26, 518},
 	{30, 519},
-	{31, 632},
+/*	{31, 632},*/
 	{32, 521},
 	{34, 522},
 	{36, 523},
@@ -1719,7 +1719,8 @@ static struct msm_dir_conn sdm845_dir_conn[] = {
 	{121, 611},
 	{122, 612},
 	{123, 613},
-	{124, 614},
+/*	{124, 614}, */ /* [BSP_Display] LGE temporary disable until
+			* direct_conn issue is solved */
 	{125, 615},
 	{126, 616},
 	{127, 617},

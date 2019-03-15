@@ -44,6 +44,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 	struct cam_cdm_client *client);
 struct cam_cdm_bl_cb_request_entry *cam_cdm_find_request_by_bl_tag(
 	uint32_t tag, struct list_head *bl_list);
+void print_bl_list(struct list_head *bl_list);
 void cam_cdm_notify_clients(struct cam_hw_info *cdm_hw,
 	enum cam_cdm_cb_status status, void *data);
 

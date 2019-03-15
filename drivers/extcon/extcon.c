@@ -482,7 +482,7 @@ int extcon_sync(struct extcon_dev *edev, unsigned int id)
 }
 EXPORT_SYMBOL_GPL(extcon_sync);
 
-int extcon_blocking_sync(struct extcon_dev *edev, unsigned int id, bool val)
+int extcon_blocking_sync(struct extcon_dev *edev, unsigned int id, u8 val)
 {
 	int index;
 
@@ -1103,7 +1103,16 @@ int extcon_dev_register(struct extcon_dev *edev)
 	edev->dev.class = extcon_class;
 	edev->dev.release = extcon_dev_release;
 
+#ifdef CONFIG_MACH_LGE
+	if (edev->name != NULL &&
+        (!strcmp(edev->name, "h2w") || !strcmp(edev->name, "sar_backoff") || !strcmp(edev->name, "ram_status") || !strcmp(edev->name, "voc_mute_status"))
+       )
+		dev_info(&edev->dev, "skip assign edev->dev.parent\n");
+	else
+		edev->name = dev_name(edev->dev.parent);
+#else
 	edev->name = dev_name(edev->dev.parent);
+#endif
 	if (IS_ERR_OR_NULL(edev->name)) {
 		dev_err(&edev->dev,
 			"extcon device name is null\n");

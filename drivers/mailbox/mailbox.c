@@ -101,6 +101,7 @@ static void msg_submit(struct mbox_chan *chan)
 	 */
 	do {
 		err = __msg_submit(chan);
+		udelay(10);
 	} while (err == -EAGAIN);
 
 	if (!err && (chan->txdone_method & TXDONE_BY_POLL))

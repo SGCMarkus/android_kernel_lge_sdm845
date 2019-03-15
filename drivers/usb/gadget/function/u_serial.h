@@ -45,11 +45,13 @@ struct gserial {
 
 	/* REVISIT avoid this CDC-ACM support harder ... */
 	struct usb_cdc_line_coding port_line_coding;	/* 9600-8-N-1 etc */
+#ifdef CONFIG_LGE_USB_GADGET
 	u16				serial_state;
 
 	/* control signal callbacks*/
 	unsigned int (*get_dtr)(struct gserial *p);
 	unsigned int (*get_rts)(struct gserial *p);
+#endif
 
 	/* notification callbacks */
 	void (*connect)(struct gserial *p);

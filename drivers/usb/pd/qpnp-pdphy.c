@@ -51,6 +51,9 @@
 
 #define USB_PDPHY_TX_CONTROL		0x44
 #define TX_CONTROL_RETRY_COUNT(n)	(((n) & 0x3) << 5)
+#ifdef CONFIG_LGE_USB
+#define TX_CONTROL_RETRY_COUNT_REV_30	BIT(6)
+#endif
 #define TX_CONTROL_FRAME_TYPE		(BIT(4) | BIT(3) | BIT(2))
 #define TX_CONTROL_FRAME_TYPE_CABLE_RESET (0x1 << 2)
 #define TX_CONTROL_SEND_SIGNAL		BIT(1)
@@ -341,6 +344,18 @@ int pd_phy_update_roles(enum data_role dr, enum power_role pr)
 }
 EXPORT_SYMBOL(pd_phy_update_roles);
 
+#ifdef CONFIG_LGE_USB
+int pd_phy_update_frame_filter(u8 frame_filter_val)
+{
+	struct usb_pdphy *pdphy = __pdphy;
+
+	pdphy->frame_filter_val = frame_filter_val;
+	return pdphy_reg_write(pdphy, USB_PDPHY_FRAME_FILTER,
+			       pdphy->frame_filter_val);
+}
+EXPORT_SYMBOL(pd_phy_update_frame_filter);
+#endif
+
 int pd_phy_open(struct pd_phy_params *params)
 {
 	int ret;
@@ -485,6 +500,15 @@ int pd_phy_write(u16 hdr, const u8 *data, size_t data_len, enum pd_sop_type sop)
 		return -ENODEV;
 	}
 
+#ifdef CONFIG_LGE_USB
+	if (pdphy->in_test_data_mode) {
+		dev_info(pdphy->dev,
+			 "%s: ignore writing during BIST_TEST_DATA mode.\n",
+			 __func__);
+		return 0;
+	}
+#endif
+
 	if (data_len > USB_PDPHY_MAX_DATA_OBJ_LEN) {
 		dev_err(pdphy->dev, "%s: invalid data object len %zu\n",
 			__func__, data_len);
@@ -524,7 +548,6 @@ int pd_phy_write(u16 hdr, const u8 *data, size_t data_len, enum pd_sop_type sop)
 	usleep_range(2, 3);
 
 	val = (sop << 2) | TX_CONTROL_SEND_MSG;
-
 	/* nRetryCount == 2 for PD 3.0, 3 for PD 2.0 */
 	if (PD_MSG_HDR_REV(hdr) == USBPD_REV_30)
 		val |= TX_CONTROL_RETRY_COUNT(2);
@@ -707,7 +730,11 @@ static irqreturn_t pdphy_msg_rx_irq(int irq, void *data)
 		goto done;
 
 	frame_type = rx_status & RX_FRAME_TYPE;
+#ifdef CONFIG_LGE_USB
+	if (frame_type != SOP_MSG && frame_type != SOPI_MSG) {
+#else
 	if (frame_type != SOP_MSG) {
+#endif
 		dev_err(pdphy->dev, "%s:unsupported frame type %d\n",
 			__func__, frame_type);
 		goto done;

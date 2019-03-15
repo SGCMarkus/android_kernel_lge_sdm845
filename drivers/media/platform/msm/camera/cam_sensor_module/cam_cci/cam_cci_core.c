@@ -1480,7 +1480,7 @@ static int32_t cam_cci_read_bytes(struct v4l2_subdev *sd,
 			cci_dev->is_burst_read = false;
 			rc = cam_cci_read(sd, c_ctrl);
 		}
-		if (rc) {
+		if (rc < 0) {
 			CAM_ERR(CAM_CCI, "failed to read rc:%d", rc);
 			goto ERROR;
 		}
@@ -1604,7 +1604,10 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 	struct cam_cci_ctrl *cci_ctrl)
 {
 	int32_t rc = 0;
+	struct cci_device *cci_dev;
 
+	cci_dev = v4l2_get_subdevdata(sd);
+	mutex_lock(&cci_dev->global_mutex);
 	CAM_DBG(CAM_CCI, "cmd %d", cci_ctrl->cmd);
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
@@ -1636,5 +1639,6 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 
 	cci_ctrl->status = rc;
 
+	mutex_unlock(&cci_dev->global_mutex);
 	return rc;
 }

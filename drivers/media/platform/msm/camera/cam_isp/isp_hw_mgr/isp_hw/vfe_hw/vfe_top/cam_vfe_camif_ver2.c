@@ -43,6 +43,7 @@ struct cam_vfe_mux_camif_data {
 	uint32_t                           last_line;
 	bool                               enable_sof_irq_debug;
 	uint32_t                           irq_debug_cnt;
+	uint32_t                           camif_debug;
 };
 
 static int cam_vfe_camif_validate_pix_pattern(uint32_t pattern)
@@ -261,6 +262,25 @@ static int cam_vfe_camif_resource_start(
 	}
 
 	/* epoch config */
+#if 0
+	// LGE_CHANGE_S, Fix for testAllocationFromCameraFlexibleYuv fence error - CN#03578370 - ranjith.k@lge.com, 1st Aug 2018
+	#if 0 // QCT_Original
+		epoch0_irq_mask = ((rsrc_data->last_line - rsrc_data->first_line) / 2) +
+			rsrc_data->first_line;
+		epoch1_irq_mask = rsrc_data->reg_data->epoch_line_cfg & 0xFFFF;
+	#else
+		epoch1_irq_mask = ((rsrc_data->last_line - rsrc_data->first_line) / 2) +
+			rsrc_data->first_line;
+		epoch0_irq_mask = rsrc_data->reg_data->epoch_line_cfg & 0xFFFF;
+	#endif
+	// LGE_CHANGE_E, Fix for testAllocationFromCameraFlexibleYuv fence error - CN#03578370 - ranjith.k@lge.com, 1st Aug 2018
+	computed_epoch_line_cfg = (epoch0_irq_mask << 16) | epoch1_irq_mask;
+	cam_io_w_mb(computed_epoch_line_cfg,
+		rsrc_data->mem_base + rsrc_data->camif_reg->epoch_irq);
+	CAM_DBG(CAM_ISP, "first_line:%u last_line:%u epoch_line_cfg: 0x%x",
+		rsrc_data->first_line, rsrc_data->last_line,
+		computed_epoch_line_cfg);
+#else
 	switch (camera_hw_version) {
 	case CAM_CPAS_TITAN_175_V101:
 	case CAM_CPAS_TITAN_175_V100:
@@ -296,6 +316,8 @@ static int cam_vfe_camif_resource_start(
 				camera_hw_version);
 		break;
 	}
+#endif
+	// LGE_CHANGE_E, Fix for ReprocessCaptureTest#testReprocessAbort CN#03716962, ranjith.k@lge.com, 22nd Oct 2018
 
 	camif_res->res_state = CAM_ISP_RESOURCE_STATE_STREAMING;
 
@@ -308,6 +330,15 @@ static int cam_vfe_camif_resource_start(
 	/* disable sof irq debug flag */
 	rsrc_data->enable_sof_irq_debug = false;
 	rsrc_data->irq_debug_cnt = 0;
+
+	if (rsrc_data->camif_debug &
+		CAMIF_DEBUG_ENABLE_SENSOR_DIAG_STATUS) {
+		val = cam_io_r_mb(rsrc_data->mem_base +
+			rsrc_data->camif_reg->vfe_diag_config);
+		val |= rsrc_data->reg_data->enable_diagnostic_hw;
+		cam_io_w_mb(val, rsrc_data->mem_base +
+			rsrc_data->camif_reg->vfe_diag_config);
+	}
 
 	CAM_DBG(CAM_ISP, "Start Camif IFE %d Done", camif_res->hw_intf->hw_idx);
 	return 0;
@@ -400,6 +431,14 @@ static int cam_vfe_camif_resource_stop(
 	if (camif_res->res_state == CAM_ISP_RESOURCE_STATE_STREAMING)
 		camif_res->res_state = CAM_ISP_RESOURCE_STATE_RESERVED;
 
+	val = cam_io_r_mb(camif_priv->mem_base +
+			camif_priv->camif_reg->vfe_diag_config);
+	if (val & camif_priv->reg_data->enable_diagnostic_hw) {
+		val &= ~camif_priv->reg_data->enable_diagnostic_hw;
+		cam_io_w_mb(val, camif_priv->mem_base +
+			camif_priv->camif_reg->vfe_diag_config);
+	}
+
 	return rc;
 }
 
@@ -424,6 +463,7 @@ static int cam_vfe_camif_process_cmd(struct cam_isp_resource_node *rsrc_node,
 	uint32_t cmd_type, void *cmd_args, uint32_t arg_size)
 {
 	int rc = -EINVAL;
+	struct cam_vfe_mux_camif_data *camif_priv = NULL;
 
 	if (!rsrc_node || !cmd_args) {
 		CAM_ERR(CAM_ISP, "Invalid input arguments");
@@ -440,6 +480,11 @@ static int cam_vfe_camif_process_cmd(struct cam_isp_resource_node *rsrc_node,
 		break;
 	case CAM_ISP_HW_CMD_SOF_IRQ_DEBUG:
 		rc = cam_vfe_camif_sof_irq_debug(rsrc_node, cmd_args);
+		break;
+	case CAM_ISP_HW_CMD_SET_CAMIF_DEBUG:
+		camif_priv =
+			(struct cam_vfe_mux_camif_data *)rsrc_node->res_priv;
+		camif_priv->camif_debug = *((uint32_t *)cmd_args);
 		break;
 	default:
 		CAM_ERR(CAM_ISP,
@@ -465,6 +510,7 @@ static int cam_vfe_camif_handle_irq_bottom_half(void *handler_priv,
 	struct cam_vfe_top_irq_evt_payload   *payload;
 	uint32_t                              irq_status0;
 	uint32_t                              irq_status1;
+	uint32_t                              val;
 
 	if (!handler_priv || !evt_payload_priv) {
 		CAM_ERR(CAM_ISP, "Invalid params");
@@ -526,6 +572,14 @@ static int cam_vfe_camif_handle_irq_bottom_half(void *handler_priv,
 			cam_vfe_camif_reg_dump(camif_node);
 		} else {
 			ret = CAM_ISP_HW_ERROR_NONE;
+		}
+
+		if (camif_priv->camif_debug &
+			CAMIF_DEBUG_ENABLE_SENSOR_DIAG_STATUS) {
+			val = cam_io_r(camif_priv->mem_base +
+				camif_priv->camif_reg->vfe_diag_sensor_status);
+			CAM_DBG(CAM_ISP, "VFE_DIAG_SENSOR_STATUS: 0x%x",
+				camif_priv->mem_base, val);
 		}
 		break;
 	default:

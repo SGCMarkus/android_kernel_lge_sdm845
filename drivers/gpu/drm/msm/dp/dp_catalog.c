@@ -306,7 +306,7 @@ static void dp_catalog_aux_update_cfg(struct dp_catalog_aux *aux,
 
 	current_index = cfg[type].current_index;
 	new_index = (current_index + 1) % cfg[type].cfg_cnt;
-	pr_debug("Updating %s from 0x%08x to 0x%08x\n",
+	pr_info("Updating %s from 0x%08x to 0x%08x\n",
 		dp_phy_aux_config_type_to_string(type),
 	cfg[type].lut[current_index], cfg[type].lut[new_index]);
 

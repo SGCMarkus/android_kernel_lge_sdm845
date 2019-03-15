@@ -46,6 +46,14 @@
 #define DMSE_INTR_EN                    BIT(1)
 #define DPSE_INTR_EN                    BIT(0)
 
+#ifdef CONFIG_LGE_USB_GADGET
+#define QUSB2PHY_PORT_TUNE1		0x240
+#define QUSB2PHY_PORT_TUNE2		0x244
+#define QUSB2PHY_PORT_TUNE3		0x248
+#define QUSB2PHY_PORT_TUNE4		0x24C
+#define QUSB2PHY_PORT_TUNE5		0x250
+#endif
+
 /* QUSB2PHY_PLL_CORE_INPUT_OVERRIDE register related bits */
 #define CORE_PLL_RATE			BIT(0)
 #define CORE_PLL_RATE_MUX		BIT(1)
@@ -81,6 +89,16 @@
 
 /* STAT5 register bits */
 #define VSTATUS_PLL_LOCK_STATUS_MASK	BIT(0)
+
+#ifdef CONFIG_LGE_USB_GADGET
+static char *override_phy_tune;
+module_param(override_phy_tune, charp, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_tune, "Override QUSB2PHY_PORT_TUNEs");
+
+static char *override_phy_tune_host;
+module_param(override_phy_tune_host, charp, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_phy_tune_host, "Override QUSB2PHY_PORT_TUNEs for host");
+#endif
 
 enum qusb_phy_reg {
 	PORT_TUNE1,
@@ -159,6 +177,10 @@ struct qusb_phy {
 	u8                      bias_ctrl2;
 
 	struct hrtimer		timer;
+#ifdef CONFIG_LGE_USB_GADGET
+	uint32_t		qusb2phy_tune[5];
+	uint32_t		qusb2phy_tune_host[5];
+#endif
 	int			soc_min_rev;
 	bool			host_chirp_erratum;
 	bool			override_bias_ctrl2;
@@ -462,6 +484,143 @@ static void qusb_phy_write_seq(void __iomem *base, u32 *seq, int cnt,
 	}
 }
 
+#ifdef CONFIG_LGE_USB_GADGET
+static void qusb_phy_tune_init(struct qusb_phy *qphy)
+{
+	uint32_t *tune = NULL;
+	uint32_t aseq[10];
+	bool is_dts = 0;
+
+	if (override_phy_tune) {
+		get_options(override_phy_tune, ARRAY_SIZE(aseq), aseq);
+		tune = &aseq[1];
+	} else {
+
+		tune = qphy->qusb2phy_tune;
+		is_dts = 1;
+	}
+
+	/*
+		Parameters sequence :
+		  - tune[0] : TUNE1 (0x240)
+		  - tune[1] : TUNE2 (0x244)
+		  - tune[2] : TUNE3 (0x248)
+		  - tune[3] : TUNE4 (0x24c)
+		  - tune[4] : TUNE5 (0x250)
+	*/
+	if (tune[0]) {
+		writel_relaxed(tune[0], qphy->base + QUSB2PHY_PORT_TUNE1);
+		pr_debug("%s(): Programming TUNE1(0x240) parameter as:0x%02x\n",
+				__func__, tune[0]);
+	} else
+		tune[0] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE1);
+
+	if (tune[1]) {
+		writel_relaxed(tune[1], qphy->base + QUSB2PHY_PORT_TUNE2);
+		pr_debug("%s(): Programming TUNE2(0x244) parameter as:0x%02x\n",
+				__func__, tune[1]);
+	} else
+		tune[1] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE2);
+
+	if (tune[2]) {
+		writel_relaxed(tune[2], qphy->base + QUSB2PHY_PORT_TUNE3);
+		pr_debug("%s(): Programming TUNE3(0x248) parameter as:0x%02x\n",
+				__func__, tune[2]);
+	} else
+		tune[2] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE3);
+
+	if (tune[3]) {
+		writel_relaxed(tune[3], qphy->base + QUSB2PHY_PORT_TUNE4);
+		pr_debug("%s(): Programming TUNE4(0x24c) parameter as:0x%02x\n",
+				__func__, tune[3]);
+	} else
+		tune[3] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE4);
+
+	if (tune[4]) {
+		writel_relaxed(tune[4], qphy->base + QUSB2PHY_PORT_TUNE5);
+		pr_debug("%s(): Programming TUNE5(0x250) parameter as:0x%02x\n",
+				__func__, tune[4]);
+	} else
+		tune[4] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE5);
+
+        pr_debug("%s:(): qusb2phy_port_tune = 0x%02X,0x%02X,0x%02X,0x%02X,0x%02X (%s)\n",
+                        __func__,
+                        tune[0],
+                        tune[1],
+                        tune[2],
+                        tune[3],
+                        tune[4],
+                        (is_dts) ? "by dts" : "by override");
+}
+
+static void qusb_phy_tune_init_host(struct qusb_phy *qphy)
+{
+        uint32_t *tune = NULL;
+        uint32_t aseq[10];
+        bool is_dts = 0;
+
+        if (override_phy_tune_host) {
+                get_options(override_phy_tune_host, ARRAY_SIZE(aseq), aseq);
+                tune = &aseq[1];
+        } else {
+                tune = qphy->qusb2phy_tune_host;
+                is_dts = 1;
+        }
+
+        /*
+                Parameters sequence :
+                  - tune[0] : TUNE1 (0x240)
+                  - tune[1] : TUNE2 (0x244)
+                  - tune[2] : TUNE3 (0x248)
+                  - tune[3] : TUNE4 (0x24c)
+                  - tune[4] : TUNE5 (0x250)
+        */
+        if(tune[0]){
+                writel_relaxed(tune[0], qphy->base + QUSB2PHY_PORT_TUNE1);
+                pr_debug("%s(): Programming TUNE1(0x240) parameter as:0x%02x\n",
+                                        __func__, tune[0]);
+        }else
+                tune[0] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE1);
+
+        if(tune[1]){
+                writel_relaxed(tune[1], qphy->base + QUSB2PHY_PORT_TUNE2);
+                pr_debug("%s(): Programming TUNE2(0x244) parameter as:0x%02x\n",
+                                        __func__, tune[1]);
+        }else
+                tune[1] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE2);
+
+        if(tune[2]){
+                writel_relaxed(tune[2], qphy->base + QUSB2PHY_PORT_TUNE3);
+                pr_debug("%s(): Programming TUNE3(0x248) parameter as:0x%02x\n",
+                                        __func__, tune[2]);
+        }else
+                tune[2] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE3);
+
+        if(tune[3]){
+                writel_relaxed(tune[3], qphy->base + QUSB2PHY_PORT_TUNE4);
+                pr_debug("%s(): Programming TUNE4(0x24c) parameter as:0x%02x\n",
+                                        __func__, tune[3]);
+        }else
+                tune[3] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE4);
+
+        if(tune[4]){
+                writel_relaxed(tune[4], qphy->base + QUSB2PHY_PORT_TUNE5);
+                pr_debug("%s(): Programming TUNE5(0x250) parameter as:0x%02x\n",
+                                        __func__, tune[4]);
+        }else
+                tune[4] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE5);
+
+        pr_debug("%s:(): qusb2phy_port_tune_host = 0x%02X,0x%02X,0x%02X,0x%02X, 0x%02X (%s)\n",
+                        __func__,
+                        tune[0],
+                        tune[1],
+                        tune[2],
+                        tune[3],
+                        tune[4],
+                        (is_dts) ? "by dts" : "by override");
+}
+#endif
+
 static void qusb_phy_reset(struct qusb_phy *qphy)
 {
 	int ret;
@@ -631,6 +790,13 @@ static int qusb_phy_init(struct usb_phy *phy)
 				qphy->base + qphy->phy_reg[PORT_TUNE1] +
 							(4 * p_index));
 	}
+
+#ifdef CONFIG_LGE_USB_GADGET
+        if (qphy->phy.flags & PHY_HOST_MODE)
+                qusb_phy_tune_init_host(qphy);
+        else
+                qusb_phy_tune_init(qphy);
+#endif
 
 	if (qphy->refgen_north_bg_reg && qphy->override_bias_ctrl2)
 		if (readl_relaxed(qphy->refgen_north_bg_reg) & BANDGAP_BYPASS)
@@ -825,6 +991,13 @@ static int qusb_phy_set_suspend(struct usb_phy *phy, int suspend)
 		} else { /* Cable connect case */
 			qusb_phy_enable_clocks(qphy, true);
 		}
+#ifdef CONFIG_LGE_USB_GADGET
+                if (qphy->phy.flags & PHY_HOST_MODE)
+                        qusb_phy_tune_init_host(qphy);
+                else
+                        qusb_phy_tune_init(qphy);
+#endif
+
 		qphy->suspended = false;
 	}
 
@@ -1275,6 +1448,29 @@ static int qusb_phy_probe(struct platform_device *pdev)
 		return ret;
 	}
 
+#ifdef CONFIG_LGE_USB_GADGET
+        of_get_property(dev->of_node, "qcom,qusb-phy-tune", &ret);
+        if (ret > 0) {
+                of_property_read_u32_array(dev->of_node, "qcom,qusb-phy-tune",
+                                qphy->qusb2phy_tune,
+                                ret/sizeof(u32));
+        } else {
+                memset(qphy->qusb2phy_tune, 0,
+                                sizeof(qphy->qusb2phy_tune));
+        }
+
+        of_get_property(dev->of_node, "qcom,qusb-phy-tune-host", &ret);
+        if (ret > 0) {
+                of_property_read_u32_array(dev->of_node, "qcom,qusb-phy-tune-host",
+                                qphy->qusb2phy_tune_host,
+                                ret/sizeof(u32));
+        } else {
+                memset(qphy->qusb2phy_tune_host, 0,
+                                sizeof(qphy->qusb2phy_tune_host));
+        }
+#endif
+
+
 	qphy->vdd = devm_regulator_get(dev, "vdd");
 	if (IS_ERR(qphy->vdd)) {
 		dev_err(dev, "unable to get vdd supply\n");
@@ -1304,19 +1500,32 @@ static int qusb_phy_probe(struct platform_device *pdev)
 		if (ret == -EPROBE_DEFER)
 			return ret;
 		dev_err(dev, "pinctrl not available\n");
+#ifdef CONFIG_LGE_USB
+		qphy->pinctrl = NULL;
+#endif
 		goto skip_pinctrl_config;
 	}
 	qphy->atest_usb13_suspend = pinctrl_lookup_state(qphy->pinctrl,
 							"atest_usb13_suspend");
 	if (IS_ERR(qphy->atest_usb13_suspend)) {
 		dev_err(dev, "pinctrl lookup atest_usb13_suspend failed\n");
+#ifdef CONFIG_LGE_USB
+		qphy->atest_usb13_suspend = NULL;
+#endif
 		goto skip_pinctrl_config;
 	}
 
 	qphy->atest_usb13_active = pinctrl_lookup_state(qphy->pinctrl,
 							"atest_usb13_active");
+#ifdef CONFIG_LGE_USB
+	if (IS_ERR(qphy->atest_usb13_active)) {
+		dev_err(dev, "pinctrl lookup atest_usb13_active failed\n");
+		qphy->atest_usb13_active = NULL;
+	}
+#else
 	if (IS_ERR(qphy->atest_usb13_active))
 		dev_err(dev, "pinctrl lookup atest_usb13_active failed\n");
+#endif
 
 	hrtimer_init(&qphy->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	qphy->timer.function = qusb_dis_ext_pulldown_timer;
@@ -1332,14 +1541,12 @@ skip_pinctrl_config:
 	qphy->phy.type			= USB_PHY_TYPE_USB2;
 	qphy->phy.notify_connect        = qusb_phy_notify_connect;
 	qphy->phy.notify_disconnect     = qusb_phy_notify_disconnect;
-
-	/*
-	 * qusb_phy_disable_chirp is not required if soc version is
-	 * mentioned and is not base version.
-	 */
-	if (!qphy->soc_min_rev)
-		qphy->phy.disable_chirp	= qusb_phy_disable_chirp;
-
+#if 0 //CONFIG_LGE_USB
+	if (!qphy->atest_usb13_active)
+		qphy->phy.disable_chirp = qusb_phy_disable_chirp;
+#else
+	qphy->phy.disable_chirp		= qusb_phy_disable_chirp;
+#endif
 	qphy->phy.start_port_reset	= qusb_phy_enable_ext_pulldown;
 
 	ret = usb_add_phy_dev(&qphy->phy);

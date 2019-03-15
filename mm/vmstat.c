@@ -946,6 +946,9 @@ const char * const vmstat_text[] = {
 	"numa_other",
 #endif
 	"nr_free_cma",
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	"nr_free_highorder",
+#endif
 
 	/* Node-based counters */
 	"nr_inactive_anon",
@@ -955,9 +958,9 @@ const char * const vmstat_text[] = {
 	"nr_unevictable",
 	"nr_isolated_anon",
 	"nr_isolated_file",
-	"workingset_refault",
-	"workingset_activate",
-	"workingset_nodereclaim",
+	"refault_inactive_file",
+	"refault_active_file",
+	"refault_nodereclaim",
 	"nr_anon_pages",
 	"nr_mapped",
 	"nr_file_pages",

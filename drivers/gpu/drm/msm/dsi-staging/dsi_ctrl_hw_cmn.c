@@ -503,6 +503,10 @@ void dsi_ctrl_hw_cmn_cmd_engine_setup(struct dsi_ctrl_hw *ctrl,
 	reg |= (cfg->wr_mem_continue & 0xFF) << 8;
 	reg |= (cfg->insert_dcs_command ? BIT(16) : 0);
 	DSI_W32(ctrl, DSI_COMMAND_MODE_MDP_DCS_CMD_CTRL, reg);
+	/* To avoid dsi_ctrl_handle_error_status error.
+	* case : 03080024 */
+	DSI_W32(ctrl, DSI_HS_TIMER_CTRL, 0x3FD08);
+	/* The above code is temporary code until merged from QCT. */
 
 	pr_debug("[DSI_%d] Cmd engine setup done\n", ctrl->index);
 }

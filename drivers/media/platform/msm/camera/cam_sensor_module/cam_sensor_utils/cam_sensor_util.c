@@ -14,6 +14,7 @@
 #include "cam_sensor_util.h"
 #include <cam_mem_mgr.h>
 #include "cam_res_mgr_api.h"
+#include <cam_cci_dev.h>
 
 #define CAM_SENSOR_PINCTRL_STATE_SLEEP "cam_suspend"
 #define CAM_SENSOR_PINCTRL_STATE_DEFAULT "cam_default"
@@ -434,6 +435,75 @@ int cam_sensor_i2c_command_parser(
 			}
 		}
 		i2c_reg_settings->is_settings_valid = 1;
+	}
+
+	return rc;
+}
+
+int cam_sensor_util_i2c_apply_setting(
+	struct camera_io_master *io_master_info,
+	struct i2c_settings_list *i2c_list)
+{
+	int32_t rc = 0;
+	uint32_t i, size;
+
+	switch (i2c_list->op_code) {
+	case CAM_SENSOR_I2C_WRITE_RANDOM: {
+		rc = camera_io_dev_write(io_master_info,
+			&(i2c_list->i2c_settings));
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR,
+				"Failed to random write I2C settings: %d",
+				rc);
+			return rc;
+		}
+	break;
+	}
+	case CAM_SENSOR_I2C_WRITE_SEQ: {
+		rc = camera_io_dev_write_continuous(
+			io_master_info, &(i2c_list->i2c_settings), 0);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR,
+				"Failed to seq write I2C settings: %d",
+				rc);
+			return rc;
+		}
+	break;
+	}
+	case CAM_SENSOR_I2C_WRITE_BURST: {
+		rc = camera_io_dev_write_continuous(
+			io_master_info, &(i2c_list->i2c_settings), 1);
+		if (rc < 0) {
+			CAM_ERR(CAM_SENSOR,
+				"Failed to burst write I2C settings: %d",
+				rc);
+			return rc;
+		}
+	break;
+	}
+	case CAM_SENSOR_I2C_POLL: {
+		size = i2c_list->i2c_settings.size;
+		for (i = 0; i < size; i++) {
+			rc = camera_io_dev_poll(
+			io_master_info,
+			i2c_list->i2c_settings.reg_setting[i].reg_addr,
+			i2c_list->i2c_settings.reg_setting[i].reg_data,
+			i2c_list->i2c_settings.reg_setting[i].data_mask,
+			i2c_list->i2c_settings.addr_type,
+			i2c_list->i2c_settings.data_type,
+			i2c_list->i2c_settings.reg_setting[i].delay);
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR,
+					"i2c poll apply setting Fail: %d", rc);
+				return rc;
+			}
+		}
+	break;
+	}
+	default:
+		CAM_ERR(CAM_SENSOR, "Wrong Opcode: %d", i2c_list->op_code);
+		rc = -EINVAL;
+	break;
 	}
 
 	return rc;
@@ -1340,6 +1410,8 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 	int32_t vreg_idx = -1;
 	struct cam_sensor_power_setting *power_setting = NULL;
 	struct msm_camera_gpio_num_info *gpio_num_info = NULL;
+	struct v4l2_subdev *cci_subdev = cam_cci_get_subdev();
+	struct cci_device *cci_dev = v4l2_get_subdevdata(cci_subdev);
 
 	CAM_DBG(CAM_SENSOR, "Enter");
 	if (!ctrl) {
@@ -1485,10 +1557,12 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 				gpio_num_info->gpio_num
 				[power_setting->seq_type]);
 
+			mutex_lock(&cci_dev->global_mutex);
 			rc = msm_cam_sensor_handle_reg_gpio(
 				power_setting->seq_type,
 				gpio_num_info,
 				(int) power_setting->config_val);
+			mutex_unlock(&cci_dev->global_mutex); /* LGE_CHANGE, P-OS camera bring up 2018-07-05 sungmin.cho@lge.com */
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR,
 					"Error in handling VREG GPIO");
@@ -1710,7 +1784,7 @@ msm_camera_get_power_settings(struct cam_sensor_power_ctrl_t *ctrl,
 	return ps;
 }
 
-int msm_camera_power_down(struct cam_sensor_power_ctrl_t *ctrl,
+int cam_sensor_util_power_down(struct cam_sensor_power_ctrl_t *ctrl,
 		struct cam_hw_soc_info *soc_info)
 {
 	int index = 0, ret = 0, num_vreg = 0, i;

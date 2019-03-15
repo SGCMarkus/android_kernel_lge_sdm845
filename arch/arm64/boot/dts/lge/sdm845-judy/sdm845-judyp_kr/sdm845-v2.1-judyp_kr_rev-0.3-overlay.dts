@@ -1,0 +1,52 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+/plugin/;
+
+#include "sdm845-judyp_kr.dtsi"
+#include "sdm845-judyp_kr-tdmb_rev-0.3.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDM845 V2.1 - LG Electronics, judyp_kr rev_03";
+	compatible = "qcom,sdm845-mtp", "qcom,sdm845", "qcom,mtp";
+	qcom,msm-id = <321 0x20001>;
+	qcom,board-id = <0x060008 0>;
+};
+
+&dsi_sw43402_dsc_qhd_cmd {
+	lge,panel-pins =
+		<&tlmm 8 0>,  // vddio
+		<&tlmm 113 0>; // vpnl
+};
+
+&extra_ldo_panel_power_active {
+	mux {
+		pins = "gpio8", "gpio113";
+	};
+
+	config {
+		pins = "gpio8", "gpio113";
+	};
+
+};
+
+&extra_ldo_panel_power_suspend {
+	mux {
+		pins = "gpio8", "gpio113";
+	};
+
+	config {
+		pins = "gpio8", "gpio113";
+	};
+};

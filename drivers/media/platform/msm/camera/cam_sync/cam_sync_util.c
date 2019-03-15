@@ -126,7 +126,11 @@ int cam_sync_init_group_object(struct sync_table_row *table,
 		}
 		parent_info->sync_id = idx;
 		list_add_tail(&parent_info->list, &child_row->parents_list);
+/* LGE_CHANGE_S, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+#if 1
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_objs[i]]);
+#endif
+/* LGE_CHANGE_E, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
 	}
 
 	if (!row->remaining) {

@@ -162,6 +162,23 @@ static ssize_t bl_power_store(struct device *dev, struct device_attribute *attr,
 }
 static DEVICE_ATTR_RW(bl_power);
 
+static ssize_t thermald_status_show(struct device *dev,
+               struct device_attribute *attr, char *buf)
+{
+       return sprintf(buf, "%d\n", 1 ); //temp
+}
+
+static ssize_t thermald_status_store(struct device *dev,
+               struct device_attribute *attr, const char *buf, size_t size)
+{
+       ssize_t ret = strnlen(buf, PAGE_SIZE);
+       int input;
+       sscanf(buf, "%d", &input);
+       pr_info("%s input data is %d\n", __func__, input);
+       return ret;
+}
+static DEVICE_ATTR_RW(thermald_status);
+
 static ssize_t brightness_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -293,6 +310,7 @@ static void bl_device_release(struct device *dev)
 
 static struct attribute *bl_device_attrs[] = {
 	&dev_attr_bl_power.attr,
+	&dev_attr_thermald_status.attr,
 	&dev_attr_brightness.attr,
 	&dev_attr_actual_brightness.attr,
 	&dev_attr_max_brightness.attr,

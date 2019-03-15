@@ -23,6 +23,7 @@
 #include <linux/regulator/consumer.h>
 #include <linux/usb/phy.h>
 #include <linux/clk.h>
+#include <linux/extcon.h>
 #include <linux/reset.h>
 
 enum ldo_levels {
@@ -110,6 +111,58 @@ struct qmp_reg_val {
 	u32 delay;
 };
 
+#ifdef CONFIG_LGE_USB_GADGET
+/* reg for tuning Tx swing */
+#define QSERDES_TXA_TX_DRV_LVL		0x121C
+#define QSERDES_TXB_TX_DRV_LVL		0x161C
+/* reg for tuning Tx de-emphasis */
+#define QSERDES_TXA_TX_EMP_POST1_LVL	0x120C
+#define QSERDES_TXB_TX_EMP_POST1_LVL	0x160C
+
+/* reg for tuning Rx equalization */
+#define QSERDES_TXA_LANE_MODE_1		0x128C
+#define QSERDES_TXB_LANE_MODE_1		0x168C
+
+#define RXA_RX_EQU_ADAPTOR_CNTRL2	0x14D4
+#define RXB_RX_EQU_ADAPTOR_CNTRL2	0x18D4
+#define RXA_RX_EQU_ADAPTOR_CNTRL3	0x14D8
+#define RXB_RX_EQU_ADAPTOR_CNTRL3	0x18D8
+#define RXA_RX_EQU_ADAPTOR_CNTRL4	0x14DC
+#define RXB_RX_EQU_ADAPTOR_CNTRL4	0x18DC
+
+static uint32_t override_tx_a_swing = 0;
+module_param(override_tx_a_swing, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_a_swing, "Override TX_A_SWING tuning register");
+
+static uint32_t override_tx_b_swing = 0;
+module_param(override_tx_b_swing, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_b_swing, "Override TX_B_SWING tuning register");
+
+static uint32_t override_tx_a_pre_emphasis = 0;
+module_param(override_tx_a_pre_emphasis, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_a_pre_emphasis, "Overide TX_A_PRE_EMPHASIS tuning register");
+
+static uint32_t override_tx_b_pre_emphasis = 0;
+module_param(override_tx_b_pre_emphasis, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_tx_b_pre_emphasis, "Overide TX_B_PRE_EMPHASIS tuning register");
+
+static uint32_t override_rx_a_equ_gain1 = 0;
+module_param(override_rx_a_equ_gain1, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_rx_a_equ_gain1, "Override rx_a_equalization gain1 tuning register");
+
+static uint32_t override_rx_b_equ_gain1 = 0;
+module_param(override_rx_b_equ_gain1, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_rx_b_equ_gain1, "Override rx_b_equalization gain1 tuning register");
+
+static uint32_t override_rx_a_equ_gain2 = 0;
+module_param(override_rx_a_equ_gain2, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_rx_a_equ_gain2, "Override rx_a_equalization gain2 tuning register");
+
+static uint32_t override_rx_b_equ_gain2 = 0;
+module_param(override_rx_b_equ_gain2, uint, S_IRUGO|S_IWUSR);
+MODULE_PARM_DESC(override_rx_b_equ_gain2, "Override rx_b_equalization gain2 tuning register");
+#endif
+
 struct msm_ssphy_qmp {
 	struct usb_phy		phy;
 	void __iomem		*base;
@@ -133,6 +186,8 @@ struct msm_ssphy_qmp {
 	struct reset_control	*phy_reset;
 	struct reset_control	*phy_phy_reset;
 	struct reset_control	*global_phy_reset;
+	struct extcon_dev	*extcon_dp;
+	struct notifier_block	dp_nb;
 	bool			power_enabled;
 	bool			clk_enabled;
 	bool			cable_connected;
@@ -143,6 +198,16 @@ struct msm_ssphy_qmp {
 	int			init_seq_len;
 	unsigned int		*qmp_phy_reg_offset;
 	int			reg_offset_cnt;
+#ifdef CONFIG_LGE_USB_GADGET
+	uint32_t		tx_a_swing;
+	uint32_t		tx_b_swing;
+	uint32_t		tx_a_pre_emphasis;
+	uint32_t		tx_b_pre_emphasis;
+	uint32_t		rx_a_equ_gain1;
+	uint32_t		rx_b_equ_gain1;
+	uint32_t		rx_a_equ_gain2;
+	uint32_t		rx_b_equ_gain2;
+#endif
 };
 
 static const struct of_device_id msm_usb_id_table[] = {
@@ -357,6 +422,116 @@ static int configure_phy_regs(struct usb_phy *uphy,
 			usleep_range(reg->delay, reg->delay + 10);
 		reg++;
 	}
+#ifdef CONFIG_LGE_USB_GADGET
+        if (override_tx_a_pre_emphasis) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_A_PRE_EMPHASIS"
+                                        " tuning register as: %d",
+                                        __func__,
+                                        override_tx_a_pre_emphasis);
+                writel_relaxed(override_tx_a_pre_emphasis | 0x20,
+                                phy->base + QSERDES_TXA_TX_EMP_POST1_LVL);
+        } else {
+                if (phy->tx_a_pre_emphasis)
+                        writel_relaxed(phy->tx_a_pre_emphasis | 0x20,
+                                        phy->base + QSERDES_TXA_TX_EMP_POST1_LVL);
+        }
+
+        if (override_tx_b_pre_emphasis) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_B_PRE_EMPHASIS"
+                                        " tuning register as: %d",
+                                        __func__,
+                                        override_tx_b_pre_emphasis);
+                writel_relaxed(override_tx_b_pre_emphasis | 0x20,
+                                phy->base + QSERDES_TXB_TX_EMP_POST1_LVL);
+        } else {
+                if (phy->tx_b_pre_emphasis)
+                        writel_relaxed(phy->tx_b_pre_emphasis | 0x20,
+                                        phy->base + QSERDES_TXB_TX_EMP_POST1_LVL);
+        }
+
+        if (override_tx_a_swing) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_A_SWING tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_tx_a_swing);
+                writel_relaxed(override_tx_a_swing | 0x20,
+                                phy->base + QSERDES_TXA_TX_DRV_LVL);
+        } else {
+                if (phy->tx_a_swing)
+                        writel_relaxed(phy->tx_a_swing | 0x20,
+                                        phy->base + QSERDES_TXA_TX_DRV_LVL);
+        }
+
+	if (override_tx_b_swing) {
+                dev_dbg(uphy->dev, "%s(), Programming TX_B_SWING tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_tx_b_swing);
+                writel_relaxed(override_tx_b_swing | 0x20,
+                                phy->base + QSERDES_TXB_TX_DRV_LVL);
+        } else {
+                if (phy->tx_b_swing)
+                        writel_relaxed(phy->tx_b_swing | 0x20,
+                                        phy->base + QSERDES_TXB_TX_DRV_LVL);
+        }
+
+        if (override_rx_a_equ_gain1) {
+                dev_dbg(uphy->dev, "%s(), Programming rx_a_equalization gain1 tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_rx_a_equ_gain1);
+                writel_relaxed(override_rx_a_equ_gain1,
+                                phy->base + QSERDES_TXA_LANE_MODE_1);
+        } else {
+                if (phy->rx_a_equ_gain1)
+                        writel_relaxed(phy->rx_a_equ_gain1,
+                                        phy->base + QSERDES_TXA_LANE_MODE_1);
+        }
+
+        if (override_rx_b_equ_gain1) {
+                dev_dbg(uphy->dev, "%s(), Programming rx_b_equalization gain1 tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_rx_b_equ_gain1);
+                writel_relaxed(override_rx_b_equ_gain1 ,
+                                phy->base + QSERDES_TXB_LANE_MODE_1);
+        } else {
+                if (phy->rx_b_equ_gain1)
+                        writel_relaxed(phy->rx_b_equ_gain1,
+                                        phy->base + QSERDES_TXB_LANE_MODE_1);
+        }
+
+	/* Equalizer gain adaptation must be turned off to apply manual settings. */
+	writel_relaxed(0xE, phy->base + RXA_RX_EQU_ADAPTOR_CNTRL2);
+	writel_relaxed(0x4, phy->base + RXA_RX_EQU_ADAPTOR_CNTRL3);
+
+	if (override_rx_a_equ_gain2) {
+                dev_dbg(uphy->dev, "%s(), Programming rx_a_equalization gain2 tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_rx_a_equ_gain2);
+                writel_relaxed(override_rx_a_equ_gain2 | 0x10,
+                                phy->base + RXA_RX_EQU_ADAPTOR_CNTRL4);
+        } else {
+                if (phy->rx_a_equ_gain2)
+                        writel_relaxed(phy->rx_a_equ_gain2 | 0x10,
+                                        phy->base + RXA_RX_EQU_ADAPTOR_CNTRL4);
+        }
+
+        if (override_rx_b_equ_gain2) {
+                dev_dbg(uphy->dev, "%s(), Programming rx_b_equalization gain2 tuning"
+                                        " register as: %d",
+                                        __func__,
+                                        override_rx_b_equ_gain2);
+                writel_relaxed(override_rx_b_equ_gain2 | 0x10,
+                                phy->base + RXB_RX_EQU_ADAPTOR_CNTRL4);
+        } else {
+                if (phy->rx_b_equ_gain2)
+                        writel_relaxed(phy->rx_b_equ_gain2 | 0x10,
+                                        phy->base + RXB_RX_EQU_ADAPTOR_CNTRL4);
+        }
+#endif
+
 	return 0;
 }
 
@@ -377,9 +552,12 @@ static void usb_qmp_update_portselect_phymode(struct msm_ssphy_qmp *phy)
 	switch (phy->phy.type) {
 	case USB_PHY_TYPE_USB3_AND_DP:
 		/* override hardware control for reset of qmp phy */
-		writel_relaxed(SW_DPPHY_RESET_MUX | SW_DPPHY_RESET |
-			SW_USB3PHY_RESET_MUX | SW_USB3PHY_RESET,
-			phy->base + phy->phy_reg[USB3_DP_COM_RESET_OVRD_CTRL]);
+		if (!(phy->phy.flags & PHY_USB_DP_CONCURRENT_MODE)) {
+			writel_relaxed(SW_DPPHY_RESET_MUX | SW_DPPHY_RESET |
+				SW_USB3PHY_RESET_MUX | SW_USB3PHY_RESET,
+				phy->base +
+				phy->phy_reg[USB3_DP_COM_RESET_OVRD_CTRL]);
+		}
 
 		/* update port select */
 		if (val > 0) {
@@ -389,12 +567,16 @@ static void usb_qmp_update_portselect_phymode(struct msm_ssphy_qmp *phy)
 				phy->phy_reg[USB3_DP_COM_TYPEC_CTRL]);
 		}
 
-		writel_relaxed(USB3_MODE | DP_MODE,
-			phy->base + phy->phy_reg[USB3_DP_COM_PHY_MODE_CTRL]);
+		if (!(phy->phy.flags & PHY_USB_DP_CONCURRENT_MODE)) {
+			writel_relaxed(USB3_MODE | DP_MODE,
+				phy->base +
+				phy->phy_reg[USB3_DP_COM_PHY_MODE_CTRL]);
 
-		/* bring both QMP USB and QMP DP PHYs PCS block out of reset */
-		writel_relaxed(0x00,
-			phy->base + phy->phy_reg[USB3_DP_COM_RESET_OVRD_CTRL]);
+			/* bring both USB and DP PHYs PCS block out of reset */
+			writel_relaxed(0x00,
+				phy->base +
+				phy->phy_reg[USB3_DP_COM_RESET_OVRD_CTRL]);
+		}
 		break;
 	case  USB_PHY_TYPE_USB3_OR_DP:
 		if (val > 0) {
@@ -485,7 +667,8 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 	}
 
 	/* perform software reset of PHY common logic */
-	if (phy->phy.type == USB_PHY_TYPE_USB3_AND_DP)
+	if (phy->phy.type == USB_PHY_TYPE_USB3_AND_DP &&
+				!(phy->phy.flags & PHY_USB_DP_CONCURRENT_MODE))
 		writel_relaxed(0x00,
 			phy->base + phy->phy_reg[USB3_DP_COM_SW_RESET]);
 
@@ -514,6 +697,40 @@ static int msm_ssphy_qmp_init(struct usb_phy *uphy)
 		return -EBUSY;
 	};
 
+#ifdef CONFIG_LGE_USB_GADGET
+        dev_dbg(uphy->dev, "%s, TX_A_PRE_EMPHASIS tuning register: 0x%X,"
+                                " TX_A_SWING tuning register : 0x%X\n",
+                        __func__,
+                        (readl_relaxed(phy->base +\
+                        QSERDES_TXA_TX_EMP_POST1_LVL) & 0x1F),
+                        (readl_relaxed(phy->base +\
+                        QSERDES_TXA_TX_DRV_LVL)) & 0x1F);
+
+        dev_dbg(uphy->dev, "%s, TX_B_PRE_EMPHASIS tuning register: 0x%X,"
+                                " TX_B_SWING tuning register : 0x%X\n",
+                        __func__,
+                        (readl_relaxed(phy->base +\
+                        QSERDES_TXB_TX_EMP_POST1_LVL) & 0x1F),
+                        (readl_relaxed(phy->base +\
+                        QSERDES_TXB_TX_DRV_LVL)) & 0x1F);
+
+        dev_dbg(uphy->dev, "%s, RX_A_EQUALIZATION_GAIN1 tuning register: 0x%X,"
+                                " RX_A_EQUALIZATION_GAIN2 tuning register : 0x%X\n",
+                        __func__,
+                        (readl_relaxed(phy->base +\
+                        QSERDES_TXA_LANE_MODE_1) & 0x1F),
+                        (readl_relaxed(phy->base +\
+                        RXA_RX_EQU_ADAPTOR_CNTRL4)) & 0x1F);
+
+        dev_dbg(uphy->dev, "%s, RX_B_EQUALIZATION_GAIN1 tuning register: 0x%X,"
+                                " RX_B_EQUALIZATION_GAIN2 tuning register : 0x%X\n",
+                        __func__,
+                        (readl_relaxed(phy->base +\
+                        QSERDES_TXB_LANE_MODE_1) & 0x1F),
+                        (readl_relaxed(phy->base +\
+                        RXB_RX_EQU_ADAPTOR_CNTRL4)) & 0x1F);
+#endif
+
 	return 0;
 }
 
@@ -522,6 +739,25 @@ static int msm_ssphy_qmp_dp_combo_reset(struct usb_phy *uphy)
 	struct msm_ssphy_qmp *phy = container_of(uphy, struct msm_ssphy_qmp,
 					phy);
 	int ret = 0;
+
+	if (phy->phy.flags & PHY_USB_DP_CONCURRENT_MODE) {
+		dev_dbg(uphy->dev, "Resetting USB part of QMP phy\n");
+
+		/* Assert USB3 PHY CSR reset */
+		ret = reset_control_assert(phy->phy_reset);
+		if (ret) {
+			dev_err(uphy->dev, "phy_reset assert failed\n");
+			goto exit;
+		}
+
+		/* Deassert USB3 PHY CSR reset */
+		ret = reset_control_deassert(phy->phy_reset);
+		if (ret) {
+			dev_err(uphy->dev, "phy_reset deassert failed\n");
+			goto exit;
+		}
+		return 0;
+	}
 
 	dev_dbg(uphy->dev, "Global reset of QMP DP combo phy\n");
 	/* Assert global PHY reset */
@@ -713,6 +949,49 @@ static int msm_ssphy_qmp_notify_disconnect(struct usb_phy *uphy,
 	dev_dbg(uphy->dev, "QMP phy disconnect notification\n");
 	dev_dbg(uphy->dev, " cable_connected=%d\n", phy->cable_connected);
 	phy->cable_connected = false;
+	return 0;
+}
+
+static int msm_ssphy_qmp_dp_notifier(struct notifier_block *nb,
+		unsigned long dp_lane, void *ptr)
+{
+	struct msm_ssphy_qmp *phy = container_of(nb,
+			struct msm_ssphy_qmp, dp_nb);
+
+	if (dp_lane == 2 || dp_lane == 4)
+		phy->phy.flags |= PHY_USB_DP_CONCURRENT_MODE;
+	else
+		phy->phy.flags &= ~PHY_USB_DP_CONCURRENT_MODE;
+
+	return 0;
+
+}
+
+static int msm_ssphy_qmp_extcon_register(struct msm_ssphy_qmp *phy,
+				struct device *dev)
+{
+	struct device_node *node = dev->of_node;
+	struct extcon_dev *edev;
+	int ret = 0;
+
+	if (!of_property_read_bool(node, "extcon"))
+		return 0;
+
+	edev = extcon_get_edev_by_phandle(dev, 0);
+	if (IS_ERR(edev)) {
+		dev_err(dev, "failed to get phandle for msm_ssphy_qmp\n");
+		return PTR_ERR(edev);
+	}
+
+	phy->extcon_dp = edev;
+	phy->dp_nb.notifier_call = msm_ssphy_qmp_dp_notifier;
+	ret = extcon_register_blocking_notifier(edev, EXTCON_DISP_DP,
+								&phy->dp_nb);
+	if (ret < 0) {
+		dev_err(dev, "failed to register blocking notifier\n");
+		return ret;
+	}
+
 	return 0;
 }
 
@@ -969,6 +1248,48 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 		}
 	}
 
+#ifdef CONFIG_LGE_USB_GADGET
+        ret = of_property_read_u32(dev->of_node, "qcom,tx-a-pre-emphasis",
+                                                &phy->tx_a_pre_emphasis);
+        if (ret)
+                phy->tx_a_pre_emphasis = 0;
+
+        ret = of_property_read_u32(dev->of_node, "qcom,tx-b-pre-emphasis",
+                                                &phy->tx_b_pre_emphasis);
+        if (ret)
+                phy->tx_b_pre_emphasis = 0;
+
+        ret = of_property_read_u32(dev->of_node, "qcom,tx_a_swing",
+                                                &phy->tx_a_swing);
+        if (ret)
+                phy->tx_a_swing = 0;
+
+        ret = of_property_read_u32(dev->of_node, "qcom,tx_b_swing",
+                                                &phy->tx_b_swing);
+        if (ret)
+                phy->tx_b_swing = 0;
+
+        ret = of_property_read_u32(dev->of_node, "qcom,rx_a_equ_gain1",
+                                                &phy->rx_a_equ_gain1);
+        if (ret)
+                phy->rx_a_equ_gain1 = 0;
+
+        ret = of_property_read_u32(dev->of_node, "qcom,rx_b_equ_gain1",
+                                                &phy->rx_b_equ_gain1);
+        if (ret)
+                phy->rx_b_equ_gain1 = 0;
+
+        ret = of_property_read_u32(dev->of_node, "qcom,rx_a_equ_gain2",
+                                                &phy->rx_a_equ_gain2);
+        if (ret)
+                phy->rx_a_equ_gain2 = 0;
+
+        ret = of_property_read_u32(dev->of_node, "qcom,rx_b_equ_gain2",
+                                                &phy->rx_b_equ_gain2);
+        if (ret)
+                phy->rx_b_equ_gain2 = 0;
+#endif
+
 	/* Set default core voltage values */
 	phy->core_voltage_levels[VOLTAGE_LEVEL_NONE] = 0;
 	phy->core_voltage_levels[VOLTAGE_LEVEL_MIN] = USB_SSPHY_1P2_VOL_MIN;
@@ -1064,6 +1385,10 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
 		phy->phy.reset		= msm_ssphy_qmp_dp_combo_reset;
 	else
 		phy->phy.reset		= msm_ssphy_qmp_reset;
+
+	ret = msm_ssphy_qmp_extcon_register(phy, dev);
+	if (ret)
+		goto err;
 
 	ret = usb_add_phy_dev(&phy->phy);
 

@@ -14,8 +14,11 @@
 #include <dt-bindings/regulator/qcom,rpmh-regulator.h>
 
 /* Stub regulators */
-/ {
 
+/* START : 2018-07-16 temporary replace pm8998_s4 stub regulator position from root to &soc */
+/* / { */
+&soc {
+/* END : 2018-07-16 */
 	/*
 	 * RPMh does not provide support for PM8998 S4 because it is always-on
 	 * at 1.8 V in auto mode.  Therefore, use a stub regulator for S4.
@@ -542,7 +545,7 @@
 			regulator-min-microvolt = <2856000>;
 			regulator-max-microvolt = <3104000>;
 			qcom,init-voltage = <2856000>;
-			qcom,init-mode = <RPMH_REGULATOR_MODE_LPM>;
+			qcom,init-mode = <RPMH_REGULATOR_MODE_HPM>;
 		};
 	};
 

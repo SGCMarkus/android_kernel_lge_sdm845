@@ -69,6 +69,39 @@ int cam_hw_cdm_bl_fifo_pending_bl_rb(struct cam_hw_info *cdm_hw,
 	return rc;
 }
 
+int cam_cdm_get_next_bl_tag(struct list_head *bl_list, uint8_t tag)
+{
+	struct cam_cdm_bl_cb_request_entry *node;
+	unsigned int i;
+	bool flag = false;
+
+	list_for_each_entry(node, bl_list, entry) {
+		CAM_DBG(CAM_CDM, "bl_tag %d userdata = %p", node->bl_tag, node->userdata);
+		if (tag == node->bl_tag)
+			flag = true;
+	}
+	if (flag) {
+		for (i = 0; i < CAM_CDM_HWFIFO_SIZE; i++) {
+			if (tag == CAM_CDM_HWFIFO_SIZE -1)
+				tag = 0;
+			else
+				tag++;
+			flag = false;
+			list_for_each_entry(node, bl_list, entry) {
+				CAM_DBG(CAM_CDM, "bl_tag %d userdata = %p", node->bl_tag, node->userdata);
+				if (tag == node->bl_tag)
+					flag = true;
+			}
+			if (!flag)
+				return tag;
+		}
+	} else {
+		return tag;
+	}
+
+	return -EINVAL;
+}
+
 static int cam_hw_cdm_enable_bl_done_irq(struct cam_hw_info *cdm_hw,
 	bool enable)
 {
@@ -352,7 +385,7 @@ int cam_hw_cdm_submit_gen_irq(struct cam_hw_info *cdm_hw,
 		rc = -EINVAL;
 		goto end;
 	}
-	CAM_DBG(CAM_CDM, "CDM write BL last cmd tag=%x total=%d cookie=%d",
+	CAM_DBG(CAM_CDM, "CDM write BL last cmd tag=%x total=%d cookie=%llu",
 		core->bl_tag, req->data->cmd_arrary_count, req->data->cookie);
 	node = kzalloc(sizeof(struct cam_cdm_bl_cb_request_entry),
 			GFP_KERNEL);
@@ -365,7 +398,9 @@ int cam_hw_cdm_submit_gen_irq(struct cam_hw_info *cdm_hw,
 	node->cookie = req->data->cookie;
 	node->bl_tag = core->bl_tag;
 	node->userdata = req->data->userdata;
+	CAM_DBG(CAM_CDM, "client_hdl %d bl_tag %d, userdata %p", node->client_hdl, node->bl_tag, node->userdata);
 	list_add_tail(&node->entry, &core->bl_request_list);
+	print_bl_list(&core->bl_request_list);
 	len = core->ops->cdm_required_size_genirq() * core->bl_tag;
 	core->ops->cdm_write_genirq(((uint32_t *)core->gen_irq.kmdvaddr + len),
 		core->bl_tag);
@@ -402,6 +437,7 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
 	uint32_t pending_bl = 0;
 	int write_count = 0;
+	uint8_t bl_tag_available;
 
 	if (req->data->cmd_arrary_count > CAM_CDM_HWFIFO_SIZE) {
 		pr_info("requested BL more than max size, cnt=%d max=%d",
@@ -523,6 +559,16 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			CAM_DBG(CAM_CDM, "BL commit success BL %d tag=%d", i,
 				core->bl_tag);
 			core->bl_tag++;
+			bl_tag_available = cam_cdm_get_next_bl_tag(&core->bl_request_list, core->bl_tag);
+			if (bl_tag_available == (uint8_t)(-EINVAL)) {
+				CAM_ERR(CAM_CDM, "No more bl_tags available tag %d", core->bl_tag);
+				print_bl_list(&core->bl_request_list);
+				rc = -EINVAL;
+				goto end;
+			} else {
+				 core->bl_tag = bl_tag_available;
+			}
+
 			if ((req->data->flag == true) &&
 				(i == (req->data->cmd_arrary_count -
 				1))) {
@@ -533,6 +579,8 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			}
 		}
 	}
+
+end:
 	mutex_unlock(&client->lock);
 	mutex_unlock(&cdm_hw->hw_mutex);
 	return rc;
@@ -558,6 +606,7 @@ static void cam_hw_cdm_work(struct work_struct *work)
 			CAM_DBG(CAM_CDM, "inline IRQ data=%x",
 				payload->irq_data);
 			mutex_lock(&cdm_hw->hw_mutex);
+			print_bl_list(&core->bl_request_list);
 			node = cam_cdm_find_request_by_bl_tag(
 					payload->irq_data,
 					&core->bl_request_list);
@@ -624,7 +673,8 @@ static void cam_hw_cdm_work(struct work_struct *work)
 }
 
 static void cam_hw_cdm_iommu_fault_handler(struct iommu_domain *domain,
-	struct device *dev, unsigned long iova, int flags, void *token)
+	struct device *dev, unsigned long iova, int flags, void *token,
+	uint32_t buf_info)
 {
 	struct cam_hw_info *cdm_hw = NULL;
 	struct cam_cdm *core = NULL;
@@ -672,7 +722,7 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 					"Failed to read CDM HW IRQ data");
 			}
 		}
-		CAM_DBG(CAM_CDM, "Got payload=%d", payload->irq_status);
+		CAM_DBG(CAM_CDM, "Got payload=%d, irq_data=%d", payload->irq_status, payload->irq_data);
 		payload->hw = cdm_hw;
 		INIT_WORK((struct work_struct *)&payload->work,
 			cam_hw_cdm_work);
@@ -881,6 +931,11 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 
 	cdm_core->bl_tag = 0;
 	cdm_core->id = cam_hw_cdm_get_id_by_name(cdm_core->name);
+
+//	for (i = 0;i < CAM_CDM_HWFIFO_SIZE; i++) {
+//		cdm_core->bl_tag_hash[i] = false;
+//	}
+
 	if (cdm_core->id >= CAM_CDM_MAX) {
 		CAM_ERR(CAM_CDM, "Failed to get CDM HW name for %s",
 			cdm_core->name);
@@ -910,7 +965,7 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 		CAM_ERR(CAM_CDM, "cpas-cdm get iommu handle failed");
 		goto unlock_release_mem;
 	}
-	cam_smmu_reg_client_page_fault_handler(cdm_core->iommu_hdl.non_secure,
+	cam_smmu_set_client_page_fault_handler(cdm_core->iommu_hdl.non_secure,
 		cam_hw_cdm_iommu_fault_handler, cdm_hw);
 
 	rc = cam_smmu_ops(cdm_core->iommu_hdl.non_secure, CAM_SMMU_ATTACH);
@@ -1034,7 +1089,7 @@ release_platform_resource:
 	flush_workqueue(cdm_core->work_queue);
 	destroy_workqueue(cdm_core->work_queue);
 destroy_non_secure_hdl:
-	cam_smmu_reg_client_page_fault_handler(cdm_core->iommu_hdl.non_secure,
+	cam_smmu_set_client_page_fault_handler(cdm_core->iommu_hdl.non_secure,
 		NULL, cdm_hw);
 	if (cam_smmu_destroy_handle(cdm_core->iommu_hdl.non_secure))
 		CAM_ERR(CAM_CDM, "Release iommu secure hdl failed");
@@ -1106,8 +1161,8 @@ int cam_hw_cdm_remove(struct platform_device *pdev)
 
 	if (cam_smmu_destroy_handle(cdm_core->iommu_hdl.non_secure))
 		CAM_ERR(CAM_CDM, "Release iommu secure hdl failed");
-	cam_smmu_reg_client_page_fault_handler(cdm_core->iommu_hdl.non_secure,
-		NULL, cdm_hw);
+	cam_smmu_unset_client_page_fault_handler(
+		cdm_core->iommu_hdl.non_secure, cdm_hw);
 
 	mutex_destroy(&cdm_hw->hw_mutex);
 	kfree(cdm_hw->soc_info.soc_private);

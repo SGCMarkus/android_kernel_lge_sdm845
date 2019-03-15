@@ -207,9 +207,11 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 
 	if (row->state != CAM_SYNC_STATE_ACTIVE) {
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
-		CAM_ERR(CAM_SYNC,
+#if 0 //Remove Log Message per frame
+		CAM_WARN(CAM_SYNC,
 			"Error: Sync object already signaled sync_obj = %d",
 			sync_obj);
+#endif
 		return -EALREADY;
 	}
 
@@ -271,12 +273,21 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 		kfree(parent_info);
 	}
 
+	if (status == CAM_SYNC_STATE_SIGNALED_ERROR)
+		CAM_ERR(CAM_SYNC, "fence error maybe occurs..");
+
 	return 0;
 }
 
 int cam_sync_merge(int32_t *sync_obj, uint32_t num_objs, int32_t *merged_obj)
 {
-	int rc;
+/* LGE_CHANGE_S, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+#if 1
+	int rc = 0;
+#else
+	int rc = 0, i = 0;
+#endif
+/* LGE_CHANGE_E, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
 	long idx = 0;
 	bool bit;
 
@@ -295,11 +306,27 @@ int cam_sync_merge(int32_t *sync_obj, uint32_t num_objs, int32_t *merged_obj)
 		CAM_ERR(CAM_SYNC, "The obj list has duplicate fence");
 		return -EINVAL;
 	}
+/* LGE_CHANGE_S, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+#if 0
+	for (i = 0; i < num_objs; i++) {
+		spin_lock_bh(&sync_dev->row_spinlocks[sync_obj[i]]);
+	}
+#endif
+/* LGE_CHANGE_E, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
 
 	do {
 		idx = find_first_zero_bit(sync_dev->bitmap, CAM_SYNC_MAX_OBJS);
-		if (idx >= CAM_SYNC_MAX_OBJS)
+		if (idx >= CAM_SYNC_MAX_OBJS) {
+/* LGE_CHANGE_S, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+#if 1
 			return -ENOMEM;
+#else
+			rc = -ENOMEM;
+			goto failure;
+#endif
+/* LGE_CHANGE_E, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+
+		}
 		bit = test_and_set_bit(idx, sync_dev->bitmap);
 	} while (bit);
 
@@ -312,13 +339,30 @@ int cam_sync_merge(int32_t *sync_obj, uint32_t num_objs, int32_t *merged_obj)
 			idx);
 		clear_bit(idx, sync_dev->bitmap);
 		spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
+/* LGE_CHANGE_S, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+#if 1
 		return -EINVAL;
+#else
+		goto failure;
+#endif
+/* LGE_CHANGE_E, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
 	}
 	CAM_DBG(CAM_SYNC, "Init row at idx:%ld to merge objects", idx);
 	*merged_obj = idx;
 	spin_unlock_bh(&sync_dev->row_spinlocks[idx]);
 
+/* LGE_CHANGE_S, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+#if 1
 	return 0;
+#else
+failure:
+	for (i = 0; i < num_objs; i++) {
+		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj[i]]);
+	}
+
+	return rc;
+#endif
+/* LGE_CHANGE_E, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
 }
 
 int cam_sync_get_obj_ref(int32_t sync_obj)

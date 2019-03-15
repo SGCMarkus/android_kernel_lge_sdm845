@@ -216,13 +216,13 @@ irqreturn_t cam_cci_irq(int irq_num, void *data)
 		cci_dev->cci_master_info[MASTER_0].status = -EINVAL;
 		cam_io_w_mb(CCI_M0_HALT_REQ_RMSK,
 			base + CCI_HALT_REQ_ADDR);
-		CAM_DBG(CAM_CCI, "MASTER_0 error 0x%x", irq_status0);
+		CAM_ERR(CAM_CCI, "MASTER_0 error 0x%x", irq_status0);
 	}
 	if (irq_status0 & CCI_IRQ_STATUS_0_I2C_M1_ERROR_BMSK) {
 		cci_dev->cci_master_info[MASTER_1].status = -EINVAL;
 		cam_io_w_mb(CCI_M1_HALT_REQ_RMSK,
 			base + CCI_HALT_REQ_ADDR);
-		CAM_DBG(CAM_CCI, "MASTER_1 error 0x%x", irq_status0);
+		CAM_ERR(CAM_CCI, "MASTER_1 error 0x%x", irq_status0);
 	}
 
 	if ((rd_done_th_assert) || (!cci_dev->is_burst_read)) {

@@ -28,6 +28,10 @@
 #define VDM_VERSION		0x0
 #define USB_C_DP_SID		0xFF01
 
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+extern bool is_kopin;
+#endif
+
 enum dp_usbpd_pin_assignment {
 	DP_USBPD_PIN_A,
 	DP_USBPD_PIN_B,
@@ -254,7 +258,12 @@ static void dp_usbpd_connect_cb(struct usbpd_svid_handler *hdlr)
 		return;
 	}
 
-	pr_debug("\n");
+	pr_info("\n");
+
+#if defined(CONFIG_LGE_DISPLAY_NOT_SUPPORT_DISPLAYPORT) && defined(CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN)
+	if (!is_kopin)
+		return;
+#endif
 	dp_usbpd_send_event(pd, DP_USBPD_EVT_DISCOVER);
 }
 
@@ -270,7 +279,7 @@ static void dp_usbpd_disconnect_cb(struct usbpd_svid_handler *hdlr)
 
 	pd->alt_mode = DP_USBPD_ALT_MODE_NONE;
 	pd->dp_usbpd.alt_mode_cfg_done = false;
-	pr_debug("\n");
+	pr_info("\n");
 
 	if (pd->dp_cb && pd->dp_cb->disconnect)
 		pd->dp_cb->disconnect(pd->dev);

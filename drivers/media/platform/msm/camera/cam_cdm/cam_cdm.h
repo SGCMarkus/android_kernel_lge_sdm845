@@ -225,6 +225,7 @@ struct cam_cdm {
 	atomic_t bl_done;
 	struct cam_cdm_hw_mem gen_irq;
 	uint32_t cpas_handle;
+//	bool bl_tag_hash[CAM_CDM_HWFIFO_SIZE];
 };
 
 /* struct cam_cdm_private_dt_data - CDM hw custom dt data */

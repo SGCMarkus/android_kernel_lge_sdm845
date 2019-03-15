@@ -13,6 +13,7 @@
  */
 
 #define pr_fmt(fmt)	"[drm-dp] %s: " fmt, __func__
+#define DEBUG
 
 #include <linux/types.h>
 #include <linux/completion.h>
@@ -1437,6 +1438,7 @@ static int dp_ctrl_on(struct dp_ctrl *dp_ctrl)
 
 	if (ctrl->link->sink_request & DP_TEST_LINK_PHY_TEST_PATTERN)
 		dp_ctrl_send_phy_test_pattern(ctrl);
+	ctrl->power_on = true;
 
 	ctrl->power_on = true;
 	pr_debug("End-\n");
@@ -1461,7 +1463,6 @@ static void dp_ctrl_off(struct dp_ctrl *dp_ctrl)
 	wmb();
 
 	dp_ctrl_disable_mainlink_clocks(ctrl);
-
 	ctrl->power_on = false;
 	pr_debug("DP off done\n");
 }

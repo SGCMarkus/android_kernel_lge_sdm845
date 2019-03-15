@@ -2,6 +2,8 @@ ifdef CONFIG_FUNCTION_TRACER
 CFLAGS_REMOVE_clock.o = $(CC_FLAGS_FTRACE)
 endif
 
+ccflags-$(CONFIG_LGE_PM_PRM) += -Idrivers/soc/qcom/lge/power
+
 # These files are disabled because they produce non-interesting flaky coverage
 # that is not a function of syscall inputs. E.g. involuntary context switches.
 KCOV_INSTRUMENT := n

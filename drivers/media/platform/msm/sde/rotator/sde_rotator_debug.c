@@ -121,6 +121,15 @@ struct sde_rot_dbg_evtlog {
 	u32 *reg_dump_array[SDE_ROT_DEBUG_BASE_MAX];
 } sde_rot_dbg_evtlog;
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+void sde_rot_dump_enable(bool enable) {
+	if (enable)
+		sde_rot_dbg_evtlog.evtlog_enable = SDE_EVTLOG_DEFAULT_ENABLE;
+	else
+		sde_rot_dbg_evtlog.evtlog_enable = 0;
+}
+#endif
+
 static void sde_rot_dump_debug_bus(u32 bus_dump_flag, u32 **dump_mem)
 {
 	struct sde_rot_data_type *mdata = sde_rot_get_mdata();
@@ -591,6 +600,11 @@ static ssize_t sde_rot_evtlog_dump_read(struct file *file, char __user *buff,
 static ssize_t sde_rot_evtlog_dump_write(struct file *file,
 	const char __user *user_buf, size_t count, loff_t *ppos)
 {
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	if (!sde_rot_evtlog_is_enabled(SDE_ROT_EVTLOG_DEFAULT)) {
+		return count;
+	}
+#endif
 	sde_rot_evtlog_dump_all();
 
 	sde_rot_dump_reg_all();

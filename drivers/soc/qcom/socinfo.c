@@ -35,6 +35,10 @@
 #include <soc/qcom/smem.h>
 #include <soc/qcom/boot_stats.h>
 
+#ifdef CONFIG_MACH_LGE
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
 #define BUILD_ID_LENGTH 32
 #define CHIP_ID_LENGTH 32
 #define SMEM_IMAGE_VERSION_BLOCKS_COUNT 32
@@ -602,8 +606,8 @@ static struct msm_soc_info cpu_of_id[] = {
 	/* SDM710 ID */
 	[360] = {MSM_CPU_SDM710, "SDM710"},
 
-	/* SDMDOLPHIN ID */
-	[393] = {MSM_CPU_SDMDOLPHIN, "SDMDOLPHIN"},
+	/* SDMNOBELIUM ID */
+	[393] = {MSM_CPU_SDMNOBELIUM, "SDMNOBELIUM"},
 
 	/* SXR1120 ID */
 	[370] = {MSM_CPU_SXR1120, "SXR1120"},
@@ -1041,7 +1045,7 @@ msm_get_serial_number(struct device *dev,
 			struct device_attribute *attr,
 			char *buf)
 {
-	return snprintf(buf, PAGE_SIZE, "%u\n",
+	return snprintf(buf, PAGE_SIZE, "0x%x\n",
 		socinfo_get_serial_number());
 }
 
@@ -1357,6 +1361,38 @@ msm_get_images(struct device *dev,
 	return pos;
 }
 
+#ifdef CONFIG_MACH_LGE
+static ssize_t
+msm_get_hw_rev(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	enum hw_rev_no revid = lge_get_board_rev_no();
+
+	pr_err("hw_rev called'\n");
+	pr_err("hw_rev id:%d\n",revid);
+	pr_err("hw_rev :%s",lge_get_board_revision());
+
+	return snprintf(buf, PAGE_SIZE, "%-.32s\n",
+			lge_get_board_revision());
+}
+
+static ssize_t
+msm_get_hw_subrev(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	enum hw_subrev_no sub_revid = lge_get_board_subrev_no();
+
+	pr_err("hw_subrev called'\n");
+	pr_err("hw_subrev id:%d\n",sub_revid);
+	pr_err("hw_subrev :%s",lge_get_board_subrevision());
+
+	return snprintf(buf, PAGE_SIZE, "%-.32s\n",
+			lge_get_board_subrevision());
+}
+#endif
+
 static struct device_attribute msm_soc_attr_raw_version =
 	__ATTR(raw_version, S_IRUGO, msm_get_raw_version,  NULL);
 
@@ -1467,6 +1503,13 @@ static struct device_attribute select_image =
 static struct device_attribute images =
 	__ATTR(images, S_IRUGO, msm_get_images, NULL);
 
+#ifdef CONFIG_MACH_LGE
+static struct device_attribute msm_soc_attr_hw_rev =
+	__ATTR(hw_rev, S_IRUGO, msm_get_hw_rev, NULL);
+static struct device_attribute msm_soc_attr_hw_subrev =
+	__ATTR(hw_subrev, S_IRUGO, msm_get_hw_subrev, NULL);
+#endif
+
 static void * __init setup_dummy_socinfo(void)
 {
 	if (early_machine_is_apq8084()) {
@@ -1557,9 +1600,9 @@ static void * __init setup_dummy_socinfo(void)
 		dummy_socinfo.id = 360;
 		strlcpy(dummy_socinfo.build_id, "sdm710 - ",
 			sizeof(dummy_socinfo.build_id));
-	} else if (early_machine_is_sdmdolphin()) {
+	} else if (early_machine_is_sdmnobelium()) {
 		dummy_socinfo.id = 393;
-		strlcpy(dummy_socinfo.build_id, "sdmdolphin - ",
+		strlcpy(dummy_socinfo.build_id, "sdmnobelium - ",
 			sizeof(dummy_socinfo.build_id));
 	} else if (early_machine_is_sda670()) {
 		dummy_socinfo.id = 337;
@@ -1596,6 +1639,10 @@ static void * __init setup_dummy_socinfo(void)
 	} else if (early_machine_is_sdm450()) {
 		dummy_socinfo.id = 338;
 		strlcpy(dummy_socinfo.build_id, "sdm450 - ",
+			sizeof(dummy_socinfo.build_id));
+	} else if (early_machine_is_sda450()) {
+		dummy_socinfo.id = 351;
+		strlcpy(dummy_socinfo.build_id, "sda450 - ",
 			sizeof(dummy_socinfo.build_id));
 	} else if (early_machine_is_sdm632()) {
 		dummy_socinfo.id = 349;
@@ -1701,6 +1748,12 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 	case SOCINFO_VERSION(0, 1):
 		device_create_file(msm_soc_device,
 					&msm_soc_attr_build_id);
+#ifdef CONFIG_MACH_LGE
+		device_create_file(msm_soc_device,
+					&msm_soc_attr_hw_rev);
+		device_create_file(msm_soc_device,
+					&msm_soc_attr_hw_subrev);
+#endif
 		break;
 	default:
 		pr_err("Unknown socinfo format: v%u.%u\n",

@@ -12,11 +12,10 @@
  */
 
 #include <linux/delay.h>
-#include <linux/io.h>
-#include <linux/err.h>
 #include "cam_io_util.h"
-#include "cam_debug_util.h"
 
+/* LGE_CHANGE, CST, converted to inline function for logging RTB */
+#ifndef CONFIG_QCOM_RTB
 int cam_io_w(uint32_t data, void __iomem *addr)
 {
 	if (!addr)
@@ -76,7 +75,7 @@ uint32_t cam_io_r_mb(void __iomem *addr)
 
 	return data;
 }
-
+#endif
 int cam_io_memcpy(void __iomem *dest_addr,
 	void __iomem *src_addr, uint32_t len)
 {

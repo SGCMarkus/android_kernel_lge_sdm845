@@ -1070,10 +1070,14 @@ config SERIAL_MSM
 	depends on ARCH_QCOM
 	select SERIAL_CORE
 
+config SERIAL_MSM_GENI_LOCK
+	bool "MSM on-chip serial port lock w/a"
+
 config SERIAL_MSM_GENI
 	tristate "MSM on-chip GENI HW based serial port support"
 	depends on ARCH_QCOM
 	select SERIAL_CORE
+	select SERIAL_MSM_GENI_LOCK
 	help
 	    Serial driver for Qualcomm Technologies Inc's GENI based QUPv3
 	    hardware.
@@ -1084,6 +1088,7 @@ config SERIAL_MSM_GENI_CONSOLE
 	depends on SERIAL_MSM_GENI=y
 	select SERIAL_CORE_CONSOLE
 	select SERIAL_EARLYCON
+	select SERIAL_MSM_GENI_LOCK
 
 config SERIAL_MSM_CONSOLE
 	bool "MSM serial console support"

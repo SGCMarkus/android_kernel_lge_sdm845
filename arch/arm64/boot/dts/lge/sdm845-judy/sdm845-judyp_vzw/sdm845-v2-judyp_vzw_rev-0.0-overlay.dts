@@ -1,0 +1,91 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+/plugin/;
+
+#include "sdm845-judyp_vzw.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDM845 V2 - LG Electronics, judyp_vzw rev_0";
+	compatible = "qcom,sdm845-mtp", "qcom,sdm845", "qcom,mtp";
+	qcom,msm-id = <321 0x20000>;
+	qcom,board-id = <0x030008 0>;
+};
+
+&ts_ftm4_vdd_en_active {
+	mux {
+		pins = "gpio115";
+		function = "gpio";
+	};
+	config {
+		pins = "gpio115";
+		drive-strength = <2>;
+		bias-pull-up;
+	};
+};
+
+&ts_ftm4_vdd_en_suspend {
+	mux {
+		pins = "gpio115";
+		function = "gpio";
+	};
+	config {
+		pins = "gpio115";
+		drive-strength = <2>;
+		bias-pull-down;
+	};
+};
+
+&qupv3_se14_i2c {
+	stm_ftm4@49 {
+		vdd-gpio = <&tlmm 115 0x00>;
+		fw_image = "touch/judyp/JUDY_2046_0F01_v0.02_20170905.ftb";
+	};
+};
+
+&dsi_sw43408_dsc_1440_2880_cmd_display {
+	lab-supply;
+	ibb-supply;
+};
+
+&dsi_sw43402_dsc_qhd_cmd {
+	lge,panel-pins =
+		<&tlmm 8 0>,  // vddio
+		<&tlmm 113 0>; // vpnl
+};
+
+&extra_ldo_panel_power_active {
+	mux {
+		pins = "gpio8", "gpio113";
+	};
+
+	config {
+		pins = "gpio8", "gpio113";
+	};
+
+};
+
+&extra_ldo_panel_power_suspend {
+	mux {
+		pins = "gpio8", "gpio113";
+	};
+
+	config {
+		pins = "gpio8", "gpio113";
+	};
+};
+
+&pmi8998_pdphy {
+	lge,moisture-method = <0>;
+};

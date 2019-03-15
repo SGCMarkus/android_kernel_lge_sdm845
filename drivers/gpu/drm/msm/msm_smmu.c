@@ -516,7 +516,7 @@ static int msm_smmu_fault_handler(struct iommu_domain *domain,
 	DRM_ERROR("SMMU device:%s", client->dev ? client->dev->kobj.name : "");
 
 	/* generate dump, but no panic */
-	SDE_DBG_DUMP("all", "dbg_bus", "vbif_dbg_bus");
+	SDE_DBG_DUMP("all", "dbg_bus", "vbif_dbg_bus", "panic");
 
 	/*
 	 * return -ENOSYS to allow smmu driver to dump out useful

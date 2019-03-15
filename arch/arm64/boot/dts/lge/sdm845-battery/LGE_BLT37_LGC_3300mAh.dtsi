@@ -1,0 +1,87 @@
+
+qcom,LGE_BLT37_LGC_3300mAh {
+	qcom, = <24>;
+	/* fg feature for battery charactistics */
+	/* constant parameter */
+	lge,fg-cutoff-voltage = <3200>;
+	lge,fg-cutoff-current = <200>;
+	lge,fg-esr-tight-lt-filter-micro-pct = <30000>;
+	lge,fg-esr-broad-lt-filter-micro-pct = <30000>;
+
+	/* runtime changing parameter */
+	lge,ki-coeff-curr-lowth-dischg = <200>;
+	lge,ki-coeff-curr-highth-dischg = <1000>;
+	lge,ki-coeff-soc-dischg = <30 60 90>;
+	lge,ki-coeff-low-dischg = <500 500 500>;
+	lge,ki-coeff-med-dischg = <300 300 300>;
+	lge,ki-coeff-hi-dischg = <300 300 300>;
+
+	/* #3301286_LGE_BLT37lgc_3300mAh_averaged_MasterSlave_Jul13th2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3300>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,batt-id-kohm = <4>;
+	qcom,battery-beta = <4150>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,battery-type = "LGE_BLT37_LGC_3300mAh";
+	qcom,checksum = <0xC093>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.58";
+	qcom,fg-profile-data = [
+		 D4 1E 1B FD
+		 56 03 A9 F4
+		 CE 1C 1A 02
+		 85 0D D1 0A
+		 EE 17 4B 23
+		 40 45 29 53
+		 6D 00 00 00
+		 12 00 00 00
+		 00 00 15 BD
+		 61 CD CB C2
+		 37 00 08 00
+		 95 DB B1 07
+		 4B 06 CC 00
+		 D5 FA 11 0B
+		 A5 05 91 33
+		 24 06 09 20
+		 24 00 14 00
+		 9F 1F C7 05
+		 42 0A 92 06
+		 AF 1C 3B 03
+		 C2 15 6C 12
+		 6B 18 12 2A
+		 90 4D FC 5B
+		 67 00 00 00
+		 0D 00 00 00
+		 00 00 1A D5
+		 52 CA 1D CB
+		 2A 00 00 00
+		 06 F2 B1 07
+		 BC 06 BE EB
+		 5D E4 7A 03
+		 F2 EC A2 1A
+		 99 33 CC FF
+		 07 10 00 00
+		 E4 0C 66 46
+		 2A 00 40 00
+		 49 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};

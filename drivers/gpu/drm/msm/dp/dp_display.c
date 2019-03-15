@@ -13,6 +13,7 @@
  */
 
 #define pr_fmt(fmt)	"[drm-dp] %s: " fmt, __func__
+#define DEBUG
 
 #include <linux/module.h>
 #include <linux/slab.h>
@@ -37,6 +38,14 @@
 #include "dp_display.h"
 #include "sde_hdcp.h"
 #include "dp_debug.h"
+
+#ifndef CONFIG_LGE_DISPLAY_NOT_SUPPORT_DISPLAYPORT
+#include "../lge/dp/lge_dp.h"
+#endif
+
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+extern bool is_kopin;
+#endif
 
 static struct dp_display *g_dp_display;
 #define HPD_STRING_SIZE 30
@@ -315,7 +324,11 @@ static int dp_display_initialize_hdcp(struct dp_display_private *dp)
 	}
 
 	pr_debug("HDCP 2.2 initialized\n");
-
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+	if (is_kopin)
+		dp->hdcp.feature_enabled = false;
+	else
+#endif
 	dp->hdcp.feature_enabled = true;
 
 	return 0;
@@ -350,6 +363,9 @@ static int dp_display_bind(struct device *dev, struct device *master,
 
 	dp->dp_display.drm_dev = drm;
 	dp->priv = drm->dev_private;
+#ifndef CONFIG_LGE_DISPLAY_NOT_SUPPORT_DISPLAYPORT
+	lge_dp_drv_init(&dp->dp_display);
+#endif
 end:
 	return rc;
 }
@@ -517,6 +533,9 @@ static int dp_display_process_hpd_high(struct dp_display_private *dp)
 		else
 			goto notify;
 	}
+#ifndef CONFIG_LGE_DISPLAY_NOT_SUPPORT_DISPLAYPORT
+	lge_set_dp_hpd(&dp->dp_display, 1);
+#endif
 
 	edid = dp->panel->edid_ctrl->edid;
 
@@ -576,7 +595,9 @@ static int dp_display_process_hpd_low(struct dp_display_private *dp)
 		pr_debug("HPD already off\n");
 		return 0;
 	}
-
+#ifndef CONFIG_LGE_DISPLAY_NOT_SUPPORT_DISPLAYPORT
+	lge_set_dp_hpd(&dp->dp_display, 0);
+#endif
 	if (dp_display_is_hdcp_enabled(dp) && dp->hdcp.ops->off)
 		dp->hdcp.ops->off(dp->hdcp.data);
 
@@ -647,6 +668,12 @@ static int dp_display_handle_disconnect(struct dp_display_private *dp)
 		/* cancel any pending request */
 		dp->ctrl->abort(dp->ctrl);
 		dp->aux->abort(dp->aux);
+	}
+
+	if (rc) {
+	/* cancel any pending request */
+	    dp->ctrl->abort(dp->ctrl);
+	    dp->aux->abort(dp->aux);
 	}
 
 	mutex_lock(&dp->session_lock);
@@ -1113,7 +1140,6 @@ static int dp_display_post_enable(struct dp_display *dp_display)
 		pr_err("invalid input\n");
 		return -EINVAL;
 	}
-
 	dp = container_of(dp_display, struct dp_display_private, dp_display);
 
 	mutex_lock(&dp->session_lock);
@@ -1127,7 +1153,6 @@ static int dp_display_post_enable(struct dp_display *dp_display)
 		pr_err("aborted\n");
 		goto end;
 	}
-
 	dp->panel->spd_config(dp->panel);
 
 	if (dp->audio_supported) {

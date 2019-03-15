@@ -1,8 +1,11 @@
+ifneq ($(CONFIG_MACH_LGE), y)
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb msm8916-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb
+endif
 
 ifeq ($(CONFIG_BUILD_ARM64_DT_OVERLAY),y)
+ifneq ($(CONFIG_MACH_LGE), y)
 	dtbo-$(CONFIG_ARCH_SDM845) += \
 		sdm845-cdp-overlay.dtbo \
 		sdm845-mtp-overlay.dtbo \
@@ -93,6 +96,11 @@ sda845-v2.1-4k-panel-qrd-overlay.dtbo-base := sda845-v2.1.dtb
 sda845-v2.1-cdp-sdxpoorwills-overlay.dtbo-base := sda845-v2.1.dtb
 sda845-v2.1-mtp-sdxpoorwills-overlay.dtbo-base := sda845-v2.1.dtb
 sda845-v2-mtp-sdxpoorwills-overlay.dtbo-base := sda845-v2.dtb
+else #CONFIG_MACH_LGE
+dtb-$(CONFIG_ARCH_SDM845) += sdm845.dtb \
+	sdm845-v2.dtb \
+	sdm845-v2.1.dtb
+endif
 else
 dtb-$(CONFIG_ARCH_SDM845) += sdm845-sim.dtb \
 	sdm845-rumi.dtb \
@@ -345,6 +353,8 @@ dtbo-$(CONFIG_ARCH_MSM8917) += msm8917-mtp-overlay.dtbo \
 	apq8017-cdp-overlay.dtbo \
 	apq8017-cdp-wcd-rome-overlay.dtbo
 
+dtbo-$(CONFIG_ARCH_QM215) +=qm215-qrd-overlay.dtbo
+
 dtbo-$(CONFIG_ARCH_MSM8953) += msm8953-mtp-overlay.dtbo \
 	msm8953-cdp-overlay.dtbo \
 	msm8953-rcm-overlay.dtbo \
@@ -389,6 +399,7 @@ msm8917-mtp-overlay.dtbo-base := msm8917-pmi8950.dtb \
 
 msm8917-qrd-overlay.dtbo-base := msm8917-pmi8937.dtb
 
+
 msm8917-cdp-ext-codec-overlay.dtbo-base := msm8917-pmi8950.dtb
 
 msm8917-cdp-ml-touch-overlay.dtbo-base := msm8917-pmi8950.dtb
@@ -409,6 +420,8 @@ apq8017-cdp-overlay.dtbo-base := apq8017-pmi8950.dtb \
 
 apq8017-cdp-wcd-rome-overlay.dtbo-base := apq8017-pmi8950.dtb \
 	apq8017-pmi8937.dtb
+
+qm215-qrd-overlay.dtbo-base := qm215.dtb
 
 msm8953-mtp-overlay.dtbo-base := sdm450.dtb \
 	msm8953.dtb \
@@ -471,6 +484,7 @@ sdm439-cdp-overlay.dtbo-base := sdm439.dtb \
 	msm8937-interposer-sdm439.dtb
 sdm439-qrd-overlay.dtbo-base := sdm439.dtb \
 	msm8937-interposer-sdm439.dtb
+
 sdm439-external-codec-mtp-overlay.dtbo-base := sdm439.dtb
 sdm439-rcm-overlay.dtbo-base := sdm439.dtb
 sdm429-mtp-overlay.dtbo-base := sdm429.dtb \
@@ -541,6 +555,8 @@ dtb-$(CONFIG_ARCH_MSM8917) += msm8917-pmi8950-mtp.dtb \
 	msm8917-pmi8940-cdp.dtb \
 	msm8917-pmi8940-rcm.dtb
 
+dtb-$(CONFIG_ARCH_QM215) += qm215-qrd.dtb
+
 dtb-$(CONFIG_ARCH_MSM8909) += sdw3100-msm8909w-wtp.dtb \
 	sdw3100-apq8009w-wtp.dtb \
 	sdw3100-apq8009w-alpha.dtb \
@@ -589,7 +605,8 @@ dtb-$(CONFIG_ARCH_SDM439) += sdm439-mtp.dtb \
 	sda439-mtp.dtb \
 	sda439-cdp.dtb \
 	sdm439-external-codec-mtp.dtb \
-	sdm439-rcm.dtb
+	sdm439-rcm.dtb \
+	qm215-qrd.dtb
 
 dtb-$(CONFIG_ARCH_SDM429) += sdm429-mtp.dtb \
 	sdm429-cdp.dtb \
