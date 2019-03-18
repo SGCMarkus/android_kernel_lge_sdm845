@@ -29,10 +29,6 @@
 			linux,can-disable;
 		};
 	};
-	lge-mme-bus {
-		compatible = "lge,mme_bus";
-		lge,app-names = "mme";
-	};
 };
 
 /* LED setting */

@@ -185,6 +185,8 @@ static void fg_encode_default(struct fg_sram_param *sp,
 static struct fg_irq_info fg_irqs[FG_IRQ_MAX];
 #ifdef CONFIG_LGE_PM
 static int calculate_rescaled_soc(struct fg_chip *chip);
+static int extension_fg_load_dt(void);
+static int extension_fg_load_icoeff_dt(struct fg_chip *chip);
 #endif
 
 #define PARAM(_id, _addr_word, _addr_byte, _len, _num, _den, _offset,	\
@@ -2793,6 +2795,46 @@ static void clear_cycle_counter(struct fg_chip *chip)
 	mutex_unlock(&chip->cyc_ctr.lock);
 }
 
+#ifdef CONFIG_LGE_PM
+static void backup_from_cycle_counter(struct fg_chip *chip)
+{
+	int i;
+	/* read cycle count data from sram */
+	restore_cycle_counter(chip);
+	/* backup cycle count*/
+	mutex_lock(&chip->cyc_ctr.lock);
+	for (i = 0; i < BUCKET_COUNT; i++) {
+		fg_dbg(chip, FG_LGE, "backup_from: %d: %d -> %d\n",
+			i, chip->cyc_ctr.count[i], chip->cyc_ctr_backup.count[i]);
+		chip->cyc_ctr_backup.count[i] = chip->cyc_ctr.count[i];
+	}
+	mutex_unlock(&chip->cyc_ctr.lock);
+}
+
+static void backup_to_cycle_counter(struct fg_chip *chip)
+{
+	int rc = 0, i;
+
+	if (!chip->cyc_ctr.en)
+		return;
+
+	mutex_lock(&chip->cyc_ctr.lock);
+	/* restore cycle count from backup*/
+	for (i = 0; i < BUCKET_COUNT; i++) {
+		fg_dbg(chip, FG_LGE, "backup_to: %d: %d <- %d\n",
+			i, chip->cyc_ctr.count[i], chip->cyc_ctr_backup.count[i]);
+		chip->cyc_ctr.count[i] = chip->cyc_ctr_backup.count[i];
+	}
+	/* write backuped cycle count to from sram */
+	rc = fg_sram_write(chip, CYCLE_COUNT_WORD, CYCLE_COUNT_OFFSET,
+			(u8 *)&chip->cyc_ctr.count, sizeof(chip->cyc_ctr.count),
+			FG_IMA_DEFAULT);
+	if (rc < 0)
+		fg_dbg(chip, FG_LGE, "failed to write cycle counter rc=%d\n", rc);
+	mutex_unlock(&chip->cyc_ctr.lock);
+}
+#endif
+
 static int fg_inc_store_cycle_ctr(struct fg_chip *chip, int bucket)
 {
 	int rc = 0;
@@ -3382,6 +3424,10 @@ static void profile_load_work(struct work_struct *work)
 	if (!is_profile_load_required(chip))
 		goto done;
 
+#ifdef CONFIG_LGE_PM
+	backup_from_cycle_counter(chip);
+#endif
+
 	clear_cycle_counter(chip);
 	mutex_lock(&chip->cl.lock);
 	chip->cl.learned_cc_uah = 0;
@@ -3421,6 +3467,11 @@ static void profile_load_work(struct work_struct *work)
 
 	fg_dbg(chip, FG_STATUS, "SOC is ready\n");
 	chip->profile_load_status = PROFILE_LOADED;
+
+#ifdef CONFIG_LGE_PM
+	backup_to_cycle_counter(chip);
+#endif
+
 done:
 	rc = fg_bp_params_config(chip);
 	if (rc < 0)
@@ -3461,6 +3512,7 @@ out:
 		schedule_work(&chip->status_change_work);
 	}
 #ifdef CONFIG_LGE_PM
+	extension_fg_load_icoeff_dt(chip);
 	calculate_rescaled_soc(chip);
 #endif
 }
@@ -5355,7 +5407,11 @@ static int fg_parse_ki_coefficients(struct fg_chip *chip)
 #define DEFAULT_CHG_TERM_CURR_MA	100
 #define DEFAULT_CHG_TERM_BASE_CURR_MA	75
 #define DEFAULT_SYS_TERM_CURR_MA	-125
+#ifdef CONFIG_LGE_PM
+#define DEFAULT_CUTOFF_CURR_MA		200
+#else
 #define DEFAULT_CUTOFF_CURR_MA		500
+#endif
 #define DEFAULT_DELTA_SOC_THR		1
 #define DEFAULT_RECHARGE_SOC_THR	95
 #define DEFAULT_BATT_TEMP_COLD		0
@@ -5985,6 +6041,10 @@ static int fg_gen3_probe(struct platform_device *pdev)
 			rc);
 		goto exit;
 	}
+
+#ifdef CONFIG_LGE_PM
+	extension_fg_load_dt();
+#endif
 
 	mutex_init(&chip->bus_lock);
 	mutex_init(&chip->sram_rw_lock);

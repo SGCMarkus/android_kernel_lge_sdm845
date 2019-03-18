@@ -915,4 +915,10 @@ config SAR_ATMF04_2ND
        depends on I2C
        help
          Support Secondary ATMF04 as an input device.
+
+config SAR_ATMF04_12QFN
+       bool "ATMF04_12QFN support"
+       depends on I2C
+       help
+         Support ATMF04_12QFN as an input device.
 endif

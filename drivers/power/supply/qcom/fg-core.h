@@ -332,6 +332,8 @@ struct fg_dt_props {
 	int	esr_tight_lt_flt_upct;
 	int	esr_broad_lt_flt_upct;
 #ifdef CONFIG_LGE_PM
+	int	cutoff_lt_volt_mv;
+	int	cutoff_lt_curr_ma;
 	int	esr_flt_rt_switch_temp[MAX_ESR_RT_FILTER_LEVEL];
 	int	esr_flt_rt_duration[MAX_ESR_RT_FILTER_LEVEL];
 #else
@@ -476,6 +478,9 @@ struct fg_chip {
 	struct fg_dt_props	dt;
 	struct fg_batt_props	bp;
 	struct fg_cyc_ctr_data	cyc_ctr;
+#ifdef CONFIG_LGE_PM
+	struct fg_cyc_ctr_data	cyc_ctr_backup;
+#endif
 	struct notifier_block	nb;
 	struct notifier_block	twm_nb;
 	struct fg_cap_learning  cl;

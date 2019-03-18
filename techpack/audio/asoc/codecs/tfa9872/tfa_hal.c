@@ -23,7 +23,8 @@
 #include "inc/lxScribo.h"
 
 /* translate a I2C driver error into an error */
-static enum tfa98xx_error tfa98xx_classify_i2c_error(enum NXP_I2C_Error i2c_error)
+static enum tfa98xx_error
+tfa98xx_classify_i2c_error(enum NXP_I2C_Error i2c_error)
 {
 	switch (i2c_error) {
 		case NXP_I2C_Ok:
@@ -52,7 +53,9 @@ tfa98xx_write_register16(tfa98xx_handle_t handle,
 	write_data[1] = (value >> 8) & 0xFF;
 	write_data[2] = value & 0xFF;
 
-	i2c_error = NXP_I2C_WriteRead(handles_local[handle].slave_address, sizeof(write_data), write_data, 0, NULL);
+	i2c_error = NXP_I2C_WriteRead
+		(handles_local[handle].slave_address, sizeof(write_data),
+		 write_data, 0, NULL);
 
 	return tfa98xx_classify_i2c_error(i2c_error);
 }
@@ -71,14 +74,15 @@ tfa98xx_read_register16(tfa98xx_handle_t handle,
 	write_data[0] = subaddress;
 	read_buffer[0] = read_buffer[1] = 0;
 
-	i2c_error = NXP_I2C_WriteRead(handles_local[handle].slave_address, 
-			sizeof(write_data), write_data, sizeof(read_buffer), read_buffer);
-	if (tfa98xx_classify_i2c_error(i2c_error) != TFA98XX_ERROR_OK) {
+	i2c_error = NXP_I2C_WriteRead
+		(handles_local[handle].slave_address, sizeof(write_data),
+		 write_data, sizeof(read_buffer), read_buffer);
+
+	if (tfa98xx_classify_i2c_error(i2c_error) != TFA98XX_ERROR_OK)
 		return tfa98xx_classify_i2c_error(i2c_error);
-	} else {
-		*p_value = (read_buffer[0] << 8) + read_buffer[1];
-		return TFA98XX_ERROR_OK;
-	}
+
+	*p_value = (read_buffer[0] << 8) + read_buffer[1];
+	return TFA98XX_ERROR_OK;
 }
 
 enum tfa98xx_error
@@ -94,8 +98,8 @@ tfa98xx_read_data(tfa98xx_handle_t handle,
 		return TFA98XX_ERROR_BAD_PARAMETER;
 
 	write_data[0] = subaddress;
-	i2c_error =
-	    NXP_I2C_WriteRead(handles_local[handle].slave_address, sizeof(write_data),
+	i2c_error = NXP_I2C_WriteRead
+		(handles_local[handle].slave_address, sizeof(write_data),
 			      write_data, num_bytes, data);
 	return tfa98xx_classify_i2c_error(i2c_error);
 }
@@ -114,8 +118,8 @@ tfa98xx_write_raw(tfa98xx_handle_t handle,
 		return TFA98XX_ERROR_NOT_OPEN;
 	if (num_bytes > handles_local[handle].buffer_size)
 		return TFA98XX_ERROR_BAD_PARAMETER;
-	i2c_error =
-	    NXP_I2C_WriteRead(handles_local[handle].slave_address, num_bytes,
+	i2c_error = NXP_I2C_WriteRead
+	    (handles_local[handle].slave_address, num_bytes,
 			  data, 0, NULL);
 	return tfa98xx_classify_i2c_error(i2c_error);
 }

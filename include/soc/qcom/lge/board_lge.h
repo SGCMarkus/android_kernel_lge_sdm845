@@ -135,6 +135,8 @@ enum lge_sku_carrier_type {
   HW_SKU_MAX             // 20
 };
 
+char *lge_get_sku_carrier_str(void);
+enum lge_sku_carrier_type lge_get_sku_carrier(void);
 /*
  * this enum and string should be sync with ntcode_op_table at
  * android/bootable/bootloader/edk2/QcomModulePkg/Library/LGESharedLib/lge_one_binary.c
@@ -162,7 +164,6 @@ enum lge_laop_operator_type {
   OP_MAX
 };
 
-enum lge_sku_carrier_type lge_get_sku_carrier(void);
 enum lge_laop_operator_type lge_get_laop_operator(void);
 #endif
 

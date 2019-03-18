@@ -23,6 +23,8 @@ extern int lge_ddic_dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 extern int lge_mdss_dsi_panel_cmd_read(struct dsi_panel *panel,
 					u8 cmd, int cnt, char* ret_buf);
 extern int lge_backlight_device_update_status(struct backlight_device *bd);
+extern char* get_payload_addr(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type, int position);
+extern int get_payload_cnt(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type, int position);
 
 const struct drs_res_info sw43408a_res[3] = {
 	{"qhd", 0, 1440, 3120},
@@ -278,15 +280,25 @@ static void prepare_power_optimize_cmds(struct dsi_panel *panel, struct dsi_cmd_
 	}
 }
 
-static int prepare_aod_cmds_sw43408a(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
+static void prepare_aod_area_sw43408a(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
 {
-	int rc = 0, sr = 0, er = 0;
+	int sr = 0, er = 0;
 
 	if (panel == NULL || cmds == NULL || cmds_count == 0)
-		return -EINVAL;
+		return;
 
 	adjust_roi(panel, &sr, &er);
 	prepare_cmd(cmds, cmds_count, ADDR_PTLAR, sr, er);
+
+	return;
+}
+
+static int prepare_aod_cmds_sw43408a(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
+{
+	int rc = 0;
+
+	if (panel == NULL || cmds == NULL || cmds_count == 0)
+		return -EINVAL;
 
 	if (panel->lge.aod_power_mode &&
 			(panel->lge.aod_area.h != sw43408a_res[0].height)) {
@@ -478,8 +490,8 @@ static void lge_set_custom_rgb_sw43408a(struct dsi_panel *panel, bool send_cmd)
 {
 	int i = 0;
 	int red_index, green_index, blue_index = 0;
-	char *payload_ctrl1 = NULL;
-	char *payload_ctrl2 = NULL;
+	char *dgctl1_payload = NULL;
+	char *dgctl2_payload = NULL;
 
 	if (panel == NULL) {
 		pr_err("Invalid input\n");
@@ -495,10 +507,10 @@ static void lge_set_custom_rgb_sw43408a(struct dsi_panel *panel, bool send_cmd)
 
 	pr_info("red_index=(%d) green_index=(%d) blue_index=(%d)\n", red_index, green_index, blue_index);
 
-	payload_ctrl1 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY].cmds[IDX_DG_CTRL1].msg.tx_buf;
-	payload_ctrl2 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY].cmds[IDX_DG_CTRL2].msg.tx_buf;
+	dgctl1_payload = get_payload_addr(panel, LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY, IDX_DG_CTRL1);
+	dgctl2_payload = get_payload_addr(panel, LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY, IDX_DG_CTRL2);
 
-	if (!payload_ctrl1 || !payload_ctrl2) {
+	if (!dgctl1_payload || !dgctl2_payload) {
 		pr_err("LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY is NULL\n");
 		mutex_unlock(&panel->panel_lock);
 		return;
@@ -514,35 +526,33 @@ static void lge_set_custom_rgb_sw43408a(struct dsi_panel *panel, bool send_cmd)
 
 	// For RGB UPPER CTRL1
 	for (i = 0; i < OFFSET_DG_UPPER; i++) {
-		payload_ctrl1[i+START_DG_CTRL1] = dg_ctrl1_values[red_index][i];  //payload_ctrl1[2][3][4]
-		payload_ctrl1[i+START_DG_CTRL1+OFFSET_DG_UPPER] = dg_ctrl1_values[green_index][i]; //payload_ctrl1[5][6][7]
-		payload_ctrl1[i+START_DG_CTRL1+OFFSET_DG_UPPER*BLUE] = dg_ctrl1_values[blue_index][i]; //payload_ctrl1[8][9][10]
+		dgctl1_payload[i+START_DG_CTRL1] = dg_ctrl1_values[red_index][i];  //payload_ctrl1[2][3][4]
+		dgctl1_payload[i+START_DG_CTRL1+OFFSET_DG_UPPER] = dg_ctrl1_values[green_index][i]; //payload_ctrl1[5][6][7]
+		dgctl1_payload[i+START_DG_CTRL1+OFFSET_DG_UPPER*BLUE] = dg_ctrl1_values[blue_index][i]; //payload_ctrl1[8][9][10]
 	}
 
 	// FOR RED/GREEN LOWER CTRL1
 	for (i = 0; i < OFFSET_DG_LOWER; i++) {
-		payload_ctrl1[i+START_DG_CTRL1+OFFSET_DG_UPPER*RGB_ALL] = dg_ctrl2_values[red_index][i]; //payload_ctrl1[11]~[19]
-		payload_ctrl1[i+START_DG_CTRL1+OFFSET_DG_UPPER*RGB_ALL+OFFSET_DG_LOWER] = dg_ctrl2_values[green_index][i]; //payload_ctrl1[20]~[28]
+		dgctl1_payload[i+START_DG_CTRL1+OFFSET_DG_UPPER*RGB_ALL] = dg_ctrl2_values[red_index][i]; //payload_ctrl1[11]~[19]
+		dgctl1_payload[i+START_DG_CTRL1+OFFSET_DG_UPPER*RGB_ALL+OFFSET_DG_LOWER] = dg_ctrl2_values[green_index][i]; //payload_ctrl1[20]~[28]
 	}
 
 	// For BLUE LOWER CTRL1
 	for (i = 0; i < NUM_BLUE_LOWER_CTRL1; i++) {
-		payload_ctrl1[i+START_DG_CTRL1+OFFSET_DG_UPPER*RGB_ALL+OFFSET_DG_LOWER*BLUE] = dg_ctrl2_values[blue_index][i]; //payload_ctrl1[29]~[32]
+		dgctl1_payload[i+START_DG_CTRL1+OFFSET_DG_UPPER*RGB_ALL+OFFSET_DG_LOWER*BLUE] = dg_ctrl2_values[blue_index][i]; //payload_ctrl1[29]~[32]
 	}
 
 	// For BLUE LOWER CTRL2
 	for (i = 0; i < NUM_BLUE_LOWER_CTRL2; i++) {
-		payload_ctrl2[i+START_DG_CTRL2] = dg_ctrl2_values[blue_index][i+NUM_BLUE_LOWER_CTRL1]; //payload_ctrl2[1]~[5]
+		dgctl2_payload[i+START_DG_CTRL2] = dg_ctrl2_values[blue_index][i+NUM_BLUE_LOWER_CTRL1]; //payload_ctrl2[1]~[5]
 	}
 
 	for (i = 0; i < NUM_DG_CTRL1; i++) {
-		pr_debug("Reg:0x%02x [%d:0x%02x]\n",
-				REG_DG_CTRL1, i, (*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY].cmds[IDX_DG_CTRL1].msg.tx_buf+(i+1))));
+		pr_debug("Reg:0x%02x [%d:0x%02x]\n", REG_DG_CTRL1, i, dgctl1_payload[i]);
 	}
 
 	for (i = 0; i < NUM_DG_CTRL2; i++) {
-		pr_debug("Reg:0x%02x [%d:0x%02x]\n",
-				REG_DG_CTRL2, i, (*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY].cmds[IDX_DG_CTRL2].msg.tx_buf+(i+1))));
+		pr_debug("Reg:0x%02x [%d:0x%02x]\n", REG_DG_CTRL2, i, dgctl2_payload[i]);
 	}
 
 	if (send_cmd) {
@@ -555,63 +565,54 @@ static void lge_set_custom_rgb_sw43408a(struct dsi_panel *panel, bool send_cmd)
 
 static void lge_display_control_store_sw43408a(struct dsi_panel *panel, bool send_cmd)
 {
-	char *payload1 = NULL;
-	char *payload2 = NULL;
-	char *default_payload1 = NULL;
-	char *default_payload2 = NULL;
+	char *dispctrl1_payload = NULL;
+	char *dispctrl2_payload = NULL;
+
+	if(!panel) {
+		pr_err("panel not exist\n");
+		return;
+	}
 
 	mutex_lock(&panel->panel_lock);
 
-	payload1 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_COMMAND_1].cmds[0].msg.tx_buf;
-	payload2 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_COMMAND_2].cmds[0].msg.tx_buf;
+	dispctrl1_payload = get_payload_addr(panel, LGE_DDIC_DSI_DISP_CTRL_COMMAND_1, 0);
+	dispctrl2_payload = get_payload_addr(panel, LGE_DDIC_DSI_DISP_CTRL_COMMAND_2, 0);
 
-	default_payload1 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_DEFAULT_COMMAND_1].cmds[0].msg.tx_buf;
-	default_payload2 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_DEFAULT_COMMAND_2].cmds[0].msg.tx_buf;
-
-	if (!payload1 || !payload2) {
+	if (!dispctrl1_payload || !dispctrl2_payload) {
 		pr_err("LGE_DDIC_DSI_DISP_CTRL_COMMAND is NULL\n");
 		mutex_unlock(&panel->panel_lock);
 		return;
 	}
 
-	if (!default_payload1 || !default_payload2) {
-		pr_err("LGE_DDIC_DSI_DISP_CTRL_DEFAULT_COMMAND is NULL\n");
-		mutex_unlock(&panel->panel_lock);
-		return;
+	/* BC DIM EN */
+	dispctrl1_payload[1] &= 0xBF;
+	dispctrl1_payload[1] |= panel->lge.bc_dim_en << 6;
+
+	/* CM_SEL & CE_SEL */
+	dispctrl1_payload[2] &= 0x00;
+	switch (panel->lge.screen_mode) {
+		case screen_mode_cinema:
+		case screen_mode_photos:
+		case screen_mode_web:
+			dispctrl1_payload[2] |= (panel->lge.screen_mode | (panel->lge.ace_mode << 4));
+			break;
+		default:
+			dispctrl1_payload[2] |= (0x00 | (panel->lge.ace_mode << 4));
+			break;
 	}
 
-	/* CM_SEL */
-	if (panel->lge.screen_mode == screen_mode_cinema)
-		payload1[2] = (default_payload1[2] | screen_mode_cinema);
-	else if (panel->lge.screen_mode == screen_mode_photos)
-		payload1[2] = (default_payload1[2] | screen_mode_photos);
-	else if (panel->lge.screen_mode == screen_mode_web)
-		payload1[2] = (default_payload1[2] | screen_mode_web);
-	else
-		payload1[2] = (default_payload1[2] | 0x00);
-
-	/* CE_SEL */
-	if (panel->lge.use_ace_ctrl) {
-		payload1[2] &= 0x0F;
-		payload1[2] |= (panel->lge.ace_mode << 4);
-	}
-
-	// HDR_ON | ASE_ON
-	payload2[1] = (default_payload2[1] |
-					(panel->lge.ve_mode) |
+	/* HDR_ON & ASE_ON */
+	dispctrl2_payload[1] &= 0xF4;
+	dispctrl2_payload[1] |= ((panel->lge.ve_mode) |
 					(panel->lge.color_manager_status << 1) |
 					(panel->lge.sharpness_status << 3));
-	// DGGMA_ON
-	payload2[2] = (default_payload2[2] | (panel->lge.dgc_status << 2));
 
-	pr_info("ctrl-command-1: 0x%02x 0x%02x",
-			(*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_COMMAND_1].cmds[0].msg.tx_buf+1)),
-			(*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_COMMAND_1].cmds[0].msg.tx_buf+2)));
+	/* DGGMA_ON */
+	dispctrl2_payload[2] &= 0xFB;
+	dispctrl2_payload[2] |= panel->lge.dgc_status << 2;
 
-	pr_info("ctrl-command-2: 0x%02x 0x%02x 0x%02x\n",
-			(*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_COMMAND_2].cmds[0].msg.tx_buf+1)),
-			(*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_COMMAND_2].cmds[0].msg.tx_buf+2)),
-			(*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_DISP_CTRL_COMMAND_2].cmds[0].msg.tx_buf+3)));
+	pr_info("ctrl-command-1: 0x%02x 0x%02x", dispctrl1_payload[1], dispctrl1_payload[2]);
+	pr_info("ctrl-command-2: 0x%02x 0x%02x 0x%02x\n", dispctrl2_payload[1], dispctrl2_payload[2], dispctrl2_payload[3]);
 
 	if (send_cmd) {
 		lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_DISP_CTRL_COMMAND_1);
@@ -639,11 +640,11 @@ static void lge_set_screen_tune_sw43408a(struct dsi_panel *panel)
 
 	mutex_lock(&panel->panel_lock);
 
-	saturation_payload1 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_SATURATION].cmds[1].msg.tx_buf;
-	saturation_payload2 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_SATURATION].cmds[2].msg.tx_buf;
-	hue_payload1 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_HUE].cmds[1].msg.tx_buf;
-	hue_payload2 = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_HUE].cmds[2].msg.tx_buf;
-	sha_payload = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_SHARPNESS].cmds[1].msg.tx_buf;
+	saturation_payload1 = get_payload_addr(panel, LGE_DDIC_DSI_SET_SATURATION, 1);
+	saturation_payload2 = get_payload_addr(panel, LGE_DDIC_DSI_SET_SATURATION, 2);
+	hue_payload1 = get_payload_addr(panel, LGE_DDIC_DSI_SET_HUE, 1);
+	hue_payload2 = get_payload_addr(panel, LGE_DDIC_DSI_SET_HUE, 2);
+	sha_payload = get_payload_addr(panel, LGE_DDIC_DSI_SET_SHARPNESS, 1);
 
 	if (!saturation_payload1 || !saturation_payload2) {
 		pr_err("LGE_DDIC_DSI_SET_SATURATION is NULL\n");
@@ -688,24 +689,19 @@ static void lge_set_screen_tune_sw43408a(struct dsi_panel *panel)
 
 
 	for (i = 0; i < OFFSET_SAT_CTRL; i++) {
-		pr_debug("Reg:0x%02x [%d:0x%02x]\n",
-				REG_SAT_CTRL1, i, (*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_SATURATION].cmds[1].msg.tx_buf+(i+1))));
+		pr_debug("Reg:0x%02x [%d:0x%02x]\n", REG_SAT_CTRL1, i, saturation_payload1[i]);
 	}
 	for (i = 0; i < OFFSET_SAT_CTRL; i++) {
-		pr_debug("Reg:0x%02x [%d:0x%02x]\n",
-				REG_SAT_CTRL2, i, (*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_SATURATION].cmds[2].msg.tx_buf+(i+1))));
+		pr_debug("Reg:0x%02x [%d:0x%02x]\n", REG_SAT_CTRL2, i, saturation_payload2[i]);
 	}
 	for (i = 0; i < OFFSET_HUE_CTRL1; i++) {
-		pr_debug("Reg:0x%02x [%d:0x%02x]\n",
-				REG_HUE_CTRL1, i, (*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_HUE].cmds[1].msg.tx_buf+(i+1))));
+		pr_debug("Reg:0x%02x [%d:0x%02x]\n", REG_HUE_CTRL1, i, hue_payload1[i]);
 	}
 	for (i = 0; i < OFFSET_HUE_CTRL2; i++) {
-		pr_debug("Reg:0x%02x [%d:0x%02x]\n",
-				REG_HUE_CTRL2, i, (*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_HUE].cmds[2].msg.tx_buf+(i+1))));
+		pr_debug("Reg:0x%02x [%d:0x%02x]\n", REG_HUE_CTRL2, i, hue_payload2[i]);
 	}
 	for (i = 0; i < OFFSET_SHA_CTRL; i++) {
-		pr_debug("Reg:0x%02x [%d:0x%02x]\n",
-				REG_SHA_CTRL, i, (*(u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_SHARPNESS].cmds[1].msg.tx_buf+(i+1))));
+		pr_debug("Reg:0x%02x [%d:0x%02x]\n", REG_SHA_CTRL, i, sha_payload[i]);
 	}
 
 	lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_SET_SATURATION);
@@ -799,19 +795,32 @@ static void sharpness_set_sw43408a(struct dsi_panel *panel, int input)
 
 static void lge_bc_dim_set_sw43408a(struct dsi_panel *panel, u8 bc_dim_en, u8 bc_dim_f_cnt)
 {
+	char *payload = NULL;
+
 	mutex_lock(&panel->panel_lock);
-	if (bc_dim_en == BC_DIM_ON) {
-		((u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_BC_DEFAULT_DIMMING].cmds[1].msg.tx_buf))[22] = bc_dim_f_cnt;
-		lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_BC_DEFAULT_DIMMING);
+	payload = get_payload_addr(panel, LGE_DDIC_DSI_BC_DEFAULT_DIMMING, 1);
+	if (!payload) {
+		mutex_unlock(&panel->panel_lock);
+		return;
 	}
-	mdelay(15);
-	pr_info("FRAMES: 0x%x\n", ((u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_BC_DEFAULT_DIMMING].cmds[1].msg.tx_buf))[22]);
+
+	payload += 22;
+	*payload = bc_dim_f_cnt;
+	lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_BC_DEFAULT_DIMMING);
+
+	panel->lge.bc_dim_en = bc_dim_en;
+
 	mutex_unlock(&panel->panel_lock);
+
+	lge_display_control_store_sw43408a(panel, true);
+
+	mdelay(15);
+	pr_info("EN : %d FRAMES: 0x%x\n", panel->lge.bc_dim_en, *payload);
+
 }
 
 static int lge_set_therm_dim_sw43408a(struct dsi_panel *panel, int input)
 {
-	u8 bc_dim_en;
 	u8 bc_dim_f_cnt;
 
 	if (panel->bl_config.bd->props.brightness < BC_DIM_BRIGHTNESS_THERM) {
@@ -819,7 +828,6 @@ static int lge_set_therm_dim_sw43408a(struct dsi_panel *panel, int input)
 		return -EINVAL;
 	}
 
-	bc_dim_en = BC_DIM_ON;
 	if (input)
 		bc_dim_f_cnt = BC_DIM_FRAMES_THERM;
 	else
@@ -828,7 +836,7 @@ static int lge_set_therm_dim_sw43408a(struct dsi_panel *panel, int input)
 	if (panel->lge.use_bc_dimming_work)
 		cancel_delayed_work_sync(&panel->lge.bc_dim_work);
 
-	lge_bc_dim_set_sw43408a(panel, bc_dim_en, bc_dim_f_cnt);
+	lge_bc_dim_set_sw43408a(panel, BC_DIM_ON, bc_dim_f_cnt);
 
 	panel->bl_config.bd->props.brightness = BC_DIM_BRIGHTNESS_THERM;
 	lge_backlight_device_update_status(panel->bl_config.bd);
@@ -839,28 +847,32 @@ static int lge_set_therm_dim_sw43408a(struct dsi_panel *panel, int input)
 	return 0;
 }
 
-static void lge_get_brightness_dim_sw43408a(struct dsi_panel *panel)
+static int lge_get_brightness_dim_sw43408a(struct dsi_panel *panel)
 {
-	u8 bc_dim_en;
 	u8 bc_dim_f_cnt;
+	char *payload = NULL;
 
-	bc_dim_en = true; /* always enabled */
-	bc_dim_f_cnt = ((u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_BC_DEFAULT_DIMMING].cmds[1].msg.tx_buf))[22];
+	payload = get_payload_addr(panel, LGE_DDIC_DSI_BC_DEFAULT_DIMMING, 1);
 
-	pr_info("BC_DIM_EN: 0x%x, FRAMES: 0x%x\n", bc_dim_en, bc_dim_f_cnt);
+	if (payload) {
+		payload += 22;
+		bc_dim_f_cnt = *payload;
+	} else {
+		pr_err("bc_dim_f_cnt payload is not available\n");
+		return -EINVAL;
+	}
+	return bc_dim_f_cnt;
+
 }
 
 static void lge_set_brightness_dim_sw43408a(struct dsi_panel *panel, int input)
 {
-	u8 bc_dim_en;
 	u8 bc_dim_f_cnt;
 
 	if (input == BC_DIM_OFF) {
 		pr_warn("sw43408a do not off bc_dim feature\n");
-		bc_dim_en = BC_DIM_ON;
 		bc_dim_f_cnt = BC_DIM_FRAMES_NORMAL;
 	} else {
-		bc_dim_en = BC_DIM_ON;
 		if (input < BC_DIM_MIN_FRAMES)
 			bc_dim_f_cnt = BC_DIM_MIN_FRAMES;
 		else if (input > BC_DIM_MAX_FRAMES)
@@ -869,7 +881,7 @@ static void lge_set_brightness_dim_sw43408a(struct dsi_panel *panel, int input)
 			bc_dim_f_cnt = input;
 	}
 
-	lge_bc_dim_set_sw43408a(panel, bc_dim_en, bc_dim_f_cnt);
+	lge_bc_dim_set_sw43408a(panel, BC_DIM_ON, bc_dim_f_cnt);
 }
 
 static void lge_set_video_enhancement_sw43408a(struct dsi_panel *panel, int input)
@@ -911,7 +923,7 @@ static void lge_set_video_enhancement_sw43408a(struct dsi_panel *panel, int inpu
 		schedule_delayed_work(&panel->lge.bc_dim_work, BC_DIM_TIME);
 }
 
-static int set_pps_cmds_sw43408a(struct dsi_panel *panel, enum dsi_cmd_set_type type)
+static int set_pps_cmds_sw43408a(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type)
 {
 	struct msm_display_dsc_info *dsc;
 
@@ -929,6 +941,7 @@ static int set_pps_cmds_sw43408a(struct dsi_panel *panel, enum dsi_cmd_set_type 
 	switch (type) {
 	case LGE_DDIC_DSI_SET_LP1:
 	case LGE_DDIC_DSI_SET_LP2:
+	case LGE_DDIC_DSI_AOD_AREA:
 		pr_info("LP2: pic_height : %d -> %d\n",
 				dsc->pic_height,
 				panel->lge.aod_area.h);
@@ -950,7 +963,7 @@ static int set_pps_cmds_sw43408a(struct dsi_panel *panel, enum dsi_cmd_set_type 
 	return 0;
 }
 
-static int unset_pps_cmds_sw43408a(struct dsi_panel *panel, enum dsi_cmd_set_type type)
+static int unset_pps_cmds_sw43408a(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type)
 {
 	struct msm_display_dsc_info *dsc;
 
@@ -1143,6 +1156,7 @@ int hdr_mode_set_sw43408a(struct dsi_panel *panel, int input)
 struct lge_ddic_ops sw43408a_ops = {
 	.store_aod_area = store_aod_area,
 	.prepare_aod_cmds = prepare_aod_cmds_sw43408a,
+	.prepare_aod_area = prepare_aod_area_sw43408a,
 	.hdr_mode_set = hdr_mode_set_sw43408a,
 	.bist_ctrl = control_bist_cmds_sw43408a,
 	.release_bist = release_bist_cmds_sw43408a,

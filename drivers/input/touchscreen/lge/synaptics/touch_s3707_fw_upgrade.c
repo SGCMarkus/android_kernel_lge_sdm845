@@ -713,6 +713,12 @@ static int fwu_parse_image_info(void)
 			return -EINVAL;
 		}
 
+		if (fwu->img.fl_config.data == NULL) {
+			TOUCH_E("%s: No fl_config.data found in firmware image\n",
+					__func__);
+			return -EINVAL;
+		}
+
 		fwu_parse_partition_table(fwu->img.fl_config.data,
 				&fwu->img.blkcount, &fwu->img.phyaddr);
 
@@ -3538,6 +3544,14 @@ static int fwu_start_reflash(void)
 	TOUCH_I("%s: Start of reflash process\n", __func__);
 
 	if (fwu->image == NULL) {
+		if (fwu->image_name == NULL) {
+			TOUCH_E("%s: image file name is null\n", __func__);
+			retval = -EINVAL;
+			goto exit;
+		}
+
+		memset(fwu->image_name, 0x00, MAX_IMAGE_NAME_LEN);
+
 		retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
 				FW_IMAGE_NAME, sizeof(FW_IMAGE_NAME),
 				sizeof(FW_IMAGE_NAME));
@@ -3545,6 +3559,9 @@ static int fwu_start_reflash(void)
 			TOUCH_E("%s: Failed to copy image file name\n", __func__);
 			goto exit;
 		}
+
+		fwu->image_name[MAX_IMAGE_NAME_LEN - 1] = '\0';
+
 		TOUCH_I("%s: Requesting firmware image %s\n", __func__, fwu->image_name);
 
 		retval = request_firmware(&fw_entry, fwu->image_name,
@@ -3953,6 +3970,14 @@ static int fwu_start_recovery(void)
 	TOUCH_I("%s: Start of recovery process\n", __func__);
 
 	if (fwu->image == NULL) {
+		if (fwu->image_name == NULL) {
+			TOUCH_E("%s: image file name is null\n", __func__);
+			retval = -EINVAL;
+			goto exit;
+		}
+
+		memset(fwu->image_name, 0x00, MAX_IMAGE_NAME_LEN);
+
 		retval = secure_memcpy(fwu->image_name, MAX_IMAGE_NAME_LEN,
 				FW_IHEX_NAME, sizeof(FW_IHEX_NAME),
 				sizeof(FW_IHEX_NAME));
@@ -3960,6 +3985,9 @@ static int fwu_start_recovery(void)
 			TOUCH_E("%s: Failed to copy ihex file name\n", __func__);
 			goto exit;
 		}
+
+		fwu->image_name[MAX_IMAGE_NAME_LEN - 1] = '\0';
+
 		TOUCH_I("%s: Requesting firmware ihex %s\n",
 				__func__, fwu->image_name);
 

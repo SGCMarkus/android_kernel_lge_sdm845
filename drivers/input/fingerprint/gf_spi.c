@@ -79,21 +79,6 @@
 #define GF_IRQ_CTRL3				0x0126
 #define GF_IRQ_CTRL4 				0x0128 // LGE_CHANGES - for pin check test
 
-/*GF input keys*/
-struct gf_key_map key_map[] =
-{
-	{  "POWER",  KEY_POWER  },
-	{  "HOME" ,  KEY_HOME   },
-	{  "MENU" ,  KEY_MENU   },
-	{  "BACK" ,  KEY_BACK   },
-	{  "UP"   ,  KEY_UP     },
-	{  "DOWN" ,  KEY_DOWN   },
-	{  "LEFT" ,  KEY_LEFT   },
-	{  "RIGHT",  KEY_RIGHT  },
-	{  "FORCE",  KEY_F9     },
-	{  "CLICK",  KEY_F19    },
-};
-
 /**************************debug******************************/
 
 #define GF_3208_CHIP_ID (0x00002202)
@@ -119,6 +104,27 @@ static unsigned int bufsiz = 22180;//132*112*1.5+4
 //static struct wake_lock fp_wakelock;
 //static unsigned int gf_spi_speed[GF_SPI_KEEP_SPEED] = {4800000, 4800000};
 static struct class *gf_class;
+
+struct gf_key_input_map key_input_map[] = {
+	{ EV_KEY, GF_KEY_INPUT_PROGRAM },
+#if 0 // LGE use KEY_PROGRAM as default
+	{ EV_KEY, GF_KEY_INPUT_HOME },
+	{ EV_KEY, GF_KEY_INPUT_MENU },
+	{ EV_KEY, GF_KEY_INPUT_BACK },
+	{ EV_KEY, GF_KEY_INPUT_POWER },
+#endif
+#if defined(SUPPORT_NAV_EVENT)
+	{ EV_KEY, GF_NAV_INPUT_UP },
+	{ EV_KEY, GF_NAV_INPUT_DOWN },
+	{ EV_KEY, GF_NAV_INPUT_RIGHT },
+	{ EV_KEY, GF_NAV_INPUT_LEFT },
+	{ EV_KEY, GF_NAV_INPUT_CLICK },
+	{ EV_KEY, GF_NAV_INPUT_DOUBLE_CLICK },
+	{ EV_KEY, GF_NAV_INPUT_LONG_PRESS },
+	{ EV_KEY, GF_NAV_INPUT_HEAVY },
+#endif
+};
+
 #if defined(USE_SPI_BUS)
 static struct spi_driver gf_driver;
 #elif defined(USE_PLATFORM_BUS)
@@ -467,10 +473,86 @@ static ssize_t gf_read(struct file *filp, char __user *buf, size_t count, loff_t
 }
 #endif
 
+#if defined(SUPPORT_NAV_EVENT)
+static void nav_event_input(struct gf_dev *gf_dev, gf_nav_code_t gf_nav_code)
+{
+	uint32_t nav_input = 0;
+
+	switch (gf_nav_code) {
+	case GF_NAV_FINGER_DOWN:
+		gf_dbg("%s nav finger down\n", __func__);
+		nav_input = GF_KEY_INPUT_PROGRAM;
+		//input_report_key(gf_dev->input, nav_input, GF_KEY_STATUS_DOWN);
+		//input_sync(gf_dev->input);
+		break;
+
+	case GF_NAV_FINGER_UP:
+		gf_dbg("%s nav finger up\n", __func__);
+		nav_input = GF_KEY_INPUT_PROGRAM;
+		//input_report_key(gf_dev->input, nav_input, GF_KEY_STATUS_UP);
+		//input_sync(gf_dev->input);
+		break;
+
+	case GF_NAV_DOWN:
+		nav_input = GF_NAV_INPUT_DOWN;
+		gf_dbg("%s nav down\n", __func__);
+		break;
+
+	case GF_NAV_UP:
+		nav_input = GF_NAV_INPUT_UP;
+		gf_dbg("%s nav up\n", __func__);
+		break;
+
+	case GF_NAV_LEFT:
+		nav_input = GF_NAV_INPUT_LEFT;
+		gf_dbg("%s nav left\n", __func__);
+		break;
+
+	case GF_NAV_RIGHT:
+		nav_input = GF_NAV_INPUT_RIGHT;
+		gf_dbg("%s nav right\n", __func__);
+		break;
+
+	case GF_NAV_CLICK:
+		nav_input = GF_NAV_INPUT_CLICK;
+		gf_dbg("%s nav click\n", __func__);
+		break;
+
+	case GF_NAV_HEAVY:
+		nav_input = GF_NAV_INPUT_HEAVY;
+		gf_dbg("%s nav heavy\n", __func__);
+		break;
+
+	case GF_NAV_LONG_PRESS:
+		nav_input = GF_NAV_INPUT_LONG_PRESS;
+		gf_dbg("%s nav long press\n", __func__);
+		break;
+
+	case GF_NAV_DOUBLE_CLICK:
+		nav_input = GF_NAV_INPUT_DOUBLE_CLICK;
+		gf_dbg("%s nav double click\n", __func__);
+		break;
+
+	default:
+		gf_dbg("%s unknown nav event: %d\n", __func__, gf_nav_code);
+		break;
+	}
+
+	if ((gf_nav_code != GF_NAV_FINGER_DOWN) && (gf_nav_code != GF_NAV_FINGER_UP) && (gf_nav_code != GF_NAV_HEAVY) && (gf_nav_code != GF_NAV_CLICK) && (gf_nav_code != GF_NAV_DOUBLE_CLICK)) {     //don't report key status
+		input_report_key(gf_dev->input, nav_input, GF_KEY_STATUS_DOWN);
+		input_sync(gf_dev->input);
+		input_report_key(gf_dev->input, nav_input, GF_KEY_STATUS_UP);
+		input_sync(gf_dev->input);
+	}
+}
+#endif
 static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 {
 	struct gf_dev *gf_dev = &gf;
-	struct gf_key gf_key = { 0 };
+	gf_key_event_t gf_key_event = { 0 };
+#if defined(SUPPORT_NAV_EVENT)
+	gf_nav_code_t gf_nav_code = GF_NAV_NONE;
+#endif
 	int retval = 0;
 	//int i;
 #if 1 // new_code_porting - added
@@ -566,17 +648,28 @@ static long gf_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 #endif
 		case GF_IOC_SENDKEY:
 			gf_dbg("GF_IOC_SENDKEY");
-			if (copy_from_user
-					(&gf_key, (struct gf_key *)arg, sizeof(struct gf_key))) {
+			if (copy_from_user(&gf_key_event, (gf_key_event_t *)arg, sizeof(gf_key_event_t))) {
 				gf_dbg("Failed to copy data from user space.\n");
 				retval = -EFAULT;
 				break;
 			}
-
-			gf_dbg("KEY=%d, gf_key.value = %d", KEY_PROGRAM, gf_key.value);
-			input_report_key(gf_dev->input, KEY_PROGRAM, gf_key.value);
+			gf_key_event.key = GF_KEY_INPUT_PROGRAM;
+			gf_dbg("KEY=%d, gf_key.value = %d", gf_key_event.key, gf_key_event.status);
+			input_report_key(gf_dev->input, gf_key_event.key, gf_key_event.status);
 			input_sync(gf_dev->input);
 			break;
+
+#if defined(SUPPORT_NAV_EVENT)
+		case GF_IOC_NAV_EVENT:
+		    gf_dbg("%s GF_IOC_NAV_EVENT\n", __func__);
+		    if (copy_from_user(&gf_nav_code, (gf_nav_code_t *)arg, sizeof(gf_nav_code_t))) {
+			    gf_dbg("Failed to copy nav event from user to kernel\n");
+			    retval = -EFAULT;
+			    break;
+		    }
+		    nav_event_input(gf_dev, gf_nav_code);
+		    break;
+#endif
 		case GF_IOC_CLK_READY:
 #if 0 // LGE_CHANGES - to reduce debugging log
 			gf_dbg("GF_IOC_CLK_READY");
@@ -904,8 +997,10 @@ static struct notifier_block goodix_noti_block = {
 
 static void gf_reg_key_kernel(struct gf_dev *gf_dev)
 {
+	int i;
 	set_bit(EV_KEY, gf_dev->input->evbit);
-	set_bit(KEY_PROGRAM, gf_dev->input->keybit);
+	for (i = 0; i < ARRAY_SIZE(key_input_map); i++)
+		set_bit(key_input_map[i].code, gf_dev->input->keybit);
 }
 
 static int gf_regulator_init(struct gf_dev *gf_dev)

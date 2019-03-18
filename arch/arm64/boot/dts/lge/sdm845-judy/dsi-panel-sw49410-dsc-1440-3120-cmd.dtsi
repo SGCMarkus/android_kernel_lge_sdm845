@@ -246,15 +246,19 @@
 		];
 		lge,mdss-dsi-ie-command-state = "dsi_hs_mode";
 
+		lge,mdss-dsi-aod-area-command = [
+			/* Partial Area */
+			39 01 00 00 00 00 05 30 00 00 03 1F
+			/* U2 Control */
+			39 01 00 00 00 00 12 CD 09 86 C2 80 00 00 00 00 00 00 00 00 0C 12 00 00 00
+		];
+		lge,mdss-dsi-aod-area-command-state = "dsi_lp_mode";
+
 		lge,mdss-dsi-lp2-command = [
 			/*Black Frame Setting*/
 			39 01 00 00 00 00 03 BD 01 05
 			/* U2 Corner Down */
 			39 01 00 00 00 00 03 BF 4F 00
-			/* Partial Area */
-			39 01 00 00 00 00 05 30 00 00 03 1F
-			/* U2 Control */
-			39 01 00 00 00 00 12 CD 09 86 C2 80 00 00 00 00 00 00 00 00 0C 12 00 00 00
 			/* Partial Mode ON  + min 55ms*/
 			05 01 00 00 37 00 01 12
 		];

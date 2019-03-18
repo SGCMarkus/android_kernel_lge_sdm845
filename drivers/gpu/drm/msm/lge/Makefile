@@ -11,6 +11,7 @@ lge_display_common-objs += lge_ddic_ops_sw43402.o
 lge_display_common-objs += lge_ddic_ops_sw49409.o
 lge_display_common-objs += lge_ddic_ops_sw49410.o
 lge_display_common-objs += lge_ddic_ops_sw49410_rev1.o
+lge_display_common-objs += lge_ddic_ops_rm69299.o
 lge_display_common-objs += ambient/lge_backlight_ex.o
 lge_display_common-objs += ambient/lge_ambient.o
 lge_display_common-objs += cm/lge_color_manager.o

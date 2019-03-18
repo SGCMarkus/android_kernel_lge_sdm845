@@ -15,7 +15,16 @@
 /plugin/;
 
 #include "sdm845-judypn_lao_com.dtsi"
+#include "../sdm845-judy_common/sdm845-judy_common-usb_ext_pulldown_ctrl.dtsi"
 #include "sdm845-judypn_lao_com-tdmb_rev-a.dtsi"
+#include "../sdm845-camera/sdm845-storm-camera_rev-a.dtsi"
+#include "sdm845-judypn_lao_com-sound.dtsi"
+
+&soc {
+		sound-tavil {
+			lge,fm-intenna-ctrl-gpio = <&tlmm 24 0x00>;
+		};
+};
 
 / {
 	model = "Qualcomm Technologies, Inc. SDM845 V2.1 - LG Electronics, judypn_lao_kr rev_a";
@@ -24,3 +33,11 @@
 	qcom,board-id = <0x01070008 0>;
 };
 
+&qupv3_se12_i2c { /*QUPV3 SE12 */
+                dw7912@59 {
+                        status = "ok";
+                };
+                dw7800@59 {
+                        status = "disabled";
+                };
+};

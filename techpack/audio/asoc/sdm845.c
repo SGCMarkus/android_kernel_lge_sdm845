@@ -563,6 +563,7 @@ static struct msm_asoc_wcd93xx_codec msm_codec_fn;
 
 #ifdef CONFIG_MACH_LGE
 static int use_3rd_spkr_amp;
+static int use_ras_spkr_amp;
 static int fmradio_lna_en_gpio;
 static int fmradio_rf_ctrl_gpio;
 struct regulator *lna_regulator;
@@ -4993,25 +4994,25 @@ static int msm_get_pinctrl(struct platform_device *pdev)
 
 	/* get all the states handles from Device Tree */
 	pinctrl_info->mi2s_disable = pinctrl_lookup_state(pinctrl,
-						"tert-mi2s-sleep");
+						"quat-mi2s-sleep");
 	if (IS_ERR(pinctrl_info->mi2s_disable)) {
 		pr_err("%s: could not get mi2s_disable pinstate\n", __func__);
 		goto err;
 	}
 	pinctrl_info->mi2s_active = pinctrl_lookup_state(pinctrl,
-						"tert-mi2s-active");
+						"quat-mi2s-active");
 	if (IS_ERR(pinctrl_info->mi2s_active)) {
 		pr_err("%s: could not get mi2s_active pinstate\n", __func__);
 		goto err;
 	}
 	pinctrl_info->tdm_disable = pinctrl_lookup_state(pinctrl,
-						"tert-tdm-sleep");
+						"quat-tdm-sleep");
 	if (IS_ERR(pinctrl_info->tdm_disable)) {
 		pr_err("%s: could not get tdm_disable pinstate\n", __func__);
 		goto err;
 	}
 	pinctrl_info->tdm_active = pinctrl_lookup_state(pinctrl,
-						"tert-tdm-active");
+						"quat-tdm-active");
 	if (IS_ERR(pinctrl_info->tdm_active)) {
 		pr_err("%s: could not get tdm_active pinstate\n",
 			__func__);
@@ -6309,7 +6310,11 @@ static struct snd_soc_dai_link msm_common_be_dai_links[] = {
 		.stream_name = "Tertiary TDM0 Playback",
 		.cpu_dai_name = "msm-dai-q6-tdm.36896",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_MACH_SDM845_JUDYPN
+		.codec_name = "es9218-codec.4-0048",
+#else
 		.codec_name = "es9218-codec.3-0048",
+#endif
 		.codec_dai_name = "es9218-hifi",
 		.no_pcm = 1,
 		.dpcm_playback = 1,
@@ -6895,6 +6900,26 @@ static struct snd_soc_dai_link msm_auxpcm_be_dai_links[] = {
 	},
 };
 
+/* tfa9872 stereo begin */
+#if defined(CONFIG_SND_SOC_TFA9872_STEREO)
+static struct snd_soc_dai_link_component tfa_codecs[] = {
+	{
+		.name = "tfa98xx-codec.0-0034",
+		.dai_name = "tfa98xx-aif-0-34"
+	},
+	{
+		.name = "tfa98xx-codec.0-0035",
+		.dai_name = "tfa98xx-aif-0-35"
+	},
+};
+
+static struct snd_soc_dai_link_component tfa_codecs_rx[ARRAY_SIZE(tfa_codecs)];
+/* for V/I sensing feedback in DSP-free solution (i.e. TFA9872) */
+static struct snd_soc_dai_link_component tfa_codecs_tx[ARRAY_SIZE(tfa_codecs)];
+/* tfa9872 stereo end */
+#endif /* CONFIG_SND_SOC_TFA9872_STEREO */
+
+
 #ifdef CONFIG_MACH_LGE
 /* Removed dummy dai. because of joan crash issue */
 
@@ -6906,7 +6931,11 @@ static struct snd_soc_dai_link msm_lge_dai_links[] = {
 		.stream_name = "Tertiary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.2",
 		.platform_name = "msm-pcm-routing",
+#ifdef CONFIG_MACH_SDM845_JUDYPN
+		.codec_name = "es9218-codec.4-0048",
+#else
 		.codec_name = "es9218-codec.3-0048",
+#endif
 		.codec_dai_name = "es9218-hifi",
 		.no_pcm = 1,
 		.dpcm_playback = 1,
@@ -6942,8 +6971,13 @@ static struct snd_soc_dai_link msm_lge_dai_links[] = {
 		.stream_name = "Quaternary MI2S Playback",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-routing",
+#if defined(CONFIG_SND_SOC_TFA9872_STEREO)
+		.codecs = tfa_codecs_rx,
+		.num_codecs = ARRAY_SIZE(tfa_codecs_rx),
+#else
 		.codec_name = "tfa98xx.0-0034",
 		.codec_dai_name = "tfa98xx-aif-0-34",
+#endif
 		.no_pcm = 1,
 		.dpcm_playback = 1,
 		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_RX,
@@ -6957,8 +6991,13 @@ static struct snd_soc_dai_link msm_lge_dai_links[] = {
 		.stream_name = "Quaternary MI2S Capture",
 		.cpu_dai_name = "msm-dai-q6-mi2s.3",
 		.platform_name = "msm-pcm-hostless",
+#if defined(CONFIG_SND_SOC_TFA9872_STEREO)
+		.codecs = tfa_codecs_tx,
+		.num_codecs = ARRAY_SIZE(tfa_codecs_tx),
+#else
 		.codec_name = "tfa98xx.0-0034",
 		.codec_dai_name = "tfa98xx-aif-0-34",
+#endif
 		.dpcm_capture = 1,
 		.id = MSM_BACKEND_DAI_QUATERNARY_MI2S_TX,
 		.be_hw_params_fixup = msm_be_hw_params_fixup,
@@ -7141,6 +7180,9 @@ static int msm_populate_dai_link_component_of_node(
 	struct device *cdev = card->dev;
 	struct snd_soc_dai_link *dai_link = card->dai_link;
 	struct device_node *np;
+#if defined(CONFIG_SND_SOC_TFA9872_STEREO)
+	int j = 0;
+#endif
 
 	if (!cdev) {
 		pr_err("%s: Sound card device memory NULL\n", __func__);
@@ -7195,7 +7237,10 @@ static int msm_populate_dai_link_component_of_node(
 				dai_link[i].cpu_dai_name = NULL;
 			}
 		}
-
+#if defined(CONFIG_SND_SOC_TFA9872_STEREO)
+		pr_info("%d: codec_name=%s num_codecs=%d\n",
+			i, dai_link[i].codec_name, dai_link[i].num_codecs);
+#endif
 		/* populate codec_of_node for snd card dai links */
 		if (dai_link[i].codec_name && !dai_link[i].codec_of_node) {
 			index = of_property_match_string(cdev->of_node,
@@ -7214,6 +7259,41 @@ static int msm_populate_dai_link_component_of_node(
 			dai_link[i].codec_of_node = np;
 			dai_link[i].codec_name = NULL;
 		}
+#if defined(CONFIG_SND_SOC_TFA9872_STEREO)
+		if (dai_link[i].codecs && (dai_link[i].num_codecs > 0)) {
+			if(use_ras_spkr_amp == 0)
+			{
+				pr_info("dai_link[%d].codecs[%d].name = %s\n",
+							i, j, dai_link[i].codecs[j].name);
+				dai_link[i].codecs = NULL;
+				dai_link[i].num_codecs = 0;
+				dai_link[i].codec_name = "tfa98xx.0-0034";
+				dai_link[i].codec_dai_name = "tfa98xx-aif-0-34";
+			}
+			else
+			{
+				for (j = 0; j < dai_link[i].num_codecs; j++) {
+					pr_info("dai_link[%d].codecs[%d].name = %s\n",
+						i, j, dai_link[i].codecs[j].name);
+					index = of_property_match_string(cdev->of_node,
+							 "asoc-codec-names",
+							 dai_link[i].codecs[j].name);
+					if (index < 0)
+						continue;
+					np = of_parse_phandle(cdev->of_node, "asoc-codec",
+						      index);
+					if (!np) {
+						pr_err("%s: retrieving phandle for codec %s failed\n",
+							__func__, dai_link[i].codecs[j].name);
+						ret = -ENODEV;
+						goto err;
+					}
+					dai_link[i].codecs[j].of_node = np;
+					dai_link[i].codecs[j].name = NULL;
+				}
+			}
+		}
+#endif
 	}
 
 err:
@@ -7385,6 +7465,12 @@ static struct snd_soc_card *populate_snd_card_dailinks(struct device *dev)
 			__func__);
 		return NULL;
 	}
+
+#if defined(CONFIG_SND_SOC_TFA9872_STEREO)
+	memcpy(tfa_codecs_rx, tfa_codecs, sizeof(tfa_codecs));
+/* for V/I sensing feedback in DSP-free solution (i.e. TFA9872) */
+	memcpy(tfa_codecs_tx, tfa_codecs, sizeof(tfa_codecs));
+#endif
 
 	if (!strcmp(match->data, "tavil_codec")) {
 		card = &snd_soc_card_tavil_msm;
@@ -7822,6 +7908,17 @@ static int msm_asoc_machine_probe(struct platform_device *pdev)
 		ret = -EINVAL;
 		goto err;
 	}
+
+#if 1 //
+		ret = of_property_read_u32(pdev->dev.of_node,
+					"lge,ras-spk-amp", &use_ras_spkr_amp);
+		
+		if(use_ras_spkr_amp == 1) {
+			dev_err(&pdev->dev, "RAS spk\n");
+		} else {
+			dev_err(&pdev->dev, "Not RAS spk\n");
+		}
+#endif
 
 	ret = msm_populate_dai_link_component_of_node(card);
 	if (ret) {

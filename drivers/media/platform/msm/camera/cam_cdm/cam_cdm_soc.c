@@ -38,10 +38,10 @@ bool cam_cdm_read_hw_reg(struct cam_hw_info *cdm_hw,
 	resource_size_t mem_len =
 		cdm_hw->soc_info.reg_map[CAM_HW_CDM_BASE_INDEX].size;
 
-	CAM_DBG(CAM_CDM, "E: b=%p blen=%d reg=%x off=%x", (void __iomem *)base,
+	CAM_DBG(CAM_CDM, "E: b=%pK blen=%d reg=%x off=%x", (void __iomem *)base,
 		(int)mem_len, reg, (CAM_CDM_OFFSET_FROM_REG(cdm->offset_tbl,
 		reg)));
-	CAM_DBG(CAM_CDM, "E: b=%p reg=%x off=%x", (void __iomem *)base,
+	CAM_DBG(CAM_CDM, "E: b=%pK reg=%x off=%x", (void __iomem *)base,
 		reg, (CAM_CDM_OFFSET_FROM_REG(cdm->offset_tbl, reg)));
 
 	if ((reg > cdm->offset_tbl->offset_max_size) ||
@@ -57,7 +57,7 @@ bool cam_cdm_read_hw_reg(struct cam_hw_info *cdm_hw,
 			goto permission_error;
 		}
 		*value = cam_io_r_mb(reg_addr);
-		CAM_DBG(CAM_CDM, "X b=%p reg=%x off=%x val=%x",
+		CAM_DBG(CAM_CDM, "X b=%pK reg=%x off=%x val=%x",
 			(void __iomem *)base, reg,
 			(CAM_CDM_OFFSET_FROM_REG(cdm->offset_tbl, reg)),
 			*value);
@@ -79,7 +79,7 @@ bool cam_cdm_write_hw_reg(struct cam_hw_info *cdm_hw,
 	resource_size_t mem_len =
 		cdm_hw->soc_info.reg_map[CAM_HW_CDM_BASE_INDEX].size;
 
-	CAM_DBG(CAM_CDM, "E: b=%p reg=%x off=%x val=%x", (void __iomem *)base,
+	CAM_DBG(CAM_CDM, "E: b=%pK reg=%x off=%x val=%x", (void __iomem *)base,
 		reg, (CAM_CDM_OFFSET_FROM_REG(cdm->offset_tbl, reg)), value);
 
 	if ((reg > cdm->offset_tbl->offset_max_size) ||

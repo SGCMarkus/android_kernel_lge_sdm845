@@ -5,6 +5,8 @@ qcom,LGE_BLT39_Tocad_3000mAh {
 	/* constant parameter */
 	lge,fg-cutoff-voltage = <3200>;
 	lge,fg-cutoff-current = <200>;
+	lge,fg-cutoff-lt-voltage = <3300>;
+	lge,fg-cutoff-lt-current = <100>;
 	lge,fg-esr-tight-lt-filter-micro-pct = <30000>;
 	lge,fg-esr-broad-lt-filter-micro-pct = <30000>;
 

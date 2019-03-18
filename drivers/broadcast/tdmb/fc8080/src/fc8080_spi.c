@@ -42,15 +42,14 @@
 #define CHIPID          0
 #define DRIVER_NAME "fc8080_spi"
 
-#define TX_DATA_SIZE             128
-#define TX_DATA_BUF_SIZE     128
-#define RX_DATA_BUF_SIZE     64 * 1024
+#define FC8080_SPI_BUF_SIZE         (6*1024)
 
 struct spi_device *fc8080_spi = NULL;
 
-fci_u8 *tx_data;
-fci_u8 *tdata_buf;
-fci_u8 *rdata_buf;
+// This buffer is used for both tx and rx in fc8080_spi_write_then_read
+// msc_buf mlloced in bbm.c is used for fc8080_spi_write_read_burst
+static fci_u8 *spi_xfer_buf = NULL;
+
 
 static DEFINE_MUTEX(lock);
 extern struct spi_device *tdmb_fc8080_get_spi_device(void);
@@ -63,7 +62,6 @@ int fc8080_spi_write_then_read(
     , fci_u16 rx_length)
 {
     fci_s32 res = BBM_NOK;
-
     struct spi_message message;
     struct spi_transfer    x;
 
@@ -72,16 +70,20 @@ int fc8080_spi_write_then_read(
 
     spi_message_add_tail(&x, &message);
 
-    memcpy(tdata_buf, txbuf, tx_length);
-
-    x.tx_buf = tdata_buf;
-    x.rx_buf = rdata_buf;
+    // spi_xfer_buf is assigned to x.tx_buf and x.tx_buf.
+    // Refer to spi_bulk_read(), spi_bulk_write()
+    // Refer to spi_dataread in case data size is less than BURST_TRESHOLD_SIZE
+    x.tx_buf = txbuf;
+    x.rx_buf = txbuf;
     x.len = tx_length + rx_length;
 
     res = spi_sync(spi, &message);
 
-    memcpy(rxbuf, x.rx_buf + tx_length, rx_length);
-
+    // When this is called in spi_bulk_write(), rxbuf is null,
+    // In this case, need not to memcopy rx_buf to rxbuf
+    if (rxbuf != NULL && rx_length > 0) {
+        memcpy(rxbuf, x.rx_buf + tx_length, rx_length);
+    }
     return res;
 }
 
@@ -92,8 +94,7 @@ int fc8080_spi_write_then_read_burst(
     , fci_u8 *rxbuf
     , fci_u16 rx_length)
 {
-    fci_s32 res;
-
+    fci_s32 res = BBM_NOK;
     struct spi_message    message;
     struct spi_transfer    x;
 
@@ -102,12 +103,12 @@ int fc8080_spi_write_then_read_burst(
 
     spi_message_add_tail(&x, &message);
 
+    // msc_buf is assgined to x.tx_buf ,x.rx_buf, which is malloced in bbm.c and used in fc8080_isr.c
+    // Refer to spi_dataread() in case length is larger than BURST_TRESHOLD_SIZE
     x.tx_buf = txbuf;
-    x.rx_buf = rxbuf;
+    x.rx_buf = txbuf;
     x.len = tx_length + rx_length;
-
     res = spi_sync(spi, &message);
-
     return res;
 }
 
@@ -116,18 +117,18 @@ static fci_s32 spi_bulkread(HANDLE handle, fci_u16 addr, fci_u8 command, fci_u8 
 {
     fci_s32 res = BBM_OK;
 
-    if(tx_data == NULL) {
+    if(spi_xfer_buf == NULL || data == NULL) {
         printk("[%s] tx_data is null\n", __func__);
         return BBM_NOK;
     }
 
-    tx_data[0] = (fci_u8) (addr & 0xff);
-    tx_data[1] = (fci_u8) ((addr >> 8) & 0xff);
-    tx_data[2] = (fci_u8) ((command & 0xfc) | CHIPID);
-    tx_data[3] = (fci_u8) (length & 0xff);
+    spi_xfer_buf[0] = (fci_u8) (addr & 0xff);
+    spi_xfer_buf[1] = (fci_u8) ((addr >> 8) & 0xff);
+    spi_xfer_buf[2] = (fci_u8) ((command & 0xfc) | CHIPID);
+    spi_xfer_buf[3] = (fci_u8) (length & 0xff);
 
     res = fc8080_spi_write_then_read(
-        fc8080_spi, &tx_data[0], 4, &data[0], length);
+        fc8080_spi, &spi_xfer_buf[0], 4, &data[0], length);
 
     if (res) {
         printk("fc8080_spi_bulkread fail : %d\n", res);
@@ -143,24 +144,24 @@ static fci_s32 spi_bulkwrite(HANDLE handle, fci_u16 addr, fci_u8 command, fci_u8
     fci_s32 res = BBM_OK;
     fci_s32 i = 0;
 
-    if(tx_data == NULL) {
+    if(spi_xfer_buf == NULL) {
         printk("[%s] tx_data is null\n", __func__);
         return BBM_NOK;
     }
 
-    tx_data[0] = (fci_u8) (addr & 0xff);
-    tx_data[1] = (fci_u8) ((addr >> 8) & 0xff);
-    tx_data[2] = (fci_u8) ((command & 0xfc) | CHIPID);
-    tx_data[3] = (fci_u8) (length & 0xff);
+    spi_xfer_buf[0] = (fci_u8) (addr & 0xff);
+    spi_xfer_buf[1] = (fci_u8) ((addr >> 8) & 0xff);
+    spi_xfer_buf[2] = (fci_u8) ((command & 0xfc) | CHIPID);
+    spi_xfer_buf[3] = (fci_u8) (length & 0xff);
 
     for (i = 0; i < length; i++) {
         if(length < 6) {
-            tx_data[4+i] = data[i];
+            spi_xfer_buf[4+i] = data[i];
         }
     }
 
     res = fc8080_spi_write_then_read(
-        fc8080_spi, &tx_data[0], length+4, NULL, 0);
+        fc8080_spi, &spi_xfer_buf[0], length+4, NULL, 0);
 
     if (res) {
         printk("fc8080_spi_bulkwrite fail : %d\n", res);
@@ -175,22 +176,28 @@ static fci_s32 spi_dataread(HANDLE handle, fci_u8 addr, fci_u8 command, fci_u8 *
 {
     fci_s32 res = BBM_OK;
 
-    if(tx_data == NULL) {
+    if(spi_xfer_buf == NULL || data == NULL) {
         printk("[%s] tx_data is null\n", __func__);
         return BBM_NOK;
     }
 
-    tx_data[0] = (fci_u8) (addr & 0xff);
-    tx_data[1] = (fci_u8) ((addr >> 8) & 0xff);
-    tx_data[2] = (fci_u8) ((command & 0xfc) | CHIPID);
-    tx_data[3] = (fci_u8) (length & 0xff);
-
-    if(length > 384) {
+    if(length > FC8080_READBURST_THRESHOLD_SIZE) {
+        // use data buffer, In case of burst mode data buffer is msc_buf in fc8080_isr.c
+        // burst : data buffer is transfered to spi directly
+        data[0] = (fci_u8) (addr & 0xff);
+        data[1] = (fci_u8) ((addr >> 8) & 0xff);
+        data[2] = (fci_u8) ((command & 0xfc) | CHIPID);
+        data[3] = (fci_u8) (length & 0xff);
         res = fc8080_spi_write_then_read_burst(fc8080_spi
-        , &tx_data[0], 4, &data[0], length);
+        , &data[0], 4, &data[0], length);
     } else {
+        // No burst : spi_xfer_buf is transfered to spi and then copied to data
+        spi_xfer_buf[0] = (fci_u8) (addr & 0xff);
+        spi_xfer_buf[1] = (fci_u8) ((addr >> 8) & 0xff);
+        spi_xfer_buf[2] = (fci_u8) ((command & 0xfc) | CHIPID);
+        spi_xfer_buf[3] = (fci_u8) (length & 0xff);
         res = fc8080_spi_write_then_read(fc8080_spi
-        , &tx_data[0], 4, &data[0], length);
+        , &spi_xfer_buf[0], 4, &data[0], length);
     }
 
     if (res) {
@@ -209,62 +216,28 @@ int fc8080_spi_init(HANDLE hDevice, fci_u16 param1, fci_u16 param2)
         return BBM_NOK;
     }
 
-    if(tx_data == NULL) {
-        tx_data = kmalloc(TX_DATA_SIZE, GFP_DMA | GFP_KERNEL);
-        if(!tx_data) {
-            printk("[%s] kmalloc of tx_data failed\n", __func__);
+    if(spi_xfer_buf== NULL) {
+        spi_xfer_buf = kmalloc(FC8080_SPI_BUF_SIZE, GFP_DMA | GFP_KERNEL);
+
+        if(!spi_xfer_buf) {
+            printk("[%s] kmalloc of spi_xfer_buf failed\n", __func__);
             goto FAIL;
         } else {
-            printk("[%s] kmalloc of tx_data : %p(%p) succeed\n", __func__, &tx_data, tx_data);
-            memset(tx_data, 0x0, TX_DATA_SIZE);
+            printk("[%s] kmalloc of spi_xfer_buf :(%p) succeed\n", __func__, spi_xfer_buf);
+            memset(spi_xfer_buf, 0x0, FC8080_SPI_BUF_SIZE);
         }
     } else {
-        printk("[%s]  tx_data isn't NULL %p(%p)\n", __func__, &tx_data, tx_data);
+        printk("[%s] rdata_buf isn't NULL %p\n", __func__, spi_xfer_buf);
     }
 
-    if(tdata_buf == NULL) {
-        tdata_buf = kmalloc(TX_DATA_BUF_SIZE, GFP_DMA | GFP_KERNEL);
-        if(!tdata_buf) {
-            printk("[%s] kmalloc of tdata_buf failed\n", __func__);
-            goto FAIL;
-        } else {
-            printk("[%s] kmalloc of tdata_buf : %p(%p) succeed\n", __func__, &tdata_buf, tdata_buf);
-            memset(tdata_buf, 0x0, TX_DATA_BUF_SIZE);
-        }
-    } else {
-        printk("[%s] tdata_buf isn't NULL %p(%p)\n", __func__, &tdata_buf, tdata_buf);
-    }
-
-    if(rdata_buf == NULL) {
-        rdata_buf = kmalloc(RX_DATA_BUF_SIZE, GFP_DMA | GFP_KERNEL);
-
-        if(!rdata_buf) {
-            printk("[%s] kmalloc of rdata_buf failed\n", __func__);
-            goto FAIL;
-        } else {
-            printk("[%s] kmalloc of rdata_buf : %p(%p) succeed\n", __func__, &rdata_buf, rdata_buf);
-            memset(rdata_buf, 0x0, RX_DATA_BUF_SIZE);
-        }
-    } else {
-        printk("[%s] rdata_buf isn't NULL %p(%p)\n", __func__, &rdata_buf, rdata_buf);
-    }
     return BBM_OK;
 
 FAIL :
-    if(tx_data) {
-         kfree(tx_data);
-         printk("[%s] kfree of tx_data\n", __func__);
+    if(spi_xfer_buf) {
+         kfree(spi_xfer_buf);
+         printk("[%s] kfree of spi_xfer_buf\n", __func__);
     }
 
-    if(tdata_buf) {
-         kfree(tdata_buf);
-         printk("[%s] kfree of tdata_buf\n", __func__);
-    }
-
-    if(rdata_buf) {
-         kfree(rdata_buf);
-         printk("[%s] kfree of rdata_buf\n", __func__);
-    }
     return BBM_NOK;
 }
 
@@ -405,19 +378,10 @@ fci_s32 fc8080_spi_dataread(HANDLE handle, fci_u16 addr, fci_u8 *data, fci_u32 l
 
 fci_s32 fc8080_spi_deinit(HANDLE handle)
 {
-    if(tx_data) {
-         kfree(tx_data);
-         printk("[%s] kfree of tx_data\n", __func__);
+    if(spi_xfer_buf) {
+         kfree(spi_xfer_buf);
+         printk("[%s] kfree of spi_xfer_buf\n", __func__);
     }
 
-    if(tdata_buf) {
-         kfree(tdata_buf);
-         printk("[%s] kfree of tdata_buf\n", __func__);
-    }
-
-    if(rdata_buf) {
-         kfree(rdata_buf);
-         printk("[%s] kfree of rdata_buf\n", __func__);
-    }
     return BBM_OK;
 }

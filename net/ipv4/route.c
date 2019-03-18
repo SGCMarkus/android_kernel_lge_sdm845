@@ -1260,6 +1260,7 @@ static unsigned int ipv4_default_advmss(const struct dst_entry *dst)
 	}
 
 /* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [START] */
+	patch_code_id("LPCP-2245@y@q@vmlinux@route.c@1");
     if(strncmp(dst->dev->name,"rmnet",strlen("rmnet")) == 0 && (rt->rt_gateway & 0x00FFFFFF) == 0x000000C0) {
         advmss = max_t(unsigned int, dst->dev->mtu - 28 - 40,
             ip_rt_min_advmss);
@@ -1283,6 +1284,7 @@ static unsigned int ipv4_mtu(const struct dst_entry *dst)
 	mtu = READ_ONCE(dst->dev->mtu);
 
 /* 2016-12-23 hyoseab.song@lge.com LGP_DATA_ENABLE_MODEM_CLAT [START] */
+	patch_code_id("LPCP-2245@y@q@vmlinux@route.c@2");
     if(strncmp(dst->dev->name,"rmnet",strlen("rmnet")) == 0 && (rt->rt_gateway & 0x00FFFFFF) == 0x000000C0) {
         mtu = mtu - 28;
     }

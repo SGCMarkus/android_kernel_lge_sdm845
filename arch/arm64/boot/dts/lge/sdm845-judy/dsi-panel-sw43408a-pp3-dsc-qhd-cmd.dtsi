@@ -44,7 +44,6 @@
 		qcom,mdss-dsi-tx-eot-append;
 		qcom,mdss-mdp-transfer-time-us = <15200>;
 		qcom,ulps-enabled;
-		qcom,mdss-dsi-force-clock-lane-hs = <1>;
 
 		qcom,mdss-dsi-panel-hdr-enabled;
 		qcom,mdss-dsi-panel-hdr-color-primaries = <14649 15851 33084 15473 13806 31961 7476 2719>;
@@ -145,15 +144,15 @@
 		];
 		lge,mdss-dsi-nolp-command-state = "dsi_lp_mode";
 
-		lge,mdss-dsi-lp1-command = [
-			39 01 00 00 00 00 05 30 00 00 02 CF
-		];
-		lge,mdss-dsi-lp1-command-state = "dsi_lp_mode";
-
-		lge,mdss-dsi-lp2-command = [
+		lge,mdss-dsi-aod-area-command = [
 			15 01 00 00 00 00 02 B0 AC
 			39 01 00 00 00 00 05 30 00 00 02 CF
 			39 01 00 00 00 00 05 31 00 00 05 9F
+		];
+		lge,mdss-dsi-aod-area-command-state = "dsi_lp_mode";
+
+		lge,mdss-dsi-lp2-command = [
+			15 01 00 00 00 00 02 B0 AC
 			39 01 00 00 00 00 07 55 16 29 C9 04 78 DB
 			39 01 00 00 00 00 0B C3 10 15 1F 12 AD 4D B1 51 BD 1D
 			39 01 00 00 00 00 08 E5 00 3A 00 36 00 3A 10
@@ -238,6 +237,7 @@
 		];
 		lge,ddic-register-lock-unlock-state = "dsi_lp_mode";
 
+		lge,use-bc-dim;
 		lge,bc-dimming-work;
 		lge,mdss-dsi-bc-default-command = [
 			15 00 00 00 00 00 02 B0 AC

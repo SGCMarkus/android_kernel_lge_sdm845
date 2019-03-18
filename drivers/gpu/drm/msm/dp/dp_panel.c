@@ -326,6 +326,7 @@ static int dp_panel_read_edid(struct dp_panel *dp_panel,
 	do {
 		sde_get_edid(connector, &panel->aux->drm_aux->ddc,
 			(void **)&dp_panel->edid_ctrl);
+          	msleep(50);
 		pr_info(" %s %d EDID read %s, count=%d", __func__, __LINE__, !dp_panel->edid_ctrl->edid?"failed":"successed",count);
 	} while (!dp_panel->edid_ctrl->edid && (count++ < 10));
 	if (!dp_panel->edid_ctrl->edid) {

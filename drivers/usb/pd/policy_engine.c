@@ -2537,6 +2537,9 @@ static int enable_vbus(struct usbpd *pd)
 #ifdef CONFIG_LGE_USB
 	if (IS_ERR(pd->vbus))
 		return PTR_ERR(pd->vbus);
+
+	if (!pd->in_pr_swap)
+		goto enable_reg;
 #endif
 
 	if (!check_vsafe0v)
@@ -4018,6 +4021,7 @@ static int psy_changed(struct notifier_block *nb, unsigned long evt, void *ptr)
 			   typec_mode, pd->vbus_present);
 
 		if (pd->current_pr == PR_NONE && !pd->vbus_present) {
+			pd->typec_mode = typec_mode;
 			kick_sm(pd, 0);
 			return 0;
 		}
@@ -4567,24 +4571,6 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 	case DUAL_ROLE_PROP_DR:
 		usbpd_dbg(&pd->dev, "Setting data_role to %d\n", *val);
 
-#ifdef CONFIG_LGE_USB
-		if (pd->is_control) {
-			if (*val == DUAL_ROLE_PROP_DR_DEVICE)
-				pd->forced_pr = propval.intval =
-					POWER_SUPPLY_TYPEC_PR_SINK;
-			else if (*val == DUAL_ROLE_PROP_DR_HOST)
-				pd->forced_pr = propval.intval =
-					POWER_SUPPLY_TYPEC_PR_SOURCE;
-			else
-				pd->forced_pr = propval.intval =
-					POWER_SUPPLY_TYPEC_PR_NONE;
-
-			power_supply_set_property(pd->usb_psy,
-				  POWER_SUPPLY_PROP_TYPEC_POWER_ROLE, &propval);
-			break;
-		}
-#endif
-
 		if (*val == DUAL_ROLE_PROP_DR_HOST) {
 			if (pd->current_dr == DR_UFP)
 				do_swap = true;
@@ -4597,14 +4583,6 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 		}
 
 		if (do_swap) {
-#ifdef CONFIG_LGE_USB
-			if (*val == DUAL_ROLE_PROP_DR_HOST)
-				pd->forced_pr = POWER_SUPPLY_TYPEC_PR_SOURCE;
-			else if (*val == DUAL_ROLE_PROP_DR_DEVICE)
-				pd->forced_pr = POWER_SUPPLY_TYPEC_PR_SINK;
-
-			usbpd_set_state(pd, PE_FORCED_PRS);
-#else
 			if (pd->current_state != PE_SRC_READY &&
 					pd->current_state != PE_SNK_READY) {
 				usbpd_err(&pd->dev, "data_role swap not allowed: PD not in Ready state\n");
@@ -4641,31 +4619,12 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 						"dfp" : "ufp");
 				return -EPROTO;
 			}
-#endif
 		}
 
 		break;
 
 	case DUAL_ROLE_PROP_PR:
 		usbpd_dbg(&pd->dev, "Setting power_role to %d\n", *val);
-
-#ifdef CONFIG_LGE_USB
-		if (pd->is_control) {
-			if (*val == DUAL_ROLE_PROP_PR_SRC)
-				pd->forced_pr = propval.intval =
-					POWER_SUPPLY_TYPEC_PR_SINK;
-			else if (*val == DUAL_ROLE_PROP_PR_SNK)
-				pd->forced_pr = propval.intval =
-					POWER_SUPPLY_TYPEC_PR_SOURCE;
-			else
-				pd->forced_pr = propval.intval =
-					POWER_SUPPLY_TYPEC_PR_NONE;
-
-			power_supply_set_property(pd->usb_psy,
-				  POWER_SUPPLY_PROP_TYPEC_POWER_ROLE, &propval);
-			break;
-		}
-#endif
 
 		if (*val == DUAL_ROLE_PROP_PR_SRC) {
 			if (pd->current_pr == PR_SINK)
@@ -4679,14 +4638,6 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 		}
 
 		if (do_swap) {
-#ifdef CONFIG_LGE_USB
-			if (*val == DUAL_ROLE_PROP_PR_SRC)
-				pd->forced_pr = POWER_SUPPLY_TYPEC_PR_SOURCE;
-			else if (*val == DUAL_ROLE_PROP_PR_SNK)
-				pd->forced_pr = POWER_SUPPLY_TYPEC_PR_SINK;
-
-			usbpd_set_state(pd, PE_FORCED_PRS);
-#else
 			if (pd->current_state != PE_SRC_READY &&
 					pd->current_state != PE_SNK_READY) {
 				usbpd_err(&pd->dev, "power_role swap not allowed: PD not in Ready state\n");
@@ -4723,7 +4674,6 @@ static int usbpd_dr_set_property(struct dual_role_phy_instance *dual_role,
 						"source" : "sink");
 				return -EPROTO;
 			}
-#endif
 		}
 		break;
 

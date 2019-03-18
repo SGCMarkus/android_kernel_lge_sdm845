@@ -1,7 +1,14 @@
-menu "TouchSense driver support"
+#
+# tspdrv subsystem configuration
+#
+
+menu "Tspdrv support"
 
 config TSPDRV
 	tristate "TouchSense driver support"
-	default y
+	default n
+
+source drivers/tspdrv/dw7800/Kconfig
+source drivers/tspdrv/dw7912/Kconfig
 
 endmenu

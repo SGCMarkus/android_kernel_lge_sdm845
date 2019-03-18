@@ -1654,7 +1654,7 @@ static int sw49410_notify(struct device *dev, ulong event, void *data)
 
 		case NOTIFY_CALL_STATE:
 			/* Notify Touch IC only for GSM call and idle state */
-			if (*(u32*)data >= INCOMING_CALL_IDLE && *(u32*)data <= INCOMING_CALL_OFFHOOK) {
+			if (*(u32*)data >= INCOMING_CALL_IDLE && *(u32*)data <= INCOMING_CALL_LTE_OFFHOOK) {
 				TOUCH_I("NOTIFY_CALL_STATE!\n");
 /* unused Call state in sw49410 firmware
 				ret = sw49410_reg_write(dev, SPR_CALL_CTRL, (u32*)data, sizeof(u32));

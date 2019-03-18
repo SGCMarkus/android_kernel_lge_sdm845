@@ -894,7 +894,7 @@ static int sde_hdcp_1x_write_ksv_fifo(struct sde_hdcp_1x *hdcp)
 		/* Write KSV byte and do not set DONE bit[0] */
 		DSS_REG_W_ND(sec_io, reg_set->sec_sha_data, ksv_fifo[i] << 16);
 #ifdef CONFIG_LGE_DISPLAY_COMMON
-		udelay(5000);
+		msleep(5);
 #endif
 
 		/*

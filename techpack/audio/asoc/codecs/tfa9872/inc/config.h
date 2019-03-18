@@ -12,7 +12,8 @@
 
 /* max. length of a alsa mixer control name */
 #define MAX_CONTROL_NAME        48
-#define SNDRV_PCM_STREAM_SAAM	SNDRV_PCM_STREAM_LAST + 1 // for SaaM, SNDRV_PCM_STREAM_LAST + 1
+#define SNDRV_PCM_STREAM_SAAM	(SNDRV_PCM_STREAM_LAST + 1)
+/* for SaaM, SNDRV_PCM_STREAM_LAST + 1 */
 
 #define _ASSERT(e)
 #define PRINT_ASSERT(e) {if ((e))\
@@ -39,7 +40,11 @@
 #define TFA98XX_FLAG_LP_MODES	        (1 << 9)
 #define TFA98XX_FLAG_TDM_DEVICE         (1 << 10)
 
+#if defined(TFA_NO_SND_FORMAT_CHECK)
+#define TFA98XX_NUM_RATES		14
+#else
 #define TFA98XX_NUM_RATES		9
+#endif
 
 /* DSP init status */
 enum tfa98xx_dsp_init_state {
@@ -52,23 +57,32 @@ enum tfa98xx_dsp_init_state {
 };
 
 enum tfa98xx_dsp_fw_state {
-       TFA98XX_DSP_FW_NONE = 0,
-       TFA98XX_DSP_FW_PENDING,
-       TFA98XX_DSP_FW_FAIL,
-       TFA98XX_DSP_FW_OK,
+	TFA98XX_DSP_FW_NONE = 0,
+	TFA98XX_DSP_FW_PENDING,
+	TFA98XX_DSP_FW_FAIL,
+	TFA98XX_DSP_FW_OK,
 };
 
+#if defined(TFA_EXCEPTION_AT_TRANSITION)
+enum tfa98xx_exception_case {
+	TFA98XX_NO_EXCEPTION = -1,
+	TFA98XX_STOP_RAM = 1,
+	TFA98XX_RESTORE_STREAM = 2,
+	TFA98XX_KEEP_PROFILE = 3,
+};
+#endif
+
 struct tfa98xx_firmware {
-	void			*base;
-	struct tfa98xx_device	*dev;
-	char			name[9];	//TODO get length from tfa parameter defs
+	void *base;
+	struct tfa98xx_device *dev;
+	char name[9]; // TODO get length from tfa parameter defs
 };
 
 struct tfa98xx_baseprofile {
 	char basename[MAX_CONTROL_NAME];    /* profile basename */
 	int len;                            /* profile length */
 	int item_id;                        /* profile id */
-	int sr_rate_sup[TFA98XX_NUM_RATES]; /* sample rates supported by this profile */
+	int sr_rate_sup[TFA98XX_NUM_RATES]; /* sample rates supported profile */
 	struct list_head list;              /* list of all profiles */
 };
 
@@ -102,7 +116,7 @@ struct tfa98xx {
 	int pstream;
 	int cstream;
 	int samstream;
-#if defined(TFA_FORCE_TO_STOP_RAM_AT_OVERLAPPED_OUTPUT)
+#if defined(TFA_EXCEPTION_AT_TRANSITION)
 	// to store skipped streams,
 	// when p/cstream is ignored, overlapped with samstream
 	int ignored_pstream;
@@ -139,9 +153,9 @@ struct tfa98xx {
 
 
 /*
-	i2c transaction on Linux limited to 64k
-	(See Linux kernel documentation: Documentation/i2c/writing-clients)
-*/
+ * i2c transaction on Linux limited to 64k
+ * (See Linux kernel documentation: Documentation/i2c/writing-clients)
+ */
 static inline int NXP_I2C_BufferSize(void)
 {
 	return 65536;

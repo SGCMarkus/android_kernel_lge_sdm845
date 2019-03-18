@@ -26,6 +26,8 @@ extern int lge_mdss_dsi_panel_cmd_read(struct dsi_panel *panel,
 extern int lge_ddic_dsi_panel_tx_cmd_set(struct dsi_panel *panel,
 				enum lge_ddic_dsi_cmd_set_type type);
 extern int lge_backlight_device_update_status(struct backlight_device *bd);
+extern char* get_payload_addr(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type, int position);
+extern int get_payload_cnt(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type, int position);
 
 const struct drs_res_info sw43402_res[3] = {
 	{"qhd", 0, 1440, 2880},
@@ -185,15 +187,25 @@ static void prepare_cmd(struct dsi_cmd_desc *cmds, int cmds_count, int addr, int
 	}
 }
 
-static int prepare_aod_cmds_sw43402(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
+static void prepare_aod_area_sw43402(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
 {
-	int rc = 0, sr = 0, er = 0;
+	int sr = 0, er = 0;
 
 	if (panel == NULL || cmds == NULL || cmds_count == 0)
-		return -EINVAL;
+		return;
 
 	adjust_roi(panel, &sr, &er);
 	prepare_cmd(cmds, cmds_count, ADDR_PTLAR, sr, er);
+
+	return;
+}
+
+static int prepare_aod_cmds_sw43402(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
+{
+	int rc = 0;
+
+	if (panel == NULL || cmds == NULL || cmds_count == 0)
+		return -EINVAL;
 
 	return rc;
 }
@@ -207,7 +219,7 @@ static void lge_bc_dim_set_sw43402(struct dsi_panel *panel, u8 bc_dim_en, u8 bc_
 		lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_BC_DEFAULT_DIMMING);
 	}
 
-	((u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_BC_DIMMING].cmds->msg.tx_buf))[1] = bc_dim_en;
+	((u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_BC_DIMMING].cmds->msg.tx_buf))[1] = (bc_dim_en << 4);
 	lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_BC_DIMMING);
 
 	mdelay(15);
@@ -249,7 +261,7 @@ static int lge_set_therm_dim_sw43402(struct dsi_panel *panel, int input)
 	return 0;
 }
 
-static void lge_get_brightness_dim_sw43402(struct dsi_panel *panel)
+static int lge_get_brightness_dim_sw43402(struct dsi_panel *panel)
 {
 	u8 bc_dim_en;
 	u8 bc_dim_f_cnt;
@@ -258,6 +270,8 @@ static void lge_get_brightness_dim_sw43402(struct dsi_panel *panel)
 	bc_dim_f_cnt = ((u8 *)(panel->lge.lge_cmd_sets[LGE_DDIC_DSI_BC_DEFAULT_DIMMING].cmds[1].msg.tx_buf))[22];
 
 	pr_info("BC_DIM_EN: 0x%x, FRAMES: 0x%x\n", bc_dim_en, bc_dim_f_cnt);
+
+	return bc_dim_f_cnt;
 }
 
 static void lge_set_brightness_dim_sw43402(struct dsi_panel *panel, int input)
@@ -641,7 +655,7 @@ static struct backup_info* get_ddic_backup_list_sw43402(int *cnt)
 	return &sw43402_backup_list[0];
 }
 
-static int set_pps_cmds_sw43402(struct dsi_panel *panel, enum dsi_cmd_set_type type)
+static int set_pps_cmds_sw43402(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type)
 {
 	struct msm_display_dsc_info *dsc;
 
@@ -658,6 +672,7 @@ static int set_pps_cmds_sw43402(struct dsi_panel *panel, enum dsi_cmd_set_type t
 
 	switch (type) {
 	case LGE_DDIC_DSI_SET_LP2:
+	case LGE_DDIC_DSI_AOD_AREA:
 		pr_info("LP2: pic_height : %d -> %d\n",
 				dsc->pic_height,
 				panel->lge.aod_area.h);
@@ -679,7 +694,7 @@ static int set_pps_cmds_sw43402(struct dsi_panel *panel, enum dsi_cmd_set_type t
 	return 0;
 }
 
-static int unset_pps_cmds_sw43402(struct dsi_panel *panel, enum dsi_cmd_set_type type)
+static int unset_pps_cmds_sw43402(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type)
 {
 	struct msm_display_dsc_info *dsc;
 
@@ -846,6 +861,7 @@ static int set_err_detect_mask_sw43402(struct dsi_panel *panel)
 struct lge_ddic_ops sw43402_ops = {
 	.store_aod_area = store_aod_area,
 	.prepare_aod_cmds = prepare_aod_cmds_sw43402,
+	.prepare_aod_area = prepare_aod_area_sw43402,
 	.lge_bc_dim_set = lge_bc_dim_set_sw43402,
 	.lge_set_therm_dim = lge_set_therm_dim_sw43402,
 	.lge_get_brightness_dim = lge_get_brightness_dim_sw43402,

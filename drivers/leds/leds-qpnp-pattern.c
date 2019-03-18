@@ -426,7 +426,7 @@ static ssize_t qpnp_pattern_input(const char* string_input, size_t string_size)
 				"%d,%d,%d,%d,%d,%d,%d,%d,"
 				"%d,%d,%d,%d,%d,%d,%d,%d,"
 				"%d,%d,%d,%d,%d,%d,%d,%d,"
-				"%d,%d,%d,%d,%d,%d,%d,%d,%d,0x%02x",
+				"%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
 		/* 0 .................................................. 47 */   // [LUT TABLE]
 		&input_pattern[ 0], &input_pattern[ 1], &input_pattern[ 2],
 		&input_pattern[ 3], &input_pattern[ 4], &input_pattern[ 5],
@@ -445,7 +445,7 @@ static ssize_t qpnp_pattern_input(const char* string_input, size_t string_size)
 		&input_pattern[42], &input_pattern[43], &input_pattern[44],
 		&input_pattern[45], &input_pattern[46], &input_pattern[47],
 		/*         [START]            [LENGTH]                     */
-		&input_pattern[48], &input_pattern[48],                         // [RED]
+		&input_pattern[48], &input_pattern[49],                         // [RED]
 		&input_pattern[50], &input_pattern[51],                         // [GREEN]
 		&input_pattern[52], &input_pattern[53],                         // [BLUE]
 		/*      [PAUSE_LO]          [PAUSE_HI]        [PAUSE_STEP] */   // [R/G/B COMMON]

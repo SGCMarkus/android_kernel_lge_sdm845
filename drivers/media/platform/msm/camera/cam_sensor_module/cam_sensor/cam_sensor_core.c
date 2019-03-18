@@ -481,8 +481,8 @@ void cam_sensor_shutdown(struct cam_sensor_ctrl_t *s_ctrl)
 		&s_ctrl->sensordata->power_info;
 	int rc = 0;
 
-	if ((s_ctrl->sensor_state == CAM_SENSOR_INIT) &&
-		(s_ctrl->is_probe_succeed == 0))
+	s_ctrl->is_probe_succeed = 0;
+	if (s_ctrl->sensor_state == CAM_SENSOR_INIT)
 		return;
 
 	cam_sensor_release_stream_rsc(s_ctrl);
@@ -1067,6 +1067,52 @@ int cam_sensor_apply_settings(struct cam_sensor_ctrl_t *s_ctrl,
 				}
 			}
 		}
+#ifdef CONFIG_MACH_SDM845_JUDYPN
+		if(s_ctrl->io_master_info.master_type == I2C_MASTER &&
+			s_ctrl->soc_info.index == 3 &&
+			(opcode == CAM_SENSOR_PACKET_OPCODE_SENSOR_STREAMON ||
+			opcode == CAM_SENSOR_PACKET_OPCODE_SENSOR_STREAMOFF)) {
+			uint16_t temp_addr = 0;
+			struct cam_sensor_i2c_reg_setting write_setting;
+
+			temp_addr = s_ctrl->io_master_info.client->addr;
+			s_ctrl->io_master_info.client->addr = 0xE4;
+
+			write_setting.addr_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+			write_setting.data_type = CAMERA_SENSOR_I2C_TYPE_BYTE;
+			write_setting.size = 1;
+			write_setting.delay = 1;
+			write_setting.reg_setting = (struct cam_sensor_i2c_reg_array *)
+				kzalloc(sizeof(struct cam_sensor_i2c_reg_array) * 1, GFP_KERNEL);
+				write_setting.reg_setting->reg_addr = 0x8F;
+			write_setting.reg_setting->delay = 0;
+			write_setting.reg_setting->data_mask = 0;
+
+			switch(opcode) {
+				case CAM_SENSOR_PACKET_OPCODE_SENSOR_STREAMON: {
+					write_setting.reg_setting->reg_data = 0x01; // Tele Actuator servo-on
+					CAM_ERR(CAM_SENSOR, "Tele Actuator servo-on");
+					break;
+				}
+				case CAM_SENSOR_PACKET_OPCODE_SENSOR_STREAMOFF: {
+					write_setting.reg_setting->reg_data = 0x00; // Tele Actuator servo-off
+					CAM_ERR(CAM_SENSOR, "Tele Actuator servo-off");
+					break;
+				}
+				default:
+					break;
+			}
+			rc = camera_io_dev_write(&(s_ctrl->io_master_info), &write_setting);
+			usleep_range(1* 1000, 1* 1000 + 10); /* wait 1ms */
+			if (rc < 0) {
+				CAM_ERR(CAM_SENSOR,
+					"Failed to random write I2C settings: %d",
+					rc);
+			}
+			s_ctrl->io_master_info.client->addr = temp_addr;
+			kfree(write_setting.reg_setting);
+		}
+#endif
 	} else {
 		offset = req_id % MAX_PER_FRAME_ARRAY;
 		i2c_set = &(s_ctrl->i2c_data.per_frame[offset]);

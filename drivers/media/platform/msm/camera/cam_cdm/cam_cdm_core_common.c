@@ -107,28 +107,12 @@ struct cam_cdm_bl_cb_request_entry *cam_cdm_find_request_by_bl_tag(
 	struct cam_cdm_bl_cb_request_entry *node;
 
 	list_for_each_entry(node, bl_list, entry) {
-		CAM_DBG(CAM_CDM, "bl_tag %d userdata = %p", node->bl_tag, node->userdata);
-	}
-
-	list_for_each_entry(node, bl_list, entry) {
-		CAM_DBG(CAM_CDM, "bl_tag %d userdata = %p", node->bl_tag, node->userdata);
-		if (node->bl_tag == tag) {
-			CAM_DBG(CAM_CDM, "found bl_tag");
+		if (node->bl_tag == tag)
 			return node;
-		}
 	}
 	CAM_ERR(CAM_CDM, "Could not find the bl request for tag=%x", tag);
 
 	return NULL;
-}
-
-void print_bl_list(struct list_head *bl_list)
-{
-	struct cam_cdm_bl_cb_request_entry *node;
-
-	list_for_each_entry(node, bl_list, entry) {
-		CAM_DBG(CAM_CDM, "bl_tag %d userdata = %p", node->bl_tag, node->userdata);
-	}
 }
 
 int cam_cdm_get_caps(void *hw_priv,

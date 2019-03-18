@@ -32,8 +32,10 @@
 #include "../inc/fci_hal.h"
 #include "../inc/fc8080_isr.h"
 
-#define FIC_BUF_SIZE             384
-#define MSC_BUF_SIZE            4096
+#ifndef FEATURE_GET_FIC_POLLING
+#define FIC_BUF_SIZE            (6*1024)
+#endif
+#define MSC_BUF_SIZE            (6*1024)
 
 fci_s32 bbm_com_reset(HANDLE handle)
 {

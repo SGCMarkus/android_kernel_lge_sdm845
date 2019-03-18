@@ -69,39 +69,6 @@ int cam_hw_cdm_bl_fifo_pending_bl_rb(struct cam_hw_info *cdm_hw,
 	return rc;
 }
 
-int cam_cdm_get_next_bl_tag(struct list_head *bl_list, uint8_t tag)
-{
-	struct cam_cdm_bl_cb_request_entry *node;
-	unsigned int i;
-	bool flag = false;
-
-	list_for_each_entry(node, bl_list, entry) {
-		CAM_DBG(CAM_CDM, "bl_tag %d userdata = %p", node->bl_tag, node->userdata);
-		if (tag == node->bl_tag)
-			flag = true;
-	}
-	if (flag) {
-		for (i = 0; i < CAM_CDM_HWFIFO_SIZE; i++) {
-			if (tag == CAM_CDM_HWFIFO_SIZE -1)
-				tag = 0;
-			else
-				tag++;
-			flag = false;
-			list_for_each_entry(node, bl_list, entry) {
-				CAM_DBG(CAM_CDM, "bl_tag %d userdata = %p", node->bl_tag, node->userdata);
-				if (tag == node->bl_tag)
-					flag = true;
-			}
-			if (!flag)
-				return tag;
-		}
-	} else {
-		return tag;
-	}
-
-	return -EINVAL;
-}
-
 static int cam_hw_cdm_enable_bl_done_irq(struct cam_hw_info *cdm_hw,
 	bool enable)
 {
@@ -385,7 +352,7 @@ int cam_hw_cdm_submit_gen_irq(struct cam_hw_info *cdm_hw,
 		rc = -EINVAL;
 		goto end;
 	}
-	CAM_DBG(CAM_CDM, "CDM write BL last cmd tag=%x total=%d cookie=%llu",
+	CAM_DBG(CAM_CDM, "CDM write BL last cmd tag=%x total=%d cookie=%d",
 		core->bl_tag, req->data->cmd_arrary_count, req->data->cookie);
 	node = kzalloc(sizeof(struct cam_cdm_bl_cb_request_entry),
 			GFP_KERNEL);
@@ -398,15 +365,39 @@ int cam_hw_cdm_submit_gen_irq(struct cam_hw_info *cdm_hw,
 	node->cookie = req->data->cookie;
 	node->bl_tag = core->bl_tag;
 	node->userdata = req->data->userdata;
-	CAM_DBG(CAM_CDM, "client_hdl %d bl_tag %d, userdata %p", node->client_hdl, node->bl_tag, node->userdata);
 	list_add_tail(&node->entry, &core->bl_request_list);
-	print_bl_list(&core->bl_request_list);
 	len = core->ops->cdm_required_size_genirq() * core->bl_tag;
+
+/* LGE_CHANGE_S, fix to access invalid memory 2018-12-28 */
+#if 0 // QCT_ORI
 	core->ops->cdm_write_genirq(((uint32_t *)core->gen_irq.kmdvaddr + len),
 		core->bl_tag);
 	rc = cam_hw_cdm_bl_write(cdm_hw, (core->gen_irq.vaddr + (4*len)),
 		((4 * core->ops->cdm_required_size_genirq()) - 1),
 		core->bl_tag);
+#else
+	/*
+	*  LGE_CHANGE: camera-stability@lge.com 2018-12-19
+	*  If the cam_hw_cdm_submit_gen_irq function is called after gen_irq is released, kernel panic occurs.
+	*  Try to check if gen_irq.kmdvaddr is valid address.
+	*/
+	if (virt_addr_valid(core->gen_irq.kmdvaddr) || is_vmalloc_or_module_addr((const void *)core->gen_irq.kmdvaddr)) {
+		core->ops->cdm_write_genirq(((uint32_t *)core->gen_irq.kmdvaddr + len),
+			core->bl_tag);
+		rc = cam_hw_cdm_bl_write(cdm_hw, (core->gen_irq.vaddr + (4*len)),
+			((4 * core->ops->cdm_required_size_genirq()) - 1),
+			core->bl_tag);
+	} else {
+		CAM_ERR(CAM_CDM, "CDM hw bl write failed for gen irq bltag=%d because gen_irq had been released(kmdvaddr = 0x%llx).",
+			core->bl_tag, core->gen_irq.kmdvaddr);
+		list_del_init(&node->entry);
+		kfree(node);
+		rc = -EIO;
+		goto end;
+	}
+#endif
+/* LGE_CHANGE_E, fix to access invalid memory 2018-12-28 */
+
 	if (rc) {
 		CAM_ERR(CAM_CDM, "CDM hw bl write failed for gen irq bltag=%d",
 			core->bl_tag);
@@ -437,7 +428,6 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 	struct cam_cdm *core = (struct cam_cdm *)cdm_hw->core_info;
 	uint32_t pending_bl = 0;
 	int write_count = 0;
-	uint8_t bl_tag_available;
 
 	if (req->data->cmd_arrary_count > CAM_CDM_HWFIFO_SIZE) {
 		pr_info("requested BL more than max size, cnt=%d max=%d",
@@ -545,8 +535,8 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 
 		if (!rc) {
 			CAM_DBG(CAM_CDM,
-				"write BL success for cnt=%d with tag=%d",
-				i, core->bl_tag);
+				"write BL success for cnt=%d with tag=%d total_cnt",
+				i, core->bl_tag, req->data->cmd_arrary_count);
 
 			CAM_DBG(CAM_CDM, "Now commit the BL");
 			if (cam_hw_cdm_commit_bl_write(cdm_hw)) {
@@ -559,16 +549,6 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			CAM_DBG(CAM_CDM, "BL commit success BL %d tag=%d", i,
 				core->bl_tag);
 			core->bl_tag++;
-			bl_tag_available = cam_cdm_get_next_bl_tag(&core->bl_request_list, core->bl_tag);
-			if (bl_tag_available == (uint8_t)(-EINVAL)) {
-				CAM_ERR(CAM_CDM, "No more bl_tags available tag %d", core->bl_tag);
-				print_bl_list(&core->bl_request_list);
-				rc = -EINVAL;
-				goto end;
-			} else {
-				 core->bl_tag = bl_tag_available;
-			}
-
 			if ((req->data->flag == true) &&
 				(i == (req->data->cmd_arrary_count -
 				1))) {
@@ -579,8 +559,6 @@ int cam_hw_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 			}
 		}
 	}
-
-end:
 	mutex_unlock(&client->lock);
 	mutex_unlock(&cdm_hw->hw_mutex);
 	return rc;
@@ -598,37 +576,35 @@ static void cam_hw_cdm_work(struct work_struct *work)
 		cdm_hw = payload->hw;
 		core = (struct cam_cdm *)cdm_hw->core_info;
 
-		CAM_DBG(CAM_CDM, "IRQ status=%x", payload->irq_status);
+		CAM_DBG(CAM_CDM, "IRQ status=0x%x", payload->irq_status);
 		if (payload->irq_status &
 			CAM_CDM_IRQ_STATUS_INFO_INLINE_IRQ_MASK) {
-			struct cam_cdm_bl_cb_request_entry *node;
+			struct cam_cdm_bl_cb_request_entry *node, *tnode;
 
-			CAM_DBG(CAM_CDM, "inline IRQ data=%x",
+			CAM_DBG(CAM_CDM, "inline IRQ data=0x%x",
 				payload->irq_data);
 			mutex_lock(&cdm_hw->hw_mutex);
-			print_bl_list(&core->bl_request_list);
-			node = cam_cdm_find_request_by_bl_tag(
-					payload->irq_data,
-					&core->bl_request_list);
-			if (node) {
+			list_for_each_entry_safe(node, tnode,
+					&core->bl_request_list, entry) {
 				if (node->request_type ==
 					CAM_HW_CDM_BL_CB_CLIENT) {
 					cam_cdm_notify_clients(cdm_hw,
 						CAM_CDM_CB_STATUS_BL_SUCCESS,
 						(void *)node);
 				} else if (node->request_type ==
-						CAM_HW_CDM_BL_CB_INTERNAL) {
+					CAM_HW_CDM_BL_CB_INTERNAL) {
 					CAM_ERR(CAM_CDM,
 						"Invalid node=%pK %d", node,
 						node->request_type);
 				}
 				list_del_init(&node->entry);
+				if (node->bl_tag == payload->irq_data) {
+					kfree(node);
+					break;
+				}
 				kfree(node);
-			} else {
-				CAM_ERR(CAM_CDM,
-					"Inval node, inline_irq st=%x data=%x",
-					payload->irq_status, payload->irq_data);
 			}
+
 			mutex_unlock(&cdm_hw->hw_mutex);
 		}
 
@@ -722,18 +698,18 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 					"Failed to read CDM HW IRQ data");
 			}
 		}
-		CAM_DBG(CAM_CDM, "Got payload=%d, irq_data=%d", payload->irq_status, payload->irq_data);
+		CAM_DBG(CAM_CDM, "Got payload=%d", payload->irq_status);
 		payload->hw = cdm_hw;
 		INIT_WORK((struct work_struct *)&payload->work,
 			cam_hw_cdm_work);
 		if (cam_cdm_write_hw_reg(cdm_hw, CDM_IRQ_CLEAR,
 			payload->irq_status))
 			CAM_ERR(CAM_CDM, "Failed to Write CDM HW IRQ Clear");
+		work_status = queue_work(cdm_core->work_queue, &payload->work);
 		if (cam_cdm_write_hw_reg(cdm_hw, CDM_IRQ_CLEAR_CMD, 0x01))
 			CAM_ERR(CAM_CDM, "Failed to Write CDM HW IRQ cmd");
-		work_status = queue_work(cdm_core->work_queue, &payload->work);
 		if (work_status == false) {
-			CAM_ERR(CAM_CDM, "Failed to queue work for irq=%x",
+			CAM_ERR(CAM_CDM, "Failed to queue work for irq=0x%x",
 				payload->irq_status);
 			kfree(payload);
 		}
@@ -745,8 +721,8 @@ irqreturn_t cam_hw_cdm_irq(int irq_num, void *data)
 int cam_hw_cdm_alloc_genirq_mem(void *hw_priv)
 {
 	struct cam_hw_info *cdm_hw = hw_priv;
-	struct cam_mem_mgr_request_desc genirq_alloc_cmd;
-	struct cam_mem_mgr_memory_desc genirq_alloc_out;
+	struct cam_mem_mgr_request_desc genirq_alloc_cmd = { 0, };
+	struct cam_mem_mgr_memory_desc genirq_alloc_out = { 0, };
 	struct cam_cdm *cdm_core = NULL;
 	int rc =  -EINVAL;
 
@@ -777,7 +753,7 @@ int cam_hw_cdm_release_genirq_mem(void *hw_priv)
 {
 	struct cam_hw_info *cdm_hw = hw_priv;
 	struct cam_cdm *cdm_core = NULL;
-	struct cam_mem_mgr_memory_desc genirq_release_cmd;
+	struct cam_mem_mgr_memory_desc genirq_release_cmd = { 0, };
 	int rc =  -EINVAL;
 
 	if (!hw_priv)
@@ -786,6 +762,19 @@ int cam_hw_cdm_release_genirq_mem(void *hw_priv)
 	cdm_core = (struct cam_cdm *)cdm_hw->core_info;
 	genirq_release_cmd.mem_handle = cdm_core->gen_irq.handle;
 	rc = cam_mem_mgr_release_mem(&genirq_release_cmd);
+
+	/* LGE_CHANGE_S, fix to access invalid memory 2018-12-28 */
+	/*
+	*  LGE_CHANGE: camera-stability@lge.com 2018-12-19
+	*  After calling cam_mem_mgr_release_mem function,
+	*  the fields of gen_irq should be initialized.
+	*/
+	cdm_core->gen_irq.handle = -1;
+	cdm_core->gen_irq.vaddr = 0x0;
+	cdm_core->gen_irq.kmdvaddr = 0x0;
+	cdm_core->gen_irq.size = 0x0;
+	/* LGE_CHANGE_E, fix to access invalid memory 2018-12-28 */
+
 	if (rc)
 		CAM_ERR(CAM_CDM, "Failed to put genirq cmd space for hw");
 
@@ -885,8 +874,10 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 	struct cam_cdm *cdm_core = NULL;
 	struct cam_cdm_private_dt_data *soc_private = NULL;
 	struct cam_cpas_register_params cpas_parms;
-	struct cam_ahb_vote ahb_vote;
-	struct cam_axi_vote axi_vote;
+	struct cam_ahb_vote ahb_vote = { 0, };
+	struct cam_axi_vote axi_vote = { 0, };
+
+	memset(&cpas_parms, 0 , sizeof(cpas_parms));
 
 	cdm_hw_intf = kzalloc(sizeof(struct cam_hw_intf), GFP_KERNEL);
 	if (!cdm_hw_intf)
@@ -931,11 +922,6 @@ int cam_hw_cdm_probe(struct platform_device *pdev)
 
 	cdm_core->bl_tag = 0;
 	cdm_core->id = cam_hw_cdm_get_id_by_name(cdm_core->name);
-
-//	for (i = 0;i < CAM_CDM_HWFIFO_SIZE; i++) {
-//		cdm_core->bl_tag_hash[i] = false;
-//	}
-
 	if (cdm_core->id >= CAM_CDM_MAX) {
 		CAM_ERR(CAM_CDM, "Failed to get CDM HW name for %s",
 			cdm_core->name);

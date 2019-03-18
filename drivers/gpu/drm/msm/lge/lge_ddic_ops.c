@@ -11,6 +11,7 @@ extern struct lge_ddic_ops sw43408a_ops;
 extern struct lge_ddic_ops sw49409_ops;
 extern struct lge_ddic_ops sw49410_ops;
 extern struct lge_ddic_ops sw49410_rev1_ops;
+extern struct lge_ddic_ops rm69299_ops;
 
 struct lge_ddic_match {
 	char compatible[15];
@@ -24,6 +25,7 @@ static struct lge_ddic_match supported_ddic_list[] = {
 	{"sw49409", &sw49409_ops},
 	{"sw49410", &sw49410_ops},
 	{"sw49410_rev1", &sw49410_rev1_ops},
+	{"rm69299", &rm69299_ops},
 };
 
 extern char* get_ddic_name(void);
@@ -325,8 +327,6 @@ char *lge_ddic_cmd_set_prop_map[LGE_DDIC_DSI_CMD_SET_MAX] = {
 	"lge,mdss-dsi-cm-native-command",
 	"lge,mdss-dsi-disp-ctrl-command-1",
 	"lge,mdss-dsi-disp-ctrl-command-2",
-	"lge,mdss-dsi-disp-ctrl-command-1",
-	"lge,mdss-dsi-disp-ctrl-command-2",
 	"lge,digital-gamma-cmds-dummy",
 	"lge,mdss-dsi-bc-dim-command",
 	"lge,mdss-dsi-bc-default-command",
@@ -363,6 +363,8 @@ char *lge_ddic_cmd_set_prop_map[LGE_DDIC_DSI_CMD_SET_MAX] = {
 	"lge,mdss-dsi-irc-command",
 	"lge,mdss-dsi-ace-tune-command",
 	"lge,mdss-dsi-ace-restore-command",
+	"lge,mdss-dsi-aod-area-command",
+	"lge,color-mode-cmds-dummy",
 };
 
 char *lge_ddic_cmd_set_state_map[LGE_DDIC_DSI_CMD_SET_MAX] = {
@@ -375,8 +377,6 @@ char *lge_ddic_cmd_set_state_map[LGE_DDIC_DSI_CMD_SET_MAX] = {
 	"lge,mdss-dsi-cm-srgb-command-state",
 	"lge,mdss-dsi-cm-adobe-command-state",
 	"lge,mdss-dsi-cm-native-command-state",
-	"lge,mdss-dsi-disp-ctrl-command-1-state",
-	"lge,mdss-dsi-disp-ctrl-command-2-state",
 	"lge,mdss-dsi-disp-ctrl-command-1-state",
 	"lge,mdss-dsi-disp-ctrl-command-2-state",
 	"lge,digital-gamma-cmds-dummy-state",
@@ -415,6 +415,8 @@ char *lge_ddic_cmd_set_state_map[LGE_DDIC_DSI_CMD_SET_MAX] = {
 	"lge,mdss-dsi-irc-command-state",
 	"lge,mdss-dsi-ace-command-state",
 	"lge,mdss-dsi-ace-command-state",
+	"lge,mdss-dsi-aod-area-command-state",
+	"lge,color-mode-cmds-dummy-state",
 };
 
 /* lge_ddic_dsi_panel_tx_cmd_set for LGE DSI CMD SETS*/
@@ -562,3 +564,56 @@ int lge_ddic_dsi_panel_parse_cmd_sets(struct dsi_panel *panel,
 	return rc;
 }
 
+char* get_payload_addr(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type, int position)
+{
+	struct lge_ddic_dsi_panel_cmd_set *cmd_set = NULL;
+	struct dsi_cmd_desc *cmd = NULL;
+	char *payload = NULL;
+	if (type >= LGE_DDIC_DSI_CMD_SET_MAX) {
+		pr_err("out of range\n");
+		goto exit;
+	}
+	cmd_set = &(panel->lge.lge_cmd_sets[type]);
+	if (cmd_set->count == 0) {
+		pr_err("cmd set is not defined\n");
+		goto exit;
+	}
+	cmd = &(panel->lge.lge_cmd_sets[type].cmds[position]);
+	if (!cmd) {
+		pr_err("empty cmd\n");
+		goto exit;
+	}
+	payload = (char *)cmd->msg.tx_buf;
+	if (!payload) {
+		pr_err("empty payload\n");
+		goto exit;
+	}
+	pr_debug("find payload\n");
+exit:
+	return payload;
+}
+
+int get_payload_cnt(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type, int position)
+{
+	struct lge_ddic_dsi_panel_cmd_set *cmd_set = NULL;
+	struct dsi_cmd_desc *cmd = NULL;
+	int payload_count = 0;
+	if (type >= LGE_DDIC_DSI_CMD_SET_MAX) {
+		pr_err("out of range\n");
+		goto exit;
+	}
+	cmd_set = &(panel->lge.lge_cmd_sets[type]);
+	if (cmd_set->count == 0) {
+		pr_err("cmd set is not defined\n");
+		goto exit;
+	}
+	cmd = &(panel->lge.lge_cmd_sets[type].cmds[position]);
+	if (!cmd) {
+		pr_err("empty cmd\n");
+		goto exit;
+	}
+	payload_count = (int)cmd->msg.tx_len;
+	pr_debug("find payload\n");
+exit:
+	return payload_count;
+}

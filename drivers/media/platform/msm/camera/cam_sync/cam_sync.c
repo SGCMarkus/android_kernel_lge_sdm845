@@ -273,8 +273,9 @@ int cam_sync_signal(int32_t sync_obj, uint32_t status)
 		kfree(parent_info);
 	}
 
+	/* LGE_CHANGE, CST, change log comment for fence error */
 	if (status == CAM_SYNC_STATE_SIGNALED_ERROR)
-		CAM_ERR(CAM_SYNC, "fence error maybe occurs..");
+		CAM_ERR(CAM_SYNC, "error signaled state sync_obj %d %s", sync_obj, row->name);
 
 	return 0;
 }
@@ -378,7 +379,7 @@ int cam_sync_get_obj_ref(int32_t sync_obj)
 
 	if (row->state != CAM_SYNC_STATE_ACTIVE) {
 		spin_unlock(&sync_dev->row_spinlocks[sync_obj]);
-		CAM_ERR(CAM_SYNC,
+		CAM_DBG(CAM_SYNC,
 			"Error: accessing an uninitialized sync obj = %d",
 			sync_obj);
 		return -EINVAL;

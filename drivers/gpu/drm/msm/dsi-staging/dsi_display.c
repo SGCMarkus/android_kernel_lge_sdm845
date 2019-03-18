@@ -45,6 +45,7 @@
 #include "../lge/brightness/lge_brightness_def.h"
 
 extern int lge_get_mfts_mode(void);
+extern int lge_dsi_panel_mode_set(struct dsi_panel *panel);
 #endif
 
 #ifdef CONFIG_LGE_PM_PRM
@@ -761,7 +762,6 @@ static int dsi_display_status_check_te(struct dsi_display *display)
 
 	if (!wait_for_completion_timeout(&display->esd_te_gate, esd_te_timeout)) {
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
-		mutex_lock(&display->panel->panel_lock);
 		if (!display->panel->lge.panel_dead) {
 			display->panel->lge.panel_dead = true;
 
@@ -772,7 +772,6 @@ static int dsi_display_status_check_te(struct dsi_display *display)
 			else
 				display->panel->lge.bl_lvl_recovery_unset = display->panel->bl_config.bl_level;
 
-			mutex_unlock(&display->panel->panel_lock);
 
 			if (lge_get_factory_boot() || lge_get_mfts_mode()) {
 				if (display->panel->lge.use_panel_err_detect && display->panel->lge.err_detect_irq_enabled)
@@ -783,7 +782,6 @@ static int dsi_display_status_check_te(struct dsi_display *display)
 
 			cont_recovery_cnt++;
 		} else {
-			mutex_unlock(&display->panel->panel_lock);
 			pr_info("Already in recovery state\n");
 			goto out;
 		}
@@ -6814,6 +6812,9 @@ int dsi_display_post_enable(struct dsi_display *display)
 			DSI_ALL_CLKS, DSI_CLK_OFF);
 
 	mutex_unlock(&display->display_lock);
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	lge_dsi_panel_mode_set(display->panel);
+#endif
 	return rc;
 }
 

@@ -182,9 +182,9 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 	}
 
 	if (row->state == CAM_SYNC_STATE_ACTIVE)
-		CAM_WARN(CAM_SYNC,
+		CAM_DBG(CAM_SYNC,
 			"Destroying an active sync object name:%s id:%i",
-			row->name, row->sync_id);
+			row->name, row->sync_id); /* LGE_CHANGE, change log level (CN03745176) 2018-11-13 sungmin.cho@lge.com */
 
 	row->state = CAM_SYNC_STATE_INVALID;
 

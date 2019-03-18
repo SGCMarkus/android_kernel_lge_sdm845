@@ -4,14 +4,15 @@
 #include "inc/config.h"
 
 /* support for error code translation into text */
-static char latest_errorstr[64];
+#define ERROR_MAX_LENGTH	64
+
+static char latest_errorstr[ERROR_MAX_LENGTH];
 
 const char* tfa98xx_get_error_string(enum tfa98xx_error error)
 {
   const char* p_err_str;
 
-  switch (error)
-  {
+	switch (error) {
   case TFA98XX_ERROR_OK:
     p_err_str = "Ok";
     break;
@@ -67,7 +68,8 @@ const char* tfa98xx_get_error_string(enum tfa98xx_error error)
 	p_err_str = "WaitForState_TimedOut";
 	break;
   default:
-    snprintf(latest_errorstr, 100, "Unspecified error (%d)", (int)error);
+		snprintf(latest_errorstr, ERROR_MAX_LENGTH,
+			"Unspecified error (%d)", (int)error);
     p_err_str = latest_errorstr;
   }
   return p_err_str;
@@ -81,15 +83,14 @@ const char* tfa98xx_get_error_string(enum tfa98xx_error error)
  * lookup bf in table
  *   return 'unkown' if not found
  */
-static char *tfa_bf2name(struct tfa_bf_name *table, uint16_t bf) {
+static char *tfa_bf2name(struct tfa_bf_name *table, uint16_t bf)
+{
 	int n=0;
 
 	do {
-		if ((table[n].bf_enum & 0xfff0 ) == (bf & 0xfff0 )) {
+		if ((table[n].bf_enum & 0xfff0) == (bf & 0xfff0))
 			return table[n].bf_name;
-		}
-	}
-	while( table[n++].bf_enum != 0xffff);
+	} while (table[n++].bf_enum != 0xffff);
 
 	return table[n-1].bf_name; /* last name says unkown */
 }
@@ -97,18 +98,21 @@ static char *tfa_bf2name(struct tfa_bf_name *table, uint16_t bf) {
  * lookup name in table
  *   return 0xffff if not found
  */
-static uint16_t tfa_name2bf(struct tfa_bf_name *table,const  char *name) {
+static uint16_t tfa_name2bf(struct tfa_bf_name *table, const	char *name)
+{
 	int n = 0;
 
-	do {
 #if defined(WIN32) || defined(_X64)
+	do {
 		if(_stricmp(name, table[n].bf_name)==0)
 			return table[n].bf_enum;
+	} while (table[n++].bf_enum != 0xffff);
 #else
+	do {
 		if(strcasecmp(name, table[n].bf_name)==0)
 			return table[n].bf_enum;
-#endif
 	} while (table[n++].bf_enum != 0xffff);
+#endif
 
 	return 0xffff;
 }
@@ -141,7 +145,8 @@ char *tfa_cont_bit_name(uint16_t num, unsigned short rev)
 {
 	char *name;
 	 /* end of list for the unknown string */
-	int table_length = sizeof(tfa1_datasheet_names)/sizeof(struct tfa_bf_name);
+	int table_length = sizeof(tfa1_datasheet_names)
+		/ sizeof(struct tfa_bf_name);
 	const char *unknown=tfa1_datasheet_names[table_length-1].bf_name;
 
 	switch (rev & 0xff) {
@@ -177,7 +182,8 @@ char *tfa_cont_bit_name(uint16_t num, unsigned short rev)
 		break;
 	default:
 		pr_err("unknown REVID:0x%0x\n", rev);
-		table_length = sizeof(tfa1_bit_names)/sizeof(struct tfa_bf_name); /* end of list */
+		table_length = sizeof(tfa1_bit_names)
+			/ sizeof(struct tfa_bf_name); /* end of list */
 		name = (char *)unknown;
 		break;
 	}
@@ -188,7 +194,8 @@ char *tfa_cont_ds_name(uint16_t num, unsigned short rev)
 {
 	char *name;
 	 /* end of list for the unknown string */
-	int table_length = sizeof(tfa1_datasheet_names)/sizeof(struct tfa_bf_name);
+	int table_length = sizeof(tfa1_datasheet_names)
+		/ sizeof(struct tfa_bf_name);
 	const char *unknown=tfa1_datasheet_names[table_length-1].bf_name;
 
 	switch (rev & 0xff) {
@@ -224,7 +231,8 @@ char *tfa_cont_ds_name(uint16_t num, unsigned short rev)
 		break;
 	default:
 		pr_err("unknown REVID:0x%0x\n", rev);
-		table_length = sizeof(tfa1_datasheet_names)/sizeof(struct tfa_bf_name); /* end of list */
+		table_length = sizeof(tfa1_datasheet_names)
+			/ sizeof(struct tfa_bf_name); /* end of list */
 		name = (char *)unknown;
 		break;
 	}
@@ -235,7 +243,8 @@ char *tfa_cont_bf_name(uint16_t num, unsigned short rev)
 {
 	char *name;
 	/* end of list for the unknown string */
-	int table_length = sizeof(tfa1_datasheet_names)/sizeof(struct tfa_bf_name);
+	int table_length = sizeof(tfa1_datasheet_names)
+		/ sizeof(struct tfa_bf_name);
 	const char *unknown=tfa1_datasheet_names[table_length-1].bf_name;
 
 	/* if datasheet name does not exist look for bitfieldname */

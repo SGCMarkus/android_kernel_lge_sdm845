@@ -25,7 +25,7 @@
 #define BC_DIM_BRIGHTNESS_THERM 0x0100
 #define BC_DIM_MIN_FRAMES       0x02
 #define BC_DIM_MAX_FRAMES       0x7E
-#define BC_DIM_ON               0x10
+#define BC_DIM_ON               0x01
 #define BC_DIM_OFF              0x00
 
 #define HDR_OFF  	0

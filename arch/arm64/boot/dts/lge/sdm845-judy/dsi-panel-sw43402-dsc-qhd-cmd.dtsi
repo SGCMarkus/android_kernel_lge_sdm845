@@ -180,11 +180,11 @@
 		];
 		lge,mdss-dsi-nolp-command-state = "dsi_lp_mode";
 
-		lge,mdss-dsi-lp1-command = [
+		lge,mdss-dsi-aod-area-command = [
+			39 01 00 00 00 00 03 B0 A5 00
 			39 01 00 00 00 00 05 30 00 00 0B 3F
-			15 01 00 00 00 00 02 31 00
 		];
-		lge,mdss-dsi-lp1-command-state = "dsi_lp_mode";
+		lge,mdss-dsi-aod-area-command-state = "dsi_lp_mode";
 
 		lge,mdss-dsi-lp2-command = [
 			39 01 00 00 00 00 03 B0 A5 00
@@ -197,7 +197,6 @@
 			39 01 00 00 00 00 0F E2 20 03 08 A8 0A AA 04 A4 80 80 80 5C 5C 5C
 			39 01 00 00 46 00 0C E1 00 00 00 28 28 40 17 17 01 0C 4F
 			05 01 00 00 00 00 01 34
-			39 01 00 00 00 00 05 30 00 00 0B 3F
 			15 01 00 00 00 00 02 31 00
 			15 01 00 00 00 00 02 5E 0C
 			05 01 00 00 00 00 01 12
@@ -335,7 +334,7 @@
 
 		lge,update-pps-in-lp-mode;
 		lge,ddic-bist-enabled;
-		lge,ddic-bist-usage-type = "drs", "lp2", "nolp", "lp1", "rsvd";
+		lge,ddic-bist-usage-type = "drs", "lp2", "nolp", "lp1", "aod_area";
 		lge,mdss-dsi-bist-on-command = [
 			39 01 00 00 00 00 03 B0 A5 00
 			39 01 00 00 21 00 09 EF 03 00 00 00 00 00 13 01

@@ -97,20 +97,17 @@ static void fc8080_data(HANDLE handle, fci_u16 status)
             }
 
         res = bbm_data(handle, (BBM_RD_BUF0 + i), &msc_buf[0], size);
-        if (res)
+        if (res) {
             return;
-        if(size > 384)
-        {
+        }
+
+        if(size > FC8080_READBURST_THRESHOLD_SIZE) {
             if (msc_callback)
                 (*msc_callback)(msc_user_data, subch_id, &msc_buf[4],size);
-        }
-        else
-        {
+        } else {
             if (msc_callback)
                 (*msc_callback)(msc_user_data, subch_id, &msc_buf[0],size);
         }
-
-
     }
 }
 

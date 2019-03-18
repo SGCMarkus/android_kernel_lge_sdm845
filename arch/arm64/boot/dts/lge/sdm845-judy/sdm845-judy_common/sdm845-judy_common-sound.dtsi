@@ -116,6 +116,7 @@
 		asoc-codec-names = "msm-stub-codec.1",
 				"msm-ext-disp-audio-codec-rx";
 		lge,3rd-spk-amp = <1>;
+		lge,ras-spk-amp = <0>;
 		lge,fmradio-lna-enable-gpio = <&tlmm 128 0x00>;
 		lna-supply = <&pm8998_l16>;
 	};
@@ -223,6 +224,13 @@
 			dac,hph-sw = <&pm8998_gpios 12 0x0>;
 			dac,reset-gpio = <&pmi8998_gpios 2 0x0>;
 		};
+		dw7912@59 {
+			compatible = "dwanatech,dw7912";
+			status = "disabled";
+			reg = <0x59>;
+			use_en_pin = <1>; /* 1 = use en pin, 0 = do not use en pin */
+			dw7912,en-gpio = <&pm8998_gpios 1 0x0>; /* gpx0_0, set to output(0x1) */
+		};
 		dw7800@59 {
 			compatible = "dongwoon,dw7800";
 			status = "ok";
@@ -324,8 +332,3 @@
 	};
 };
 
-&pmi8998_haptics {
-	qcom,vmax-mv = <2400>;
-	qcom,lra-auto-mode;
-	status = "okay";
-};

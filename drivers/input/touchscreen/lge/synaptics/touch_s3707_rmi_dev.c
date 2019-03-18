@@ -820,7 +820,6 @@ unlock:
 static int rmidev_open(struct inode *inp, struct file *filp)
 {
 	int retval = 0;
-	struct touch_core_data *ts = to_touch_core(rmidev->ts_dev);
 	struct rmidev_data *dev_data =
 			container_of(inp->i_cdev, struct rmidev_data, main_dev);
 
@@ -845,9 +844,7 @@ static int rmidev_open(struct inode *inp, struct file *filp)
 	filp->private_data = dev_data;
 
 	mutex_lock(&(dev_data->file_mutex));
-
 	touch_interrupt_control(rmidev->ts_dev, INTERRUPT_DISABLE);
-	free_irq(ts->irq, ts);
 	TOUCH_I("%s: Attention interrupt disabled\n", __func__);
 
 	if (dev_data->ref_count < 1)
@@ -862,10 +859,8 @@ static int rmidev_open(struct inode *inp, struct file *filp)
 
 static int rmidev_release(struct inode *inp, struct file *filp)
 {
-	struct touch_core_data *ts = to_touch_core(rmidev->ts_dev);
 	struct rmidev_data *dev_data =
 			container_of(inp->i_cdev, struct rmidev_data, main_dev);
-	int retval = 0;
 
 	TOUCH_TRACE();
 
@@ -877,15 +872,6 @@ static int rmidev_release(struct inode *inp, struct file *filp)
 	dev_data->ref_count--;
 	if (dev_data->ref_count < 0)
 		dev_data->ref_count = 0;
-
-	retval = request_threaded_irq(ts->irq, touch_irq_handler,
-			touch_irq_thread, ts->irqflags | IRQF_ONESHOT,
-			LGE_TOUCH_NAME, ts);
-
-	if (retval < 0) {
-		TOUCH_E("%s: Failed to create irq thread\n", __func__);
-		return retval;
-	}
 
 	touch_interrupt_control(rmidev->ts_dev, INTERRUPT_ENABLE);
 	TOUCH_I("%s: Attention interrupt enabled\n", __func__);

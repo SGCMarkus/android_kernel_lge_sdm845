@@ -1,6 +1,6 @@
 /*
-	internal functions for TFA layer (not shared with SRV and HAL layer!)
-*/
+ * internal functions for TFA layer (not shared with SRV and HAL layer!)
+ */
 
 #ifndef __TFA_INTERNAL_H__
 #define __TFA_INTERNAL_H__
@@ -11,13 +11,14 @@
 #include "config.h"
 
 #if __GNUC__ >= 4
-  #define TFA_INTERNAL __attribute__ ((visibility ("hidden")))
+#define TFA_INTERNAL __attribute__((visibility("hidden")))
 #else
-  #define TFA_INTERNAL
+#define TFA_INTERNAL
 #endif
 
-
 #define TFA98XX_GENERIC_SLAVE_ADDRESS 0x1C
+
+#define MAX_HANDLES 4
 
 enum feature_support {
 	SUPPORT_NOT_SET, /* the default is not set yet, so = 0 */
@@ -46,7 +47,7 @@ enum pool_control {
 struct tfa98xx_buffer_pool {
 	int size;
 	unsigned char in_use;
-	void* pool;
+	void *pool;
 };
 #endif // TFADSP_DSP_BUFFER_POOL
 
@@ -90,30 +91,37 @@ struct tfa98xx_controls {
 //	struct tfa98xx_control temp;
 };
 
-#if !defined(TFADSP_DSP_MSG_BUFFERING)
-typedef enum tfa98xx_error (*dsp_msg_t)(tfa98xx_handle_t handle, int length, const char *buf);
-#else
-typedef enum tfa98xx_error (*dsp_msg_t)(tfa98xx_handle_t handle, int length, const char *buf,
-	int msg_type, int num_msgs);
-#endif // (TFADSP_DSP_MSG_BUFFERING)
-typedef enum tfa98xx_error (*dsp_msg_read_t)(tfa98xx_handle_t handle,int length, unsigned char *bytes);
-typedef enum tfa98xx_error (*reg_read_t)(tfa98xx_handle_t handle, unsigned char subaddress, unsigned short *value);
-typedef enum tfa98xx_error (*reg_write_t)(tfa98xx_handle_t handle, unsigned char subaddress, unsigned short value);
-typedef enum tfa98xx_error (*mem_read_t)(tfa98xx_handle_t handle, unsigned int start_offset, int num_words, int *p_values);
-typedef enum tfa98xx_error (*mem_write_t)(tfa98xx_handle_t handle, unsigned short address, int value, int memtype);
+typedef enum tfa98xx_error (*dsp_msg_t)(tfa98xx_handle_t handle,
+	int length, const char *buf);
+typedef enum tfa98xx_error (*dsp_msg_read_t)(tfa98xx_handle_t handle,
+	int length, unsigned char *bytes);
+typedef enum tfa98xx_error (*reg_read_t)(tfa98xx_handle_t handle,
+	unsigned char subaddress, unsigned short *value);
+typedef enum tfa98xx_error (*reg_write_t)(tfa98xx_handle_t handle,
+	unsigned char subaddress, unsigned short value);
+typedef enum tfa98xx_error (*mem_read_t)(tfa98xx_handle_t handle,
+	unsigned int start_offset, int num_words, int *p_values);
+typedef enum tfa98xx_error (*mem_write_t)(tfa98xx_handle_t handle,
+	unsigned short address, int value, int memtype);
 
 struct tfa_device_ops {
 	enum tfa98xx_error (*tfa_init)(tfa98xx_handle_t dev_idx);
-	enum tfa98xx_error (*tfa_dsp_reset)(tfa98xx_handle_t dev_idx, int state);
-	enum tfa98xx_error (*tfa_dsp_system_stable)(tfa98xx_handle_t handle, int *ready);
-	enum tfa98xx_error (*tfa_dsp_write_tables)(tfa98xx_handle_t dev_idx, int sample_rate);
-	enum tfa98xx_error (*tfa_set_boost_trip_level)(tfa98xx_handle_t handle, int Re25C);
-	dsp_msg_t   	dsp_msg;
+	enum tfa98xx_error (*tfa_dsp_reset)
+		(tfa98xx_handle_t dev_idx, int state);
+	enum tfa98xx_error (*tfa_dsp_system_stable)
+		(tfa98xx_handle_t handle, int *ready);
+	enum tfa98xx_error (*tfa_dsp_write_tables)
+		(tfa98xx_handle_t dev_idx, int sample_rate);
+	enum tfa98xx_error (*tfa_set_boost_trip_level)
+		(tfa98xx_handle_t handle, int Re25C);
+
+	dsp_msg_t	dsp_msg;
 	dsp_msg_read_t	dsp_msg_read;
-	reg_read_t  	reg_read;
-	reg_write_t 	reg_write;
-	mem_read_t  	mem_read;
-	mem_write_t 	mem_write;
+	reg_read_t	reg_read;
+	reg_write_t	reg_write;
+	mem_read_t	mem_read;
+	mem_write_t	mem_write;
+
 	struct tfa98xx_controls controls;
 };
 
@@ -130,19 +138,22 @@ struct tfa98xx_handle_private {
 	int hw_feature_bits; /* cached feature bits data */
 	int profile;	/* cached active profile */
 	int vstep[2]; /* cached active vsteps */
-//	TODO add? unsigned char rev_major; /* void tfa98xx_rev(int *major, int *minor, int *revision)*/
+//	TODO add? unsigned char rev_major;
+/* void tfa98xx_rev(int *major, int *minor, int *revision) */
 //	unsigned char rev_minor;
 //	unsigned char rev_build;
 	unsigned char spkr_count;
 	unsigned char spkr_select;
+	unsigned char spkr_damaged;
 	unsigned char support_tcoef;
 	enum tfa98xx_dai_bitmap daimap;
-	int mohm[3]; /* > speaker calibration values in milli ohms -1 is error */
+	int mohm[3]; /* > calibration values in milli ohms -1 is error */
 	struct tfa_device_ops dev_ops;
 	uint16_t interrupt_enable[3];
 	uint16_t interrupt_status[3];
 	int ext_dsp; /* respond to external DSP: 0:none, 1:cold, 2:warm  */
 	int is_cold; /* respond to MANSTATE, before tfa_run_speaker_boost */
+	int is_bypass; /* respond to vstep in profile, before sending calibration data */
 	enum tfadsp_event_en tfadsp_event;
 	int default_boost_trip_level;
 	int saam_use_case; /* 0: not in use, 1: RaM / SaM only, 2: bidirectional */
@@ -156,15 +167,18 @@ struct tfa98xx_handle_private {
 /* tfa98xx.c */
 extern TFA_INTERNAL struct tfa98xx_handle_private handles_local[];
 TFA_INTERNAL int tfa98xx_handle_is_open(tfa98xx_handle_t h);
-TFA_INTERNAL enum tfa98xx_error tfa98xx_check_rpc_status(tfa98xx_handle_t handle, int *p_rpc_status);
-TFA_INTERNAL enum tfa98xx_error tfa98xx_wait_result(tfa98xx_handle_t handle, int waitRetryCount);
+TFA_INTERNAL enum tfa98xx_error tfa98xx_check_rpc_status
+(tfa98xx_handle_t handle, int *p_rpc_status);
+TFA_INTERNAL enum tfa98xx_error tfa98xx_wait_result
+(tfa98xx_handle_t handle, int waitRetryCount);
 TFA_INTERNAL void tfa98xx_apply_deferred_calibration(tfa98xx_handle_t handle);
-TFA_INTERNAL void tfa98xx_deferred_calibration_status(tfa98xx_handle_t handle, int calibrate_done);
-TFA_INTERNAL int print_calibration(tfa98xx_handle_t handle, char *str, size_t size);
+TFA_INTERNAL void tfa98xx_deferred_calibration_status
+(tfa98xx_handle_t handle, int calibrate_done);
+TFA_INTERNAL int print_calibration
+(tfa98xx_handle_t handle, char *str, size_t size);
 
 #if defined(TFADSP_DSP_BUFFER_POOL)
-TFA_INTERNAL int tfa98xx_buffer_pool_access(tfa98xx_handle_t handle, int r_index, size_t g_size, int control);
+TFA_INTERNAL int tfa98xx_buffer_pool_access
+(tfa98xx_handle_t handle, int r_index, size_t g_size, int control);
 #endif
-
 #endif /* __TFA_INTERNAL_H__ */
-

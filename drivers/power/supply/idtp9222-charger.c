@@ -650,6 +650,14 @@ static int psy_get_power(struct idtp9222_struct* idtp9222) {
 	return power;
 }
 
+static int psy_get_current_max(struct idtp9222_struct* idtp9222) {
+	if (idtp9222_is_onpad(idtp9222))
+		return idtp9222->opmode_midpower
+			? idtp9222->configure_eppcurr : idtp9222->configure_bppcurr;
+	else
+		return 0;
+}
+
 static int psy_get_voltage_max(struct idtp9222_struct* idtp9222) {
 	if (idtp9222_is_onpad(idtp9222))
 		return (idtp9222->opmode_midpower
@@ -675,6 +683,7 @@ static enum power_supply_property psy_property_list [] = {
 	POWER_SUPPLY_PROP_ONLINE,
 	POWER_SUPPLY_PROP_PRESENT,
 	POWER_SUPPLY_PROP_POWER_NOW,
+	POWER_SUPPLY_PROP_CURRENT_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_MAX,
 	POWER_SUPPLY_PROP_VOLTAGE_NOW,
 	POWER_SUPPLY_PROP_CHARGE_DONE,
@@ -725,6 +734,9 @@ static int psy_property_get(struct power_supply* psy,
 		break;
 	case POWER_SUPPLY_PROP_POWER_NOW:
 		val->intval = psy_get_power(idtp9222);
+		break;
+	case POWER_SUPPLY_PROP_CURRENT_MAX:
+		val->intval = psy_get_current_max(idtp9222);
 		break;
 	case POWER_SUPPLY_PROP_VOLTAGE_MAX:
 		val->intval = psy_get_voltage_max(idtp9222);
@@ -918,6 +930,9 @@ static int idtp9222_disable_callback(struct votable *votable, void *data,
 static int idtp9222_voltage_callback(struct votable *votable, void *data,
 	int mV, const char *client) {
 	struct idtp9222_struct* idtp9222 = data;
+
+	if (mV < 0)
+		return 0;
 
 	if (idtp9222_is_onpad(idtp9222) && idtp9222->opmode_midpower) {
 		u8 value = -1;

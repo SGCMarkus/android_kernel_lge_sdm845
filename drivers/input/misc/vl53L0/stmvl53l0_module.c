@@ -834,6 +834,18 @@ int stmvl53l0_poll_thread(void *data)
 		}
 
 		mutex_lock(&vl53l0_dev->work_mutex);
+		/* LGE_CHANGE_S, Avoid LDAF data read after sensor power off 2018-12-05 sungmin.cho@lge.com */
+		if (vl53l0_dev->enable_ps_sensor == 0
+			|| pmodule_func_tbl->query_power_status() == 0)
+		{
+			pr_err("%s(%d) : enable %d power status %d\n",
+				__func__, __LINE__,
+				vl53l0_dev->enable_ps_sensor, pmodule_func_tbl->query_power_status());
+			mutex_unlock(&vl53l0_dev->work_mutex);
+			msleep(sleep_time);
+			continue;
+		}
+		/* LGE_CHANGE_E, Avoid LDAF data read after sensor power off 2018-12-05 sungmin.cho@lge.com */
 
 		sleep_time = vl53l0_dev->delay_ms;
 		Status = VL53L0_GetInterruptMaskStatus(vl53l0_dev,

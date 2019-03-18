@@ -10,19 +10,15 @@
 #include <linux/kernel.h>
 #include "veneer-primitives.h"
 
-#define FAKE_DISABLED -1
-static struct _fake {
+#define LGE_FG_INITVAL -1
+
+struct _fake {
 	int temperature;
 	int capacity;
 	int uvoltage;
-} fake = {
-	.temperature = FAKE_DISABLED,
-	.capacity = FAKE_DISABLED,
-	.uvoltage = FAKE_DISABLED,
 };
 
-#define FGGEN3_INITVAL -1
-static struct _fggen3 {
+struct _fginfo {
 /* Capacity */
 	int capacity_rescaled;
 	int capacity_monotonic;
@@ -52,34 +48,83 @@ static struct _fggen3 {
 	int misc_battsoc;
 	int misc_ccsocsw;
 	int misc_ccsoc;
-
-} fggen3 = {
-/* Capacity    */ FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL,
-/* v/i ADCs    */ FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL,
-/* Temperature */ FGGEN3_INITVAL, FGGEN3_INITVAL, -1000,
-/* impedance   */ FGGEN3_INITVAL, FGGEN3_INITVAL,
-/* Misc        */ FGGEN3_INITVAL, FGGEN3_INITVAL,
-/* SoCs        */ FGGEN3_INITVAL, FGGEN3_INITVAL, FGGEN3_INITVAL,
 };
 
-#define RESCALE_INITVAL -1
-static struct _rescale {
-	// For SoC rescaling, .rawsoc(0~255) is updated ONLY ON
-	// 'fg_delta_msoc_irq_handler' and it is rescaled to 0~100
+#define TCOMP_TABLE_MAX 3
+#define TCOMP_COUNT 25
+struct tcomp_param {
+	bool load_done;
+	int load_max;
+	bool icoeff_load_done;
+	struct tcomp_entry {
+		int temp_cell;
+		int temp_bias;
+	} table[TCOMP_TABLE_MAX][TCOMP_COUNT];
+	int icoeff;
+
+	bool rise_cut;
+	int rise_cut_trig;
+	bool fall_cut;
+	int fall_cut_trig;
+
+	bool qnovo_charging;
+	bool logging;
+};
+
+struct _rescale {
+	bool lge_monotonic;
 	int	criteria;	// 0 ~ 255
 	int	rawsoc;		// 0 ~ 255
 	int	result;		// 0 ~ 100
-} rescale = {
-	RESCALE_INITVAL, RESCALE_INITVAL, RESCALE_INITVAL,
 };
 
-
-///////////////////////////////////////////////////////////////////////////////
 enum tcomp_chg_type {
 	TCOMP_CHG_NONE = 0,
 	TCOMP_CHG_USB,
 	TCOMP_CHG_WLC_LCDOFF,
 	TCOMP_CHG_WLC_LCDON
+};
+
+/* Gloval variable for extension-fg-gen4 */
+static struct _fake fake = {
+	.temperature = LGE_FG_INITVAL,
+	.capacity = LGE_FG_INITVAL,
+	.uvoltage = LGE_FG_INITVAL,
+};
+
+static struct _fginfo fggen3 = {
+/* Capacity  */ LGE_FG_INITVAL, LGE_FG_INITVAL, LGE_FG_INITVAL, LGE_FG_INITVAL,
+/* v/i ADCs  */ LGE_FG_INITVAL, LGE_FG_INITVAL, LGE_FG_INITVAL, LGE_FG_INITVAL,
+                LGE_FG_INITVAL, LGE_FG_INITVAL, LGE_FG_INITVAL, LGE_FG_INITVAL,
+                LGE_FG_INITVAL,
+/* Temp      */ LGE_FG_INITVAL, LGE_FG_INITVAL, -1000,
+/* impedance */ LGE_FG_INITVAL, LGE_FG_INITVAL,
+/* Misc      */ LGE_FG_INITVAL, LGE_FG_INITVAL,
+/* SoCs      */ LGE_FG_INITVAL, LGE_FG_INITVAL, LGE_FG_INITVAL,
+};
+
+static struct tcomp_param tcomp = {
+	.load_done = false,
+	.icoeff_load_done = false,
+	.icoeff = 0,
+
+	.rise_cut = false,
+	.rise_cut_trig = -999,
+	.fall_cut = false,
+	.fall_cut_trig = -999,
+
+	.qnovo_charging = false,
+	.logging = false,
+};
+
+/* For SoC rescaling, .rawsoc(0~255) is updated ONLY ON
+ * 'fg_delta_msoc_irq_handler' and it is rescaled to 0~100
+ */
+static struct _rescale rescale = {
+	.lge_monotonic = false,
+	.criteria = 247,
+	.rawsoc = LGE_FG_INITVAL,
+	.result = LGE_FG_INITVAL,
 };
 
 static int get_charging_type(struct fg_chip *chip)
@@ -171,225 +216,23 @@ out:
 	return ichg;
 }
 
-#define TCOMP_COUNT 25
-#define TCOMP_MAX 3
-#define DNODE_TEMPCOMP_ICOEFF "tempcomp-icoeff"
-#define DNODE_TEMPCOMP_ROOT "lge-battery-supplement"
-static int calculate_battery_temperature(/* @Nonnull */ struct fg_chip *chip) {
-	static struct tcomp_entry {
-		int	temp_cell;
-		int	temp_bias;
-	} tcomp_buffer[TCOMP_MAX][TCOMP_COUNT];
-
-	char str_tempcomp[TCOMP_MAX][30] = {
-		"tempcomp-offset",
-		"tempcomp-offset-wlc-lcdoff",
-		"tempcomp-offset-wlc-lcdon"
-	};
-	static struct device_node*	tcomp_dtroot;
-	static struct tcomp_entry*	tcomp_table[TCOMP_MAX];
-	static int tcomp_icoeff = 0;
-
-	// whether it supports extra tempcomp table for wlc
-	static int enable_tempcomp_wlc = 0;
-
-	// for compensation table change filter
-	static bool rise_filter_enable = false;
-	static bool fall_filter_enable = false;
-	static int rise_filter_trigger = -9999;
-	static int fall_filter_trigger = -9999;
+static int filtered_batt_therm(bool changed, int comp, int batt)
+{
+	bool tbl_changed = changed;
+	int battemp_cell = batt;
+	int battemp_comp = comp;
 	static int pre_battemp_cell = -9999;
 	static int pre_battemp_comp = -9999;
-	static int pre_tbl_pt = -1;
 	static bool is_filtering_rise = false;
 	static bool is_filtering_fall = false;
 	int battemp_cell_diff = 0;
 	int battemp_comp_diff = 0;
-	bool tbl_changed = false;
 
-	bool is_load_done = false;
-	int tbl_pt = 0;
-	int i = 0;
-	// bias  : 1st compensation by predefined diffs
-	// icomp : 2nd compensation by (i^2 * k)
-	int battemp_bias = 0;
-	int battemp_icomp = 0;
-	// Prepare default value to return on error */
-	int battemp_cell = 0;
-	int battemp_comp = 0;
-
-	bool need_to_load = false;
-
-	fg_get_battery_temp(chip, &battemp_cell);
-
-	if (!tcomp_dtroot) {
-		tcomp_dtroot = of_find_node_by_name(NULL, DNODE_TEMPCOMP_ROOT);
-		pr_info("%s to find " DNODE_TEMPCOMP_ROOT "\n",
-			tcomp_dtroot ? "Success" : "Failed");
-		if (!tcomp_dtroot)
-			return battemp_cell;
-	}
-
-	if (of_property_read_bool(tcomp_dtroot, "tempcomp-offset-wlc-enable"))
-		need_to_load = (tcomp_table[0] == NULL) ||
-				(tcomp_table[1] == NULL) ||
-				(tcomp_table[2] == NULL);
-	else
-		need_to_load = (tcomp_table[0] == NULL);
-
-	/* Finding tcomp_table and tcomp_icoeff */
-	if (tcomp_dtroot && need_to_load) {
-		int dtarray_count = TCOMP_COUNT * 2;
-		u32 dtarray_data [TCOMP_COUNT * 2];
-
-		enable_tempcomp_wlc = 0;
-		is_load_done = false;
-
-load_tempcomp_table:
-		if (of_property_read_u32_array(tcomp_dtroot,
-				str_tempcomp[enable_tempcomp_wlc],
-				dtarray_data, dtarray_count) >= 0) {
-			for (i=0; i<dtarray_count; ++i) {
-				struct tcomp_entry* saving_entry =
-						&tcomp_buffer[enable_tempcomp_wlc][i/2];
-				int* saving_member = (i%2) ?
-						&saving_entry->temp_bias : &saving_entry->temp_cell;
-				*saving_member = dtarray_data [i];
-			}
-			/* Logging for verification */
-			for (i=0; i<TCOMP_COUNT; ++i)
-				pr_debug("Index = %02d : %4d - %4d\n", i,
-					tcomp_buffer[enable_tempcomp_wlc][i].temp_cell,
-					tcomp_buffer[enable_tempcomp_wlc][i].temp_bias);
-			tcomp_table[enable_tempcomp_wlc] = tcomp_buffer[enable_tempcomp_wlc];
-		}
-		else {
-			pr_info("%s is not found, Skip to compensation\n",
-				str_tempcomp[enable_tempcomp_wlc]);
-			return battemp_cell;
-		}
-
-		if (of_property_read_bool(tcomp_dtroot, "tempcomp-offset-wlc-enable")) {
-			rise_filter_enable = of_property_read_bool(tcomp_dtroot,
-					"tempcomp-offset-wlc-rise-filter-enable");
-			if (rise_filter_enable)
-				of_property_read_u32(tcomp_dtroot,
-					"tempcomp-offset-wlc-rise-filter-trigger",
-						&rise_filter_trigger);
-			fall_filter_enable = of_property_read_bool(tcomp_dtroot,
-					"tempcomp-offset-wlc-fall-filter-enable");
-			if (fall_filter_enable)
-				of_property_read_u32(tcomp_dtroot,
-					"tempcomp-offset-wlc-fall-filter-trigger",
-						&fall_filter_trigger);
-
-			enable_tempcomp_wlc++;
-			if (!is_load_done) {
-				if (enable_tempcomp_wlc == TCOMP_MAX-1)
-					is_load_done = true;
-				goto load_tempcomp_table;
-			}
-
-			if (enable_tempcomp_wlc > TCOMP_MAX) {
-				pr_info("temp comp table count(%d) is over-flow error.\n",
-					enable_tempcomp_wlc);
-				return battemp_cell;
-			}
-
-			pr_info("[tempcomp config] table count = %d, "
-				"rise cut filter = %s (trigger = %d degree), "
-				"fall cut filter = %s (trigger = %d degree)\n",
-				enable_tempcomp_wlc,
-				rise_filter_enable ? "enabled" : "disabled",
-				rise_filter_trigger,
-				fall_filter_enable ? "enabled" : "disabled",
-				fall_filter_trigger);
-		}
-	}
-
-	if (tcomp_dtroot && tcomp_icoeff == 0 && chip->bp.batt_type_str) {
-		struct device_node* tcomp_override =
-			of_find_node_by_name(tcomp_dtroot, chip->bp.batt_type_str);
-		of_property_read_u32(tcomp_dtroot, DNODE_TEMPCOMP_ICOEFF, &tcomp_icoeff);
-		/* Override it if needed */
-		if (tcomp_override && of_property_read_u32(tcomp_override,
-			DNODE_TEMPCOMP_ICOEFF, &tcomp_icoeff) >= 0)
-			pr_info("ICOEFF is overridden to %d for %s\n",
-				tcomp_icoeff, chip->bp.batt_type_str);
-		else
-			pr_info("ICOEFF is set to %d by default\n", tcomp_icoeff);
-	}
-
-	if (enable_tempcomp_wlc >= TCOMP_MAX) {
-		switch (get_charging_type(chip)) {
-			case TCOMP_CHG_WLC_LCDOFF: tbl_pt = 1; break;
-			case TCOMP_CHG_WLC_LCDON:  tbl_pt = 2; break;
-			default: tbl_pt = 0; break;
-		}
-	}
-	else
-		tbl_pt = 0;
-
-	if (pre_tbl_pt >= 0 )
-		if (pre_tbl_pt != tbl_pt)
-			tbl_changed = true;
-	pre_tbl_pt = tbl_pt;
-
-	/* Compensating battemp_bias */
-	for (i=0; i<TCOMP_COUNT; ++i) {
-		if (battemp_cell < tcomp_table[tbl_pt][i].temp_cell)
-			break;
-	}
-	if (i == 0)
-		battemp_bias = tcomp_table[tbl_pt][0].temp_bias;
-	else if (i == TCOMP_COUNT)
-		battemp_bias = tcomp_table[tbl_pt][TCOMP_COUNT-1].temp_bias;
-	else
-		battemp_bias =
-		(	(tcomp_table[tbl_pt][i].temp_bias -
-				tcomp_table[tbl_pt][i-1].temp_bias)
-			* (battemp_cell - tcomp_table[tbl_pt][i-1].temp_cell)
-			/ (tcomp_table[tbl_pt][i].temp_cell -
-				tcomp_table[tbl_pt][i-1].temp_cell)
-		) + tcomp_table[tbl_pt][i-1].temp_bias;
-
-	/* Compensating battemp_icomp */
-	if (chip->batt_psy) {
-		int ichg = 0;
-		union power_supply_propval val = { 0, };
-
-		if (of_property_read_bool(tcomp_dtroot, "tempcomp-qnovo-charging")) {
-			ichg = get_batt_temp_current(chip);
-		} else {
-			if (!power_supply_get_property(chip->batt_psy, POWER_SUPPLY_PROP_STATUS, &val)
-				&& val.intval == POWER_SUPPLY_STATUS_CHARGING
-				&& !power_supply_get_property(chip->batt_psy, POWER_SUPPLY_PROP_CURRENT_NOW, &val)
-				&& val.intval < 0)
-				ichg = ((val.intval) / 1000);
-		}
-
-		battemp_icomp = ichg * ichg * tcomp_icoeff / 10000000;
-
-		if (of_property_read_bool(tcomp_dtroot, "tempcomp-logging"))
-			pr_info("Battery temperature : "
-				"%d = (%d)(cell) + (%d)(bias) - %d(icomp), "
-				"icoeff = %d, ichg = %d\n",
-				battemp_cell + battemp_bias - battemp_icomp,
-				battemp_cell, battemp_bias, battemp_icomp,
-				tcomp_icoeff, ichg);
-
-		battemp_comp = battemp_cell + battemp_bias - battemp_icomp;
-	}
-	else {
-		pr_info("batt_psy is not available, batt temp = %d(%d + %d)\n",
-			battemp_cell + battemp_bias, battemp_cell, battemp_bias);
-		battemp_comp = battemp_cell + battemp_bias;
-	}
-
-	if (!((tbl_changed && rise_filter_enable
-			&& (battemp_comp > rise_filter_trigger)) ||
-		(tbl_changed && fall_filter_enable
-			&& (battemp_comp < fall_filter_trigger))))
+	/* if it is not in the trigger condition, No apply */
+	if (!((tbl_changed && tcomp.rise_cut
+			&& (battemp_comp > tcomp.rise_cut_trig)) ||
+		(tbl_changed && tcomp.fall_cut
+			&& (battemp_comp < tcomp.fall_cut_trig))))
 		tbl_changed = false;
 
 	if ((tbl_changed || is_filtering_rise || is_filtering_fall)
@@ -397,7 +240,7 @@ load_tempcomp_table:
 		battemp_cell_diff = battemp_cell - pre_battemp_cell;
 		battemp_comp_diff = battemp_comp - pre_battemp_comp;
 		// rise
-		if (rise_filter_enable && (battemp_comp >= pre_battemp_comp)) {
+		if (tcomp.rise_cut && (battemp_comp >= pre_battemp_comp)) {
 			if (is_filtering_fall)
 				is_filtering_fall = false;
 
@@ -413,7 +256,7 @@ load_tempcomp_table:
 			}
 		}
 		// fall
-		else if (fall_filter_enable) {
+		else if (tcomp.fall_cut) {
 			if (is_filtering_rise)
 				is_filtering_rise = false;
 
@@ -428,7 +271,7 @@ load_tempcomp_table:
 				is_filtering_fall = false;
 			}
 		}
-		else if (rise_filter_enable) {
+		else if (tcomp.rise_cut) {
 			if (is_filtering_rise)
 				is_filtering_rise = false;
 		}
@@ -437,6 +280,102 @@ load_tempcomp_table:
 	pre_battemp_cell = battemp_cell;
 	pre_battemp_comp = battemp_comp;
 	return battemp_comp;
+}
+
+/* calculate_battery_temperature
+ *     bias  : 1st compensation by predefined diffs
+ *     icomp : 2nd compensation by (i^2 * k)
+ */
+static int calculate_battery_temperature(/* @Nonnull */ struct fg_chip *chip)
+{
+	int battemp_bias, battemp_icomp, battemp_cell = 0;
+	int i, temp, ichg = 0, tbl_pt = 0;
+	union power_supply_propval val = { 0, };
+	bool tbl_changed = false;
+	static int pre_tbl_pt = -1;
+
+	if (fg_get_battery_temp(chip, &battemp_cell)){
+		pr_info("get real batt therm error\n");
+		return LGE_FG_INITVAL;
+	}
+
+	if (!tcomp.load_done) {
+		pr_info("not ready tcomp table. raw temp=%d\n", battemp_cell);
+		return battemp_cell;
+	}
+
+	if (!tcomp.icoeff_load_done) {
+		pr_info("not ready icoeff. raw temp=%d\n", battemp_cell);
+		return battemp_cell;
+	}
+
+	if (tcomp.load_max > 1) {
+		switch (get_charging_type(chip)) {
+			case TCOMP_CHG_WLC_LCDOFF: tbl_pt = 1; break;
+			case TCOMP_CHG_WLC_LCDON:  tbl_pt = 2; break;
+			default: tbl_pt = 0; break;
+		}
+	}
+	else
+		tbl_pt = 0;
+
+	if (pre_tbl_pt >= 0 )
+		if (pre_tbl_pt != tbl_pt)
+			tbl_changed = true;
+	pre_tbl_pt = tbl_pt;
+
+	/* Compensating battemp_bias */
+	for (i = 0; i < TCOMP_COUNT; i++) {
+		if (battemp_cell < tcomp.table[tbl_pt][i].temp_cell)
+			break;
+	}
+
+	if (i == 0)
+		battemp_bias = tcomp.table[tbl_pt][0].temp_bias;
+	else if (i == TCOMP_COUNT)
+		battemp_bias = tcomp.table[tbl_pt][TCOMP_COUNT-1].temp_bias;
+	else
+		battemp_bias =
+		(	(tcomp.table[tbl_pt][i].temp_bias -
+				tcomp.table[tbl_pt][i-1].temp_bias)
+			* (battemp_cell - tcomp.table[tbl_pt][i-1].temp_cell)
+			/ (tcomp.table[tbl_pt][i].temp_cell -
+				tcomp.table[tbl_pt][i-1].temp_cell)
+		) + tcomp.table[tbl_pt][i-1].temp_bias;
+
+	/* Compensating battemp_icomp */
+	if (chip->batt_psy) {
+		if (tcomp.qnovo_charging) {
+			ichg = get_batt_temp_current(chip);
+		}
+		else {
+			if (!power_supply_get_property(
+				chip->batt_psy, POWER_SUPPLY_PROP_STATUS, &val)
+				&& val.intval == POWER_SUPPLY_STATUS_CHARGING
+				&& !power_supply_get_property(
+					chip->batt_psy, POWER_SUPPLY_PROP_CURRENT_NOW, &val)
+				&& val.intval < 0)
+				ichg = ((val.intval) / 1000);
+		}
+	} else {
+		pr_info("Battery is not available, %d(=%d+%d) as batt temp\n",
+			battemp_cell + battemp_bias, battemp_cell, battemp_bias);
+	}
+
+	battemp_icomp = ichg * ichg * tcomp.icoeff / 10000000;
+	temp = battemp_cell + battemp_bias - battemp_icomp;
+
+	if (tcomp.logging)
+		pr_info("Battery temperature : "
+				"%d = (%d)(cell) + (%d)(bias) - %d(icomp), "
+				"icoeff = %d, ichg = %d\n",
+			temp, battemp_cell, battemp_bias, battemp_icomp,
+			tcomp.icoeff, ichg);
+
+	if (tcomp.rise_cut || tcomp.fall_cut)
+		return filtered_batt_therm(tbl_changed, temp, battemp_cell);
+
+	return temp;
 }
 
 #define LGE_FG_CHARGING         1
@@ -469,7 +408,8 @@ static int  lge_is_fg_charging(struct fg_chip *chip)
 	return -1;
 }
 
-static int calculate_rescaled_soc(struct fg_chip *chip) {
+static int calculate_rescaled_soc(struct fg_chip *chip)
+{
 	int msoc_raw = 0, rc = 0;
 	int new_result = 0;
 
@@ -477,26 +417,15 @@ static int calculate_rescaled_soc(struct fg_chip *chip) {
 	if (rc < 0)
 		pr_info("Error in getting msoc_raw, rc=%d\n", rc);
 
-	if (rescale.criteria == RESCALE_INITVAL) {
-		struct device_node* battsupp = of_find_node_by_name(NULL,
-			"lge-battery-supplement");
-		int msoc_rechg = DIV_ROUND_CLOSEST(chip->dt.recharge_soc_thr * FULL_SOC_RAW,
-			FULL_CAPACITY);
-
-		if (!battsupp
-			|| of_property_read_u32(battsupp, "capacity-raw-full", &rescale.criteria) < 0
-			|| msoc_rechg < rescale.criteria) {
-				pr_err("Failed to preset check dt, "
-					"rechg_msoc=%d, criteria=%d\n", msoc_rechg, rescale.criteria);
-				rescale.criteria = FULL_SOC_RAW;
-		}
-	}
-
-	// Calculate reporting SoC with CAPACITY_RAW
 	new_result = min(FULL_CAPACITY,
 		DIV_ROUND_CLOSEST(msoc_raw * FULL_CAPACITY, rescale.criteria));
-	// Finally, cache CAPACITY_RAW (but it is not used)
+
 	rescale.rawsoc = msoc_raw;
+
+	if (!rescale.lge_monotonic) {
+		rescale.result = new_result;
+		return 0;
+	}
 
 	if (rescale.result <= 0 ||
 		max(rescale.result, new_result) - min(rescale.result, new_result) > 5 )
@@ -575,15 +504,15 @@ static void fggen3_snapshot_inputnow(int* vusb, int* iusb, int* vwlc, int* iwlc,
 	union power_supply_propval val = { 0, };
 
 	*aicl = (psy_main && !power_supply_get_property(psy_main, POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED, &val))
-		? val.intval/1000 : FGGEN3_INITVAL;
+		? val.intval/1000 : LGE_FG_INITVAL;
 	*vusb = (psy_usb && !power_supply_get_property(psy_usb, POWER_SUPPLY_PROP_VOLTAGE_NOW, &val))
-		? val.intval/1000 : FGGEN3_INITVAL;
+		? val.intval/1000 : LGE_FG_INITVAL;
 	*iusb = (psy_usb && !power_supply_get_property(psy_usb, POWER_SUPPLY_PROP_INPUT_CURRENT_NOW, &val))
-		? val.intval/1000 : FGGEN3_INITVAL;
+		? val.intval/1000 : LGE_FG_INITVAL;
 	*vwlc = (psy_dc && !power_supply_get_property(psy_dc, POWER_SUPPLY_PROP_VOLTAGE_NOW, &val))
-		? val.intval/1000 : FGGEN3_INITVAL;
+		? val.intval/1000 : LGE_FG_INITVAL;
 	*iwlc = (psy_dc && !power_supply_get_property(psy_dc, POWER_SUPPLY_PROP_INPUT_CURRENT_NOW, &val))
-		? val.intval/1000 : FGGEN3_INITVAL;
+		? val.intval/1000 : LGE_FG_INITVAL;
 
 	if (psy_main)
 		power_supply_put(psy_main);
@@ -606,22 +535,22 @@ static void fggen3_snapshot_update(struct power_supply *psy) {
 
 /* Capacity */
 	fggen3.capacity_rescaled = rescale.result < 0
-		? FGGEN3_INITVAL : rescale.result;
+		? LGE_FG_INITVAL : rescale.result;
 	fggen3.capacity_monotonic = !fg_get_msoc_raw(fg3, &buf)
-		? buf * 1000 / 255 : FGGEN3_INITVAL;
+		? buf * 1000 / 255 : LGE_FG_INITVAL;
 	fggen3.capacity_chargecnt = !fg_get_charge_counter(fg3, &buf)
-		? buf / 1000 : FGGEN3_INITVAL;
+		? buf / 1000 : LGE_FG_INITVAL;
 	fggen3.capacity_learned
 		= (fg3->cl.learned_cc_uah) / 1000;
 /* Battery */
 	fggen3.battery_inow = !fg_get_battery_current(fg3, &buf)
-		? buf / 1000 : FGGEN3_INITVAL;
+		? buf / 1000 : LGE_FG_INITVAL;
 	fggen3.battery_vnow = !fg_get_battery_voltage(fg3, &buf)
-		? buf / 1000 : FGGEN3_INITVAL;
+		? buf / 1000 : LGE_FG_INITVAL;
 	fggen3.battery_vpredict = !fg_get_sram_prop(fg3, FG_SRAM_VOLTAGE_PRED, &buf)
-		? buf / 1000 : FGGEN3_INITVAL;
+		? buf / 1000 : LGE_FG_INITVAL;
 	fggen3.battery_ocv = !fg_get_sram_prop(fg3, FG_SRAM_OCV, &buf)
-		? buf / 1000 : FGGEN3_INITVAL;
+		? buf / 1000 : LGE_FG_INITVAL;
 /* Input */
 	fggen3_snapshot_inputnow(&fggen3.input_vusb, &fggen3.input_iusb,
 		&fggen3.input_vwlc, &fggen3.input_iwlc,
@@ -630,28 +559,28 @@ static void fggen3_snapshot_update(struct power_supply *psy) {
 	fggen3.temp_compensated
 		= calculate_battery_temperature(fg3);
 	fggen3.temp_thermister = !fg_get_battery_temp(fg3, &buf)
-		? buf : FGGEN3_INITVAL;
+		? buf : LGE_FG_INITVAL;
 	fggen3.temp_vts = !thermal_zone_get_temp(tzd, &buf)
 		? buf / 100 : -1000;
 /* Impedance */
 	fggen3.impedance_esr = !fg_get_sram_prop(fg3, FG_SRAM_ESR, &buf)
-		? buf : FGGEN3_INITVAL;
+		? buf : LGE_FG_INITVAL;
 	fggen3.impedance_rslow = !fg_get_sram_prop(fg3, FG_SRAM_RSLOW, &buf)
-		? buf : FGGEN3_INITVAL;
+		? buf : LGE_FG_INITVAL;
 /* Misc */
 	fggen3.misc_cycle = !power_supply_get_property(fg3->fg_psy,
 			POWER_SUPPLY_PROP_CYCLE_COUNT, &val)
-		? val.intval : FGGEN3_INITVAL;
+		? val.intval : LGE_FG_INITVAL;
 
 	fggen3.misc_batid
 		= fg3->batt_id_ohms / 1000;
 /* SoCs */
 	fggen3.misc_battsoc = !fg_get_sram_prop(fg3, FG_SRAM_BATT_SOC, &buf)
-		? ((u32)buf >> 24)*1000/255 : FGGEN3_INITVAL;
+		? ((u32)buf >> 24)*1000/255 : LGE_FG_INITVAL;
 	fggen3.misc_ccsocsw = !fg_get_sram_prop(fg3, FG_SRAM_CC_SOC_SW, &buf)
-		? div_s64((s64)buf*1000, CC_SOC_30BIT) : FGGEN3_INITVAL;
+		? div_s64((s64)buf*1000, CC_SOC_30BIT) : LGE_FG_INITVAL;
 	fggen3.misc_ccsoc = !fg_get_sram_prop(fg3, FG_SRAM_CC_SOC, &buf)
-		? div_s64((s64)buf*1000, CC_SOC_30BIT) : FGGEN3_INITVAL;
+		? div_s64((s64)buf*1000, CC_SOC_30BIT) : LGE_FG_INITVAL;
 
 	/* logging finally */
 	fggen3_snapshot_print();
@@ -670,10 +599,12 @@ int override_fg_adjust_ki_coeff_dischg(struct fg_chip *chip)
 	int ki_coeff_low = KI_COEFF_LOW_DISCHG_DEFAULT;
 	int ki_coeff_med = KI_COEFF_MED_DISCHG_DEFAULT;
 	int ki_coeff_hi = KI_COEFF_HI_DISCHG_DEFAULT;
+	int cutoff_volt = chip->dt.cutoff_volt_mv;
+	int cutoff_curr = chip->dt.cutoff_curr_ma;
 	static int old_ki_coeff_low = 0;
 	static int old_ki_coeff_med = 0;
 	static int old_ki_coeff_hi = 0;
-	u8 val;
+	u8 buf[4], val;
 
 	if (!chip->ki_coeff_dischg_en)
 		return 0;
@@ -686,6 +617,8 @@ int override_fg_adjust_ki_coeff_dischg(struct fg_chip *chip)
 
 	if (chip->esr_flt_sts == LOW_TEMP &&
 		chip->charge_status == POWER_SUPPLY_STATUS_DISCHARGING) {
+		cutoff_volt = chip->dt.cutoff_lt_volt_mv;
+		cutoff_curr = chip->dt.cutoff_lt_curr_ma;
 		for (i = KI_COEFF_SOC_LEVELS - 1; i >= 0; i--) {
 			if (msoc < chip->dt.ki_coeff_soc[i]) {
 				ki_curr_lowth = chip->dt.ki_curr_lowth_dischg;
@@ -761,10 +694,30 @@ int override_fg_adjust_ki_coeff_dischg(struct fg_chip *chip)
 		return rc;
 	}
 
-	fg_dbg(chip, FG_LGE, "Wrote [ki_coeff: low=%d, med=%d, hi=%d]-"
-							"[ki curr: lowth=%d, highth=%d]-"
-							"[status: %s, soc=%d, temp=%s]\n",
+	fg_encode(chip->sp, FG_SRAM_CUTOFF_VOLT, cutoff_volt, buf);
+	rc = fg_sram_write(chip, chip->sp[FG_SRAM_CUTOFF_VOLT].addr_word,
+			chip->sp[FG_SRAM_CUTOFF_VOLT].addr_byte, buf,
+			chip->sp[FG_SRAM_CUTOFF_VOLT].len, FG_IMA_DEFAULT);
+	if (rc < 0) {
+		pr_err("Error in writing cutoff_volt, rc=%d\n", rc);
+		return rc;
+	}
+
+	fg_encode(chip->sp, FG_SRAM_CUTOFF_CURR, cutoff_curr, buf);
+	rc = fg_sram_write(chip, chip->sp[FG_SRAM_CUTOFF_CURR].addr_word,
+			chip->sp[FG_SRAM_CUTOFF_CURR].addr_byte, buf,
+			chip->sp[FG_SRAM_CUTOFF_CURR].len, FG_IMA_DEFAULT);
+	if (rc < 0) {
+		pr_err("Error in writing cutoff_curr, rc=%d\n", rc);
+		return rc;
+	}
+
+	fg_dbg(chip, FG_LGE,
+		"Wrote [ki_coeff: low=%d, med=%d, hi=%d]-"
+		"[ki curr: lowth=%d, highth=%d]-[cutoff: %dmV, %dmA]-"
+		"[status: %s, soc=%d, temp=%s]\n",
 		ki_coeff_low, ki_coeff_med, ki_coeff_hi, ki_curr_lowth, ki_curr_highth,
+		cutoff_volt, cutoff_curr,
 		(chip->charge_status == POWER_SUPPLY_STATUS_DISCHARGING) ? "DISC": "CHG",
 		msoc, (chip->esr_flt_sts == LOW_TEMP) ? "low": "room or relex");
 
@@ -783,6 +736,16 @@ int override_fg_parse_for_battery_charactistics(struct fg_chip *chip, struct dev
 	if (!rc)
 		chip->dt.cutoff_curr_ma = temp;
 
+	chip->dt.cutoff_lt_volt_mv = chip->dt.cutoff_volt_mv;
+	rc = of_property_read_u32(node, "lge,fg-cutoff-lt-voltage", &temp);
+	if (!rc)
+		chip->dt.cutoff_lt_volt_mv = temp;
+
+	chip->dt.cutoff_lt_curr_ma = chip->dt.cutoff_curr_ma;
+	rc = of_property_read_u32(node, "lge,fg-cutoff-lt-current", &temp);
+	if (!rc)
+		chip->dt.cutoff_lt_curr_ma = temp;
+
 	rc = of_property_read_u32(node, "lge,fg-esr-tight-lt-filter-micro-pct", &temp);
 	if (!rc)
 		chip->dt.esr_tight_lt_flt_upct = temp;
@@ -791,9 +754,11 @@ int override_fg_parse_for_battery_charactistics(struct fg_chip *chip, struct dev
 	if (!rc)
 		chip->dt.esr_broad_lt_flt_upct = temp;
 
-	fg_dbg(chip, FG_LGE, "Wrote [battery charactistics: cutoff_volt=%d, cutoff_curr=%d, "
-								"esr_tight_lt_filter=%d, esr_broad_lt_filter=%d]\n",
+	fg_dbg(chip, FG_LGE,
+		"Wrote [battery charactistics: cutoff=(%dmV, %dmA), cutoff_lt=(%dmV, %dmA), "
+		"esr_tight_lt_filter=%d, esr_broad_lt_filter=%d]\n",
 		chip->dt.cutoff_volt_mv, chip->dt.cutoff_curr_ma,
+		chip->dt.cutoff_lt_volt_mv, chip->dt.cutoff_lt_curr_ma,
 		chip->dt.esr_tight_lt_flt_upct, chip->dt.esr_broad_lt_flt_upct);
 
 	return 0;
@@ -910,23 +875,23 @@ static int extension_bms_get_property_pre(struct power_supply *psy,
 
 	case POWER_SUPPLY_PROP_CAPACITY :
 		// Battery fake setting has top priority
-		if (fake.capacity != FAKE_DISABLED)
+		if (fake.capacity != LGE_FG_INITVAL)
 			val->intval = fake.capacity;
-		else if (rescale.result != RESCALE_INITVAL)
+		else if (rescale.result != LGE_FG_INITVAL)
 			val->intval = rescale.result;
 		else
 			rc = -PROPERTY_BYPASS_REASON_ONEMORE;
 		break;
 
 	case POWER_SUPPLY_PROP_TEMP :
-		if (fake.temperature == FAKE_DISABLED)
+		if (fake.temperature == LGE_FG_INITVAL)
 			val->intval = calculate_battery_temperature(chip); // Use compensated temperature
 		else
 			val->intval = fake.temperature;
 		break;
 
 	case POWER_SUPPLY_PROP_VOLTAGE_NOW :
-		if (fake.uvoltage == FAKE_DISABLED)
+		if (fake.uvoltage == LGE_FG_INITVAL)
 			rc = -PROPERTY_BYPASS_REASON_ONEMORE;
 		else
 			val->intval = fake.uvoltage;
@@ -935,13 +900,13 @@ static int extension_bms_get_property_pre(struct power_supply *psy,
 	case POWER_SUPPLY_PROP_VOLTAGE_BOOT : {
 		int buf = 0;
 		val->intval = !fg_get_sram_prop(chip, FG_SRAM_VOLTAGE_PRED, &buf)
-			? buf : FGGEN3_INITVAL;
+			? buf : LGE_FG_INITVAL;
 	}	break;
 
 	case POWER_SUPPLY_PROP_ESR_COUNT : {
 		int buf = 0;
 		val->intval = !fg_get_sram_prop(chip, FG_SRAM_ESR, &buf)
-			? buf : FGGEN3_INITVAL;
+			? buf : LGE_FG_INITVAL;
 	}	break;
 
 	case POWER_SUPPLY_PROP_UPDATE_NOW :
@@ -1113,4 +1078,132 @@ struct device_node* extension_get_batt_profile(struct device_node* container,
 	unified_nodes_store(UNINODE_BATTERY_VALID, buffer, sizeof(buffer));
 
 	return profile;
+}
+
+static int extension_fg_load_icoeff_dt(struct fg_chip *chip)
+{
+	struct device_node* tcomp_dtroot;
+	struct device_node* tcomp_override;
+	int dt_icomp = 0;
+
+	if (tcomp.icoeff_load_done) {
+		pr_info("icoeff had already been loaded.\n");
+		return 0;
+	}
+
+	if (!chip->soc_reporting_ready) {
+		pr_info("fG profile is not ready.\n");
+		return LGE_FG_INITVAL;
+	}
+
+	tcomp_dtroot = of_find_node_by_name(NULL, "lge-battery-supplement");
+	if (!tcomp_dtroot) {
+		pr_info("failed to find lge-battery-supplement\n");
+		return LGE_FG_INITVAL;
+	}
+
+	if (chip->bp.batt_type_str) {
+		tcomp_override = of_find_node_by_name(
+				tcomp_dtroot, chip->bp.batt_type_str);
+		if (tcomp_override &&
+				of_property_read_u32(
+					tcomp_override, "tempcomp-icoeff", &dt_icomp) >= 0)
+			pr_info("ICOEFF is overridden to %d for %s\n", dt_icomp, chip->bp.batt_type_str);
+	}
+
+	if (!dt_icomp) {
+		if (of_property_read_u32(tcomp_dtroot, "tempcomp-icoeff", &dt_icomp) >= 0) {
+			pr_info("ICOEFF is set to %d by default\n", dt_icomp);
+		} else {
+			pr_info("ICOEFF isn't set. error.\n");
+			return -1;
+		}
+	}
+
+	tcomp.icoeff = dt_icomp;
+	tcomp.icoeff_load_done = true;
+	return 0;
+}
+
+static int extension_fg_load_dt(void)
+{
+	const char str_tempcomp[TCOMP_TABLE_MAX][30] = {
+		"tempcomp-offset",
+		"tempcomp-offset-wlc-lcdoff",
+		"tempcomp-offset-wlc-lcdon"
+	};
+
+	struct device_node* tcomp_dtroot;
+	int dtarray_count = TCOMP_COUNT * 2;
+	u32 dtarray_data [TCOMP_COUNT * 2];
+	int i = 0, j = 0;
+
+	if (tcomp.load_done) {
+		pr_info("tcomp table had already been loaded.\n");
+		return 0;
+	}
+
+	tcomp_dtroot = of_find_node_by_name(NULL, "lge-battery-supplement");
+	if (!tcomp_dtroot) {
+		pr_info("failed to find lge-battery-supplement\n");
+		return -1;
+	}
+
+	if (of_property_read_bool(tcomp_dtroot, "tempcomp-offset-wlc-enable"))
+		tcomp.load_max = 3;
+	else
+		tcomp.load_max = 1;
+
+	for (j = 0; j < tcomp.load_max; j++ ) {
+		/* Finding tcomp_table and tcomp_icoeff */
+		if (of_property_read_u32_array(tcomp_dtroot, str_tempcomp[j],
+				dtarray_data, dtarray_count) >= 0) {
+			for (i = 0; i < dtarray_count; i += 2) {
+				tcomp.table[j][i/2].temp_cell = dtarray_data[i];
+				tcomp.table[j][i/2].temp_bias = dtarray_data[i+1];
+				pr_debug("Index = %02d : %4d - %4d\n",
+					i/2,
+					tcomp.table[j][i/2].temp_cell,
+					tcomp.table[j][i/2].temp_bias);
+			}
+		} else {
+			pr_info("%s is not found, error\n", str_tempcomp[j]);
+			tcomp.table[j][0].temp_cell = INT_MAX;
+			tcomp.table[j][0].temp_bias = 0;
+			return -1;
+		}
+	}
+
+	tcomp.rise_cut = of_property_read_bool(tcomp_dtroot,
+		"tempcomp-offset-wlc-rise-filter-enable");
+	if (tcomp.rise_cut)
+		of_property_read_u32(tcomp_dtroot,
+			"tempcomp-offset-wlc-rise-filter-trigger", &tcomp.rise_cut_trig);
+	tcomp.fall_cut = of_property_read_bool(tcomp_dtroot,
+		"tempcomp-offset-wlc-fall-filter-enable");
+	if (tcomp.fall_cut)
+		of_property_read_u32(tcomp_dtroot,
+			"tempcomp-offset-wlc-fall-filter-trigger", &tcomp.fall_cut_trig);
+
+	of_property_read_u32(tcomp_dtroot,
+		"capacity-raw-full", &rescale.criteria);
+	rescale.lge_monotonic = of_property_read_bool(tcomp_dtroot,
+		"lg-monotonic-soc-enable");
+	tcomp.logging = of_property_read_bool(tcomp_dtroot,
+		"tempcomp-logging");
+	tcomp.qnovo_charging = of_property_read_bool(tcomp_dtroot,
+		"tempcomp-qnovo-charging");
+
+	if (j == tcomp.load_max) {
+		tcomp.load_done = true;
+
+		pr_info("[tempcomp config] table count: %s (%d/%d), "
+			"rise cut filter: %s (trigger = %d degree), "
+			"fall cut filter: %s (trigger = %d degree)\n",
+			(j == tcomp.load_max) ? "done" : "error", j, tcomp.load_max,
+			tcomp.rise_cut ? "enabled" : "disabled", tcomp.rise_cut_trig,
+			tcomp.fall_cut ? "enabled" : "disabled", tcomp.fall_cut_trig);
+	}
+
+	return 0;
 }

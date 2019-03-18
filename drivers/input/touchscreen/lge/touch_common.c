@@ -44,6 +44,8 @@ void touch_interrupt_control(struct device *dev, int on_off)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 
+	TOUCH_TRACE();
+
 	if (on_off) {
 		if (atomic_cmpxchg(&ts->state.irq_enable, 0, 1) == 0) {
 			touch_enable_irq(ts->irq);

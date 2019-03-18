@@ -28,6 +28,7 @@
 #define MAX_LOG_FILE_COUNT	4
 #define FILE_STR_LEN		(128)
 #define TIME_STR_LEN		(64)
+#define PRD_BLOCK_MAX		(20)
 
 enum {
 	TIME_INFO_SKIP,

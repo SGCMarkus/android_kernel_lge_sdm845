@@ -28,7 +28,7 @@
 	(ret += snprintf(buf + ret, PAGE_SIZE - ret, fmt, ##args))
 
 static char ime_str[3][8] = {"OFF", "ON", "SWYPE"};
-static char incoming_call_str[3][8] = {"IDLE", "RINGING", "OFFHOOK"};
+static char incoming_call_str[7][15] = {"IDLE", "RINGING", "OFFHOOK", "CDMA_RINGING", "CDMA_OFFHOOK", "LTE_RINGING", "LTE_OFFHOOK"};
 static char mfts_str[4][8] = {"NONE", "FOLDER", "FLAT", "CURVED"};
 
 static ssize_t show_platform_data(struct device *dev, char *buf)
@@ -295,8 +295,10 @@ static ssize_t show_incoming_call_state(struct device *dev, char *buf)
 
 	value = atomic_read(&ts->state.incoming_call);
 
-	ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
-		incoming_call_str[value], value);
+	if (value >= INCOMING_CALL_IDLE && value <= INCOMING_CALL_LTE_OFFHOOK) {
+		ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
+			incoming_call_str[value], value);
+	}
 
 	return ret;
 }
@@ -311,7 +313,7 @@ static ssize_t store_incoming_call_state(struct device *dev,
 	if (sscanf(buf, "%d", &value) <= 0)
 		return count;
 
-	if (value >= INCOMING_CALL_IDLE && value <= INCOMING_CALL_OFFHOOK) {
+	if (value >= INCOMING_CALL_IDLE && value <= INCOMING_CALL_LTE_OFFHOOK) {
 		if (atomic_read(&ts->state.incoming_call) == value)
 			return count;
 

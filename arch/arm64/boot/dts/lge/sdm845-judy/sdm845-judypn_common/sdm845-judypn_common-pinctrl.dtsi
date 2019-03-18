@@ -13,6 +13,8 @@
 #include "../sdm845-judy_common/sdm845-judy_common-pinctrl.dtsi"
 
 &tlmm {
+	lge,access-denied-gpios = <27 28 29 30 85 86 87 88>;
+
 	extra_ldo_panel_power_active: extra_ldo_panel_power_active {
 		mux {
 			pins = "gpio2", "gpio113";
@@ -42,11 +44,11 @@
 	atmf04_int_pin {
 		atmf04_int_active: atmf04_int_active {
 			mux {
-				pins = "gpio135", "gpio136";
+				pins = "gpio135", "gpio119";
 				function = "gpio";
 			};
 			config {
-				pins = "gpio135", "gpio136";
+				pins = "gpio135", "gpio119";
 				drive-strength = <6>;   /* 6 MA */
 				bias-pull-up;           /* PULL UP*/
 			};
@@ -54,7 +56,7 @@
 
 		atmf04_int_suspend: atmf04_int_suspend {
 			mux {
-				pins = "gpio135", "gpio136";
+				pins = "gpio135", "gpio119";
 				function = "gpio";
 			};
 			config {
@@ -69,7 +71,7 @@
 	gpio_keys {
 		hot1_key {
 			label = "hot1_key";
-			gpios = <&tlmm 89 GPIO_ACTIVE_LOW>;
+			gpios = <&tlmm 3 GPIO_ACTIVE_LOW>;
 			linux,input-type = <1>;
 			linux,code = <377>;
 			gpio-key,wakeup;

@@ -148,7 +148,8 @@ static enum tfa98xx_error tfa9897_specific(tfa98xx_handle_t handle)
         return error;
 }
 
-static enum tfa98xx_error tfa9888_specific(tfa98xx_handle_t handle) {
+static enum tfa98xx_error tfa9888_specific(tfa98xx_handle_t handle)
+{
 	enum tfa98xx_error error = TFA98XX_ERROR_OK;
 	unsigned short value, xor;
 
@@ -156,7 +157,8 @@ static enum tfa98xx_error tfa9888_specific(tfa98xx_handle_t handle) {
 		return TFA98XX_ERROR_NOT_OPEN;
 
 	if ((handles_local[handle].rev & 0xff) != 0x88) {
-		pr_err("This code is not for this device type: %x\n", handles_local[handle].rev);
+		pr_err("This code is not for this device type: %x\n",
+			handles_local[handle].rev);
 		return TFA98XX_ERROR_BAD_PARAMETER;
 	}
 
@@ -312,7 +314,8 @@ static enum tfa98xx_error tfa9872_specific(tfa98xx_handle_t handle)
 			/* ----- generated code end   ----- */
 			break;
 		default:
-			pr_info("\nWarning: Optimal settings not found for device with revid = 0x%x \n", handles_local[handle].rev);
+			pr_info("\nWarning: Optimal settings not found for device with revid = 0x%x \n",
+				handles_local[handle].rev);
 			break;
 	}
 
@@ -327,7 +330,8 @@ static enum tfa98xx_error tfa9872_specific(tfa98xx_handle_t handle)
 	return error;
 }
 
-static enum tfa98xx_error tfa9912_specific(tfa98xx_handle_t handle) {
+static enum tfa98xx_error tfa9912_specific(tfa98xx_handle_t handle)
+{
 	enum tfa98xx_error error = TFA98XX_ERROR_OK;
 	unsigned short value, xor;
 
@@ -335,7 +339,8 @@ static enum tfa98xx_error tfa9912_specific(tfa98xx_handle_t handle) {
 		return TFA98XX_ERROR_NOT_OPEN;
 
 	if ((handles_local[handle].rev & 0xff) != 0x13) {
-		pr_err("This code is not for this device type: %x\n", handles_local[handle].rev);
+		pr_err("This code is not for this device type: %x\n",
+			handles_local[handle].rev);
 		return TFA98XX_ERROR_BAD_PARAMETER;
 	}
 
@@ -384,7 +389,8 @@ static enum tfa98xx_error tfa9912_specific(tfa98xx_handle_t handle) {
  * When we are configured then the DSP communication will synchronize access.
  *
  */
-static enum tfa98xx_error tfa9890_dsp_system_stable(tfa98xx_handle_t handle, int *ready)
+static enum tfa98xx_error
+tfa9890_dsp_system_stable(tfa98xx_handle_t handle, int *ready)
 {
 	enum tfa98xx_error error = TFA98XX_ERROR_OK;
 	unsigned short status, mtp0;
@@ -462,9 +468,10 @@ static enum tfa98xx_error tfa9890_clockgating(tfa98xx_handle_t handle, int on)
 
 	/* for TFA9890 temporarily disable clock gating when dsp reset is used */
 	error = reg_read(handle, TFA98XX_CURRENTSENSE4, &value);
-	if (error) return error;
+	if (error)
+		return error;
 
-	if (TFA98XX_ERROR_OK == error) {
+	if (error == TFA98XX_ERROR_OK) {
 		if (on)  /* clock gating on - clear the bit */
 			value &= ~TFA98XX_CURRENTSENSE4_CTRL_CLKGATECFOFF;
 		else  /* clock gating off - set the bit */
@@ -516,7 +523,8 @@ static unsigned char vsfwdelay_table[] = {
  *  Note that the former products write this table via the patch
  *  so moving this to the tfa98xx API requires also updating all patches
  */
-static enum tfa98xx_error tfa9896_dsp_write_vsfwdelay_table(tfa98xx_handle_t handle)
+static enum tfa98xx_error
+tfa9896_dsp_write_vsfwdelay_table(tfa98xx_handle_t handle)
 {
 	enum tfa98xx_error error;
         error = tfa_dsp_cmd_id_write(handle, MODULE_FRAMEWORK,
@@ -552,7 +560,8 @@ enum tfa98xx_error tfa9896_dsp_write_cvfracdelay_table(tfa98xx_handle_t handle)
         return error;
 }
 
-static enum tfa98xx_error tfa9896_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
+static enum tfa98xx_error
+tfa9896_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
 {
 	enum tfa98xx_error error;
 
@@ -560,9 +569,8 @@ static enum tfa98xx_error tfa9896_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx,
 	sample_rate=sample_rate;
 
 	error = tfa9896_dsp_write_vsfwdelay_table(dev_idx);
-	if (error == TFA98XX_ERROR_OK) {
+	if (error == TFA98XX_ERROR_OK)
 		error = tfa9896_dsp_write_cvfracdelay_table(dev_idx);
-	}
 
 	tfa98xx_dsp_reset(dev_idx, 1);
 	tfa98xx_dsp_reset(dev_idx, 0);
@@ -571,19 +579,21 @@ static enum tfa98xx_error tfa9896_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx,
 }
 
 #if 0 /* TODO: remove or use me */
-static enum tfa98xx_error tfa9896_tfa_set_boost_trip_level(tfa98xx_handle_t handle, int Re25C)
+static enum tfa98xx_error
+tfa9896_tfa_set_boost_trip_level(tfa98xx_handle_t handle, int Re25C)
 {
 	enum tfa98xx_error error = TFA98XX_ERROR_OK;
 	int trip_value;
 
 	if(Re25C == 0) {
-		pr_debug("\nWarning: No calibration values found: Boost trip level not adjusted! \n");
+		pr_debug("\nWarning: No calibration values found: Boost trip level not adjusted!\n");
 		return error;
 	}
 
 	/* Read trip level: The trip level is already set (if defined in cnt file) so we can just read the bitfield */
 	trip_value = tfa_get_bf(handle, TFA9896_BF_DCTRIP);
-	pr_debug("\nCurrent calibration value is %d mOhm and the boost_trip_lvl is %d \n", Re25C, trip_value);
+	pr_debug("\nCurrent calibration value is %d mOhm and the boost_trip_lvl is %d\n",
+		Re25C, trip_value);
 
 	if(Re25C > 0 && Re25C < 4000)
 		trip_value = 0xa;
@@ -596,7 +606,7 @@ static enum tfa98xx_error tfa9896_tfa_set_boost_trip_level(tfa98xx_handle_t hand
 
 	/* Set the boost trip level according to the new value */
 	error = tfa_set_bf(handle, TFA9896_BF_DCTRIP, (uint16_t)trip_value);
-	pr_debug("New boost_trip_lvl is set to %d \n", trip_value);
+	pr_debug("New boost_trip_lvl is set to %d\n", trip_value);
 
 	return error;
 }
@@ -622,9 +632,11 @@ static unsigned char tfa9897_vsfwdelay_table[] = {
  *  Note that the former products write this table via the patch
  *  so moving this to the tfa98xx API requires also updating all patches
  */
-static enum tfa98xx_error tfa9897_dsp_write_vsfwdelay_table(tfa98xx_handle_t handle)
+static enum tfa98xx_error
+tfa9897_dsp_write_vsfwdelay_table(tfa98xx_handle_t handle)
 {
 	enum tfa98xx_error error;
+
         error = tfa_dsp_cmd_id_write(handle, MODULE_FRAMEWORK,
         		             TFA1_FW_PAR_ID_SET_CURRENT_DELAY,
         		             sizeof(tfa9897_vsfwdelay_table),
@@ -648,9 +660,11 @@ static unsigned char tfa9897_cvfracdelay_table[] ={
         0,0,62 /*Index 8 - Current/Volt Fractional Delay for 48KHz */
 };
 
-enum tfa98xx_error tfa9897_dsp_write_cvfracdelay_table(tfa98xx_handle_t handle)
+enum tfa98xx_error
+tfa9897_dsp_write_cvfracdelay_table(tfa98xx_handle_t handle)
 {
 	enum tfa98xx_error error;
+
         error = tfa_dsp_cmd_id_write(handle, MODULE_FRAMEWORK,
         		             TFA1_FW_PAR_ID_SET_CURFRAC_DELAY,
         		             sizeof(tfa9897_cvfracdelay_table),
@@ -658,7 +672,8 @@ enum tfa98xx_error tfa9897_dsp_write_cvfracdelay_table(tfa98xx_handle_t handle)
         return error;
 }
 
-static enum tfa98xx_error tfa9897_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
+static enum tfa98xx_error
+tfa9897_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
 {
 	enum tfa98xx_error error;
 
@@ -666,9 +681,8 @@ static enum tfa98xx_error tfa9897_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx,
 	sample_rate=sample_rate;
 
 	error = tfa9897_dsp_write_vsfwdelay_table(dev_idx);
-	if (error == TFA98XX_ERROR_OK) {
+	if (error == TFA98XX_ERROR_OK)
 		error = tfa9897_dsp_write_cvfracdelay_table(dev_idx);
-	}
 
 	tfa98xx_dsp_reset(dev_idx, 1);
 	tfa98xx_dsp_reset(dev_idx, 0);
@@ -676,7 +690,8 @@ static enum tfa98xx_error tfa9897_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx,
 	return error;
 }
 
-static enum tfa98xx_error tfa9888_tfa_dsp_write_tables(tfa98xx_handle_t handle, int sample_rate) 
+static enum tfa98xx_error
+tfa9888_tfa_dsp_write_tables(tfa98xx_handle_t handle, int sample_rate)
 {
 	unsigned char buffer[15] = {0};
 	int size = 15 * sizeof(char);
@@ -730,7 +745,8 @@ static enum tfa98xx_error tfa9888_tfa_dsp_write_tables(tfa98xx_handle_t handle, 
 	return dsp_msg(handle, size, (char *)buffer);
 }
 
-static enum tfa98xx_error tfa9912_tfa_dsp_write_tables(tfa98xx_handle_t handle, int sample_rate)
+static enum tfa98xx_error
+tfa9912_tfa_dsp_write_tables(tfa98xx_handle_t handle, int sample_rate)
 {
 	unsigned char buffer[15] = {0};
 	int size = 15 * sizeof(char);
@@ -787,14 +803,16 @@ static enum tfa98xx_error tfa9912_tfa_dsp_write_tables(tfa98xx_handle_t handle, 
 /*
  * register device specifics functions
  */
-void tfa9895_ops(struct tfa_device_ops *ops) {
+void tfa9895_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init=tfa9895_specific;
 }
 
 /*
  * register device specifics functions
  */
-void tfa9890_ops(struct tfa_device_ops *ops) {
+void tfa9890_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init = tfa9890_specific;
 	ops->tfa_dsp_reset = tfa9890_dsp_reset;
 	ops->tfa_dsp_system_stable = tfa9890_dsp_system_stable;
@@ -803,7 +821,8 @@ void tfa9890_ops(struct tfa_device_ops *ops) {
 /*
  * register device specifics functions
  */
-void tfa9891_ops(struct tfa_device_ops *ops) {
+void tfa9891_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init=tfa9891_specific;
 
 }
@@ -811,7 +830,8 @@ void tfa9891_ops(struct tfa_device_ops *ops) {
 /*
  * register device specifics functions
  */
-void tfa9896_ops(struct tfa_device_ops *ops) {
+void tfa9896_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init=tfa9896_specific;
 	ops->tfa_dsp_write_tables=tfa9896_tfa_dsp_write_tables;
 }
@@ -819,7 +839,8 @@ void tfa9896_ops(struct tfa_device_ops *ops) {
 /*
  * register device specifics functions
  */
-void tfa9897_ops(struct tfa_device_ops *ops) {
+void tfa9897_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init=tfa9897_specific;
 	ops->tfa_dsp_write_tables=tfa9897_tfa_dsp_write_tables;
 }
@@ -827,7 +848,8 @@ void tfa9897_ops(struct tfa_device_ops *ops) {
 /*
  * register device specifics functions
  */
-void tfa9888_ops(struct tfa_device_ops *ops) {
+void tfa9888_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init = tfa9888_specific;
 	ops->tfa_dsp_write_tables=tfa9888_tfa_dsp_write_tables;
 }
@@ -835,14 +857,16 @@ void tfa9888_ops(struct tfa_device_ops *ops) {
 /*
  * register device specifics functions
  */
-void tfa9872_ops(struct tfa_device_ops *ops) {
+void tfa9872_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init=tfa9872_specific;
 }
 
 /*
  * register device specifics functions
  */
-void tfa9912_ops(struct tfa_device_ops *ops) {
+void tfa9912_ops(struct tfa_device_ops *ops)
+{
 	ops->tfa_init = tfa9912_specific;
 	ops->tfa_dsp_write_tables=tfa9912_tfa_dsp_write_tables;
 }

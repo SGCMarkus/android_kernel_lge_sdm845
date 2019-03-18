@@ -785,11 +785,13 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 			button->debounce_interval = 5;
 
 #ifdef CONFIG_LGE_SUPPORT_HALLIC
-		if (hallic_check_hydra_name()) {
-			if (!strncmp(button->desc, "nfc_cover", 9)) {
-				button->desc = "smart_cover";
-				button->debounce_interval = 15;
-			}
+		if (button->desc != NULL) {
+		    if (hallic_check_hydra_name()) {
+			    if (!strncmp(button->desc, "nfc_cover", 9)) {
+				    button->desc = "smart_cover";
+				    button->debounce_interval = 15;
+			    }
+		    }
 		}
 #endif
 	}

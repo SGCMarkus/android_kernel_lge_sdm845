@@ -31,6 +31,7 @@ struct dp_aux_private {
 	struct dp_aux dp_aux;
 	struct dp_catalog_aux *catalog;
 	struct dp_aux_cfg *cfg;
+	struct dp_usbpd *usbpd;
 	struct mutex mutex;
 	struct completion comp;
 	struct drm_dp_aux drm_aux;
@@ -551,6 +552,15 @@ static ssize_t dp_aux_transfer(struct drm_dp_aux *drm_aux,
 
 	mutex_lock(&aux->mutex);
 
+	if (aux->usbpd && aux->usbpd->get_orientation) {
+		if (aux->usbpd->get_orientation(aux->usbpd) == ORIENTATION_NONE) {
+			pr_err("no dp cable connected\n");
+			ret = -ENODEV;
+			/*atomic_set(&aux->aborted, 1);*/
+			goto unlock_exit;
+		}
+	}
+
 	ret = dp_aux_transfer_ready(aux, msg, true);
 	if (ret)
 		goto unlock_exit;
@@ -720,7 +730,7 @@ static void dp_aux_set_sim_mode(struct dp_aux *dp_aux, bool en,
 }
 
 struct dp_aux *dp_aux_get(struct device *dev, struct dp_catalog_aux *catalog,
-		struct dp_aux_cfg *aux_cfg)
+		struct dp_aux_cfg *aux_cfg, struct dp_usbpd *usbpd)
 {
 	int rc = 0;
 	struct dp_aux_private *aux;
@@ -745,6 +755,7 @@ struct dp_aux *dp_aux_get(struct device *dev, struct dp_catalog_aux *catalog,
 	aux->dev = dev;
 	aux->catalog = catalog;
 	aux->cfg = aux_cfg;
+	aux->usbpd = usbpd;
 	dp_aux = &aux->dp_aux;
 	aux->retry_cnt = 0;
 	aux->dp_aux.reg = 0xFFFF;

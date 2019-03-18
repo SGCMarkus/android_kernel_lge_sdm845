@@ -58,7 +58,7 @@ static const char * const swipe_debug_str[SWIPE_FAIL_NUM] = {
 	"OUT_OF_START_AREA",
 	"OUT_OF_ACTIVE_AREA",
 	"PALM_STATE",
-	"INITAL_RATIO_FAIL",
+	"INITIAL_RATIO_FAIL",
 };
 
 #define SWIPE_NUM	4
@@ -91,6 +91,7 @@ int s3707_read(struct device *dev, u8 addr, void *data, int size)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct touch_bus_msg msg;
+
 	int ret = 0;
 
 #if defined(CONFIG_SECURE_TOUCH)
@@ -123,6 +124,7 @@ int s3707_write(struct device *dev, u8 addr, void *data, int size)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct touch_bus_msg msg;
+
 	int ret = 0;
 
 #if defined(CONFIG_SECURE_TOUCH)
@@ -131,6 +133,11 @@ int s3707_write(struct device *dev, u8 addr, void *data, int size)
 			return ret;
 		}
 #endif
+
+	if(size > I2C_BUF_SIZE) {
+		TOUCH_I("s3707 write size overflow!!!");
+		return -1;
+	}
 
 	ts->tx_buf[0] = addr;
 	memcpy(&ts->tx_buf[1], data, size);
@@ -154,6 +161,7 @@ void s3707_reset_ctrl(struct device *dev, int ctrl)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
 	u8 wdata = 0x01;
 	int ret = 0;
 
@@ -163,7 +171,7 @@ void s3707_reset_ctrl(struct device *dev, int ctrl)
 	default:
 	case SW_RESET:
 		TOUCH_I("%s : SW Reset\n", __func__);
-		ret = s3707_write(dev, DEVICE_COMMAND_REG, &wdata, sizeof(u8));
+		ret = s3707_write(dev, DEVICE_COMMAND_REG, &wdata, sizeof(wdata));
 		if (ret < 0)
 			TOUCH_E("s3707_write failed, ret = %d\n", ret);
 
@@ -231,17 +239,18 @@ static void s3707_check_fail_reason(char *reason)
 static int s3707_get_f12_reg(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	u8 query_4_data = 0;		/* Size Of Control Presence */
 	u8 *query_5_data = NULL;	/* Control Register Presence */
 	u8 query_7_data = 0;		/* Size Of Data Presence */
 	u8 *query_8_data = NULL;	/* Data Register Presence */
 
-	u8 ctrl_23_data[2];		/* Object Report, Max Number of Objects */
-	u8 ctrl_8_data[14];		/* Maximum XY Coordinate */
+	u8 ctrl_23_data[2] = {0,};		/* Object Report, Max Number of Objects */
+	u8 ctrl_8_data[14] = {0,};		/* Maximum XY Coordinate */
 
-	u8 offset;
-	int i;
-	int ret;
+	u8 offset = 0;
+	int i = 0;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
@@ -257,6 +266,7 @@ static int s3707_get_f12_reg(struct device *dev)
 		query_5_data = kzalloc(query_4_data, GFP_KERNEL);
 		if (!query_5_data) {
 			TOUCH_E("failed to allocate query_5_data\n");
+			ret = -ENOMEM;
 			goto error;
 		}
 		if (d->f12_reg.ctrl != NULL)
@@ -265,6 +275,7 @@ static int s3707_get_f12_reg(struct device *dev)
 		d->f12_reg.ctrl = devm_kzalloc(dev, query_4_data * 8, GFP_KERNEL);
 		if (!d->f12_reg.ctrl) {
 			TOUCH_E("failed to allocate d->f12_reg.ctrl\n");
+			ret = -ENOMEM;
 			goto error;
 		}
 	}
@@ -277,11 +288,11 @@ static int s3707_get_f12_reg(struct device *dev)
 	}
 
 	for (i = 1; i < query_4_data; i++)
-		TOUCH_I("qeury_5_data[%d] = 0x%x", i, query_5_data[i]);
+		TOUCH_I("qeury_5_data[%d] = 0x%02x", i, query_5_data[i]);
 
-	for (i = 0, offset = 0; i < query_4_data * 8; i++) {
+	for (i = 0, offset = 0; i < (query_4_data - 1) * 8; i++) {
 		// (i/8) --> array element change, (i%8) --> bit pattern change
-		if (query_5_data[(i/8)+1] & (1 << (i%8))) {
+		if (query_5_data[(i / 8) + 1] & (1 << (i % 8))) {
 			d->f12_reg.ctrl[i] = d->f12.dsc.control_base + offset;
 			TOUCH_I("f12_reg.ctrl[%d]=0x%02X (0x%02x+%d)\n",
 					i, d->f12_reg.ctrl[i],
@@ -303,6 +314,7 @@ static int s3707_get_f12_reg(struct device *dev)
 		query_8_data = kzalloc(query_7_data, GFP_KERNEL);
 		if (!query_8_data) {
 			TOUCH_E("failed to allocate query_8_data\n");
+			ret = -ENOMEM;
 			goto error;
 		}
 		if (d->f12_reg.data != NULL)
@@ -311,6 +323,7 @@ static int s3707_get_f12_reg(struct device *dev)
 		d->f12_reg.data = devm_kzalloc(dev, query_7_data * 8, GFP_KERNEL);
 		if (!d->f12_reg.data) {
 			TOUCH_E("failed to allocate d->f12_reg.data\n");
+			ret = -ENOMEM;
 			goto error;
 		}
 	}
@@ -319,15 +332,15 @@ static int s3707_get_f12_reg(struct device *dev)
 			     query_8_data, query_7_data);
 	if (ret < 0) {
 		TOUCH_E("failed to get query8 (ret: %d)\n", ret);
-		return ret;
+		goto error;
 	}
 
 	for (i = 1; i < query_7_data; i++)
-		TOUCH_I("qeury_8_data[%d] = 0x%x", i, query_8_data[i]);
+		TOUCH_I("qeury_8_data[%d] = 0x%02x", i, query_8_data[i]);
 
-	for (i = 0, offset = 0; i < query_7_data * 8; i++) {
+	for (i = 0, offset = 0; i < (query_7_data - 1) * 8; i++) {
 		// (i/8) --> array element change, (i%8) --> bit pattern change
-		if (query_8_data[(i/8)+1] & (1 << (i%8))) {
+		if (query_8_data[(i / 8) + 1] & (1 << (i % 8))) {
 			d->f12_reg.data[i] = d->f12.dsc.data_base + offset;
 			TOUCH_I("f12_reg.data[%d]=0x%02X (0x%02x+%d)\n",
 					i, d->f12_reg.data[i],
@@ -341,7 +354,7 @@ static int s3707_get_f12_reg(struct device *dev)
 			     ctrl_23_data, sizeof(ctrl_23_data));
 	if (ret < 0) {
 		TOUCH_E("failed to get f12_reg.ctrl[23] data (ret: %d)\n", ret);
-		return ret;
+		goto error;
 	}
 
 	d->object_report = ctrl_23_data[0];
@@ -354,7 +367,7 @@ static int s3707_get_f12_reg(struct device *dev)
 			     ctrl_8_data, sizeof(ctrl_8_data));
 	if (ret < 0) {
 		TOUCH_E("failed to get f12_ctrl8_data (ret: %d)\n", ret);
-		return ret;
+		goto error;
 	}
 
 	TOUCH_I("ctrl_8-sensor_max_x[%d], sensor_max_y[%d]\n",
@@ -379,7 +392,7 @@ error:
 	if (d->f12_reg.data)
 		devm_kfree(dev, d->f12_reg.data);
 
-	return -ENOMEM;
+	return ret;
 }
 
 static int s3707_page_description(struct device *dev)
@@ -391,6 +404,7 @@ static int s3707_page_description(struct device *dev)
 	u8 page = 0;
 	unsigned short pdt = 0;
 	int ret = 0;
+	int ret_page = 0;
 	u8 bit_count = 0;
 	u8 total_func = 0;
 
@@ -407,7 +421,6 @@ static int s3707_page_description(struct device *dev)
 
 	for (page = 0; page < PAGES_TO_SERVICE; page++) {
 		ret = s3707_set_page(dev, page);
-
 		if (ret < 0) {
 			TOUCH_E("failed to set page %d (ret: %d)\n", page, ret);
 			goto error;
@@ -507,27 +520,29 @@ static int s3707_page_description(struct device *dev)
 		ret = -EPERM;
 		goto error;
 	} else if (d->s3707_function_bits == (S3707_FUNC_01 | S3707_FUNC_34)) {
-		/* Bootloader Mode(f01, f34 only)*/
+		/* Bootloader Mode(f01, f34 only) */
 		ts->force_fwup = 1;
 		TOUCH_E("Bootloader Mode(f01,f34)!! force_fwup is enabled.\n");
 		ret = -EPERM;
 		goto error;
 	}
 
-	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0) {
-		TOUCH_E("failed to set page %d (ret: %d)\n", 0, ret);
-		goto error;
+error:
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAULT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
 	}
 
-error:
 	return ret;
 }
 
 int s3707_force_update(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int ret = 0;
+	int ret_page = 0;
 	int retry = 0;
 	u8 data = 0;
 
@@ -535,24 +550,24 @@ int s3707_force_update(struct device *dev)
 
 	ret = s3707_set_page(dev, ANALOG_PAGE);
 	if (ret < 0) {
-		TOUCH_E("s3707_set_page error\n");
-		goto FAIL;
+		TOUCH_E("failed to set ANALOG_PAGE (ret: %d)\n", ret);
+		goto error;
 	}
 
 	data = 0x04;	/* Force Update */
-	ret = s3707_write(dev, ANALOG_COMMAND_REG, &data, 1);
+	ret = s3707_write(dev, ANALOG_COMMAND_REG, &data, sizeof(data));
 	if (ret < 0) {
-		TOUCH_E("ANALOG_COMMAND_REG write error\n");
-		goto FAIL;
+		TOUCH_E("ANALOG_COMMAND_REG write error (ret: %d)\n", ret);
+		goto error;
 	}
 
 	/* Waiting for update complete */
 	do {
 		touch_msleep(5);
-		ret = s3707_read(dev, ANALOG_COMMAND_REG, &data, 1);
+		ret = s3707_read(dev, ANALOG_COMMAND_REG, &data, sizeof(data));
 		if (ret < 0) {
-			TOUCH_E("ANALOG_COMMAND_REG read error\n");
-			goto FAIL;
+			TOUCH_E("ANALOG_COMMAND_REG read error (ret: %d)\n", ret);
+			goto error;
 		}
 		if ((data & 0x04) == 0x00) { /* Force update bit cleared */
 			TOUCH_I("Force update bit cleared (data:0x%x)\n", data);
@@ -563,22 +578,18 @@ int s3707_force_update(struct device *dev)
 	if (retry >= 40) {
 		TOUCH_E("force_update time out!!\n");
 		ret = -EPERM;
-		goto FAIL;
+		goto error;
 	} else {
-		TOUCH_I("force_update complete : %d ms\n", (retry+1)*5);
+		TOUCH_I("force_update complete : %d ms\n", (retry + 1) * 5);
 	}
 
-	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0) {
-		TOUCH_E("s3707_set_page set error\n");
-		goto FAIL;
+error:
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAULT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
 	}
 
-	return ret;
-
-FAIL:
-	TOUCH_E("s3707_force_update error !!!\n");
-	s3707_set_page(dev, DEFAULT_PAGE);
 	return ret;
 }
 
@@ -587,34 +598,30 @@ int s3707_force_calibration(struct device *dev)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int ret_page = 0;
 	u8 data = 0;
 
 	TOUCH_TRACE();
 
 	ret = s3707_set_page(dev, ANALOG_PAGE);
 	if (ret < 0) {
-		TOUCH_E("s3707_set_page error\n");
+		TOUCH_E("failed to set ANALOG_PAGE (ret: %d)\n", ret);
 		goto error;
 	}
 
 	data = 0x02;	/* Force Calbration */
-	ret = s3707_write(dev, ANALOG_COMMAND_REG, &data, 1);
+	ret = s3707_write(dev, ANALOG_COMMAND_REG, &data, sizeof(data));
 	if (ret < 0) {
-		TOUCH_E("ANALOG_COMMAND_REG write error\n");
+		TOUCH_E("ANALOG_COMMAND_REG write error (ret: %d)\n", ret);
 		goto error;
 	}
-
-	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0) {
-		TOUCH_E("s3707_set_page set error\n");
-		goto error;
-	}
-
-	return ret;
 
 error:
-	TOUCH_E("s3707_force_update error !!!\n");
-	s3707_set_page(dev, DEFAULT_PAGE);
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAULT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
+	}
 
 	return ret;
 }
@@ -631,84 +638,215 @@ static int s3707_get_product_id(struct device *dev)
 			d->ic_info.product_id, sizeof(d->ic_info.product_id));
 
 	if (ret < 0) {
-		TOUCH_I("%s - read error...\n", __func__);
+		TOUCH_E("PRODUCT_ID_REG read error (ret: %d)\n", ret);
 		return ret;
 	}
 
 	TOUCH_I("%s - IC_product_id: %s\n",
 			__func__, d->ic_info.product_id);
 
-	return 0;
+	return ret;
+}
+
+static int s3707_get_production_info(struct device *dev)
+{
+	struct s3707_data *d = to_s3707_data(dev);
+
+	int ret = 0;
+	int write_count = 0;
+	u8 buf = 0;
+	u16 i = 0;
+	u16 block_size = 0;
+	u8 offset[2] = {0};
+	u8 length[2] = {0};
+	u8 property[5] = {0};
+	u8 *curr_data = NULL;
+
+	TOUCH_TRACE();
+
+	ret = s3707_read(dev, FLASH_PROPERTY_REG, &property, 5);
+	if (ret < 0) {
+		TOUCH_E("failed to read flash property reg(ret: %d)\n", ret);
+		goto error;
+	}
+
+	block_size = (property[2] << 8) | property[1];
+	TOUCH_I("%s, property[1] 0x%x, property[2] 0x%x, block_size: 0x%x\n", __func__, property[1], property[2], block_size);
+
+	if (block_size > 0 && block_size < I2C_BUF_SIZE) {
+		curr_data = kzalloc(block_size, GFP_KERNEL);
+		if (!curr_data) {
+			TOUCH_E("failed to allocate curr_data\n");
+			ret = -ENOMEM;
+			goto error;
+		}
+	} else {
+		TOUCH_E("block size error (size: %d)\n", block_size);
+		ret = -EINVAL;
+		goto error;
+	}
+
+	memset(&(d->prd_info), 0, sizeof(struct s3707_prd_info));
+
+	for (i = 0; i <= PRD_BLOCK_MAX; i++) {
+		buf = 0x05;
+		ret = s3707_write(dev, PARTITION_ID_REG, &buf, sizeof(buf));
+		if (ret < 0) {
+			TOUCH_E("failed to write partition id reg(ret: %d)\n", ret);
+			goto error;
+		}
+
+		offset[0] = (u8)(i & 0x00FF);
+		offset[1] = (u8)((i & 0xFF00) >> 8);
+
+		ret = s3707_write(dev, BLOCK_OFFSET_REG, &offset, sizeof(offset));
+		if (ret < 0) {
+			TOUCH_E("failed to write block offset reg(ret: %d)\n", ret);
+			goto error;
+		}
+
+		length[0] = (u8)(block_size & 0x00FF);
+		length[1] = (u8)((block_size & 0xFF00) >> 8);
+		ret = s3707_write(dev, TRANSFER_LENGTH_REG, &length, sizeof(length));
+		if (ret < 0) {
+			TOUCH_E("failed to write transfer length reg(ret: %d)\n", ret);
+			goto error;
+		}
+
+		buf = 0x02;
+		ret = s3707_write(dev, PROGRAMING_CMD_REG, &buf, sizeof(buf));
+		if (ret < 0) {
+			TOUCH_E("failed to write programing command reg(ret: %d)\n", ret);
+			goto error;
+		}
+
+		touch_msleep(30);
+
+		ret = s3707_read(dev, PAYLOAD_REG, curr_data, block_size);
+		if (ret < 0) {
+			TOUCH_E("failed to read payload reg(ret: %d)\n", ret);
+			goto error;
+		}
+
+		if (curr_data[0] != 0) {
+			memcpy(&d->prd_info, &curr_data[0], sizeof(d->prd_info));
+			if (!strncmp(d->prd_info.product_id, "PLG661", 6))
+				write_count++;
+		} else {
+			if (i != 0)
+				break;
+			else
+				TOUCH_I("prd info no write (block num 0)\n");
+		}
+	}
+
+	if (write_count == 0) {
+		TOUCH_E("No write or Abnormal write Production info\n");
+		ret = -EINVAL;
+	}
+
+error:
+	kfree(curr_data);
+
+	return ret;
 }
 
 int s3707_ic_info(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
 
-	int ret;
+	int ret = 0;
+	char str[7] = {0};
 
 	TOUCH_TRACE();
 
 	if (atomic_read(&d->state.scan_pdt) == true) {
-		ret = s3707_page_description(dev);
 		s3707_fwu_init(dev);
+		ret = s3707_page_description(dev);
 		if (ret < 0) {
-			TOUCH_I("%s - page description failed\n", __func__);
-			return ret;
+			TOUCH_E("page description failed (ret: %d)\n", ret);
+			goto error;
 		}
+		s3707_get_production_info(dev);
 		SCAN_PDT(dev);
 		atomic_set(&d->state.scan_pdt, false);
 	}
 
 	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret) {
-		TOUCH_E("failed to set page %d (ret: %d)\n", 0, ret);
-		return ret;
+	if (ret < 0) {
+		TOUCH_E("failed to set DEFAULT_PAGE (ret: %d)\n", ret);
+		goto error;
 	}
 
 	ret = s3707_get_product_id(dev);
-	ret |= s3707_read(dev, FLASH_CONFIG_ID_REG,
-			d->ic_info.raws, sizeof(d->ic_info.raws));
-	ret |= s3707_read(dev, CUSTOMER_FAMILY_REG,
-			&(d->ic_info.family), sizeof(d->ic_info.family));
-	ret |= s3707_read(dev, FW_REVISION_REG,
-			&(d->ic_info.revision), sizeof(d->ic_info.revision));
-
 	if (ret < 0) {
-		TOUCH_I("%s - read error...\n", __func__);
+		TOUCH_E("failed to get product id (ret: %d)\n", ret);
 		atomic_set(&d->state.scan_pdt, true);
-		ret = s3707_page_description(dev);
-		atomic_set(&d->state.scan_pdt, false);
-		return ret;
+		goto error;
+	}
+
+	ret = s3707_read(dev, FLASH_CONFIG_ID_REG,
+			d->ic_info.raws, sizeof(d->ic_info.raws));
+	if (ret < 0) {
+		TOUCH_E("FLASH_CONFIG_ID_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_read(dev, CUSTOMER_FAMILY_REG,
+			&(d->ic_info.family), sizeof(d->ic_info.family));
+	if (ret < 0) {
+		TOUCH_E("CUSTOMER_FAMILY_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_read(dev, FW_REVISION_REG,
+			&(d->ic_info.revision), sizeof(d->ic_info.revision));
+	if (ret < 0) {
+		TOUCH_E("FW_REVISION_REG read error (ret: %d)\n", ret);
+		goto error;
 	}
 
 	d->ic_info.version.major = (d->ic_info.raws[3] & 0x80 ? 1 : 0);
 	d->ic_info.version.minor = (d->ic_info.raws[3] & 0x7F);
 
-	TOUCH_I("=======================\n");
-	TOUCH_I(" IC_Version = v%d.%02d\n", d->ic_info.version.major, d->ic_info.version.minor);
-	TOUCH_I(" Customer Family = %d\n", d->ic_info.family);
-	TOUCH_I(" F/W Revision = %d\n", d->ic_info.revision);
-	TOUCH_I(" Product ID = %s\n", d->ic_info.product_id);
-	TOUCH_I("=======================\n");
+	snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
+	TOUCH_I("============ Version Info ============\n");
+	TOUCH_I(" IC_Version : v%d.%02d, Product_ID : %s\n",
+			d->ic_info.version.major, d->ic_info.version.minor, str);
+	TOUCH_I(" Customer Family : %d, F/W Revision : %d\n",
+			d->ic_info.family, d->ic_info.revision);
+	TOUCH_I(" Chip_ver : %d, FPC_ver : %d, Sensor_ver : %d\n",
+			d->prd_info.chip_ver, d->prd_info.fpc_ver, d->prd_info.sensor_ver);
+	TOUCH_I(" Inspector_channel : %d\n", d->prd_info.inspect_channel);
+	TOUCH_I(" Time : 20%d/%d/%d - %dh %dm %ds\n",
+		d->prd_info.inspect_date[0], d->prd_info.inspect_date[1], d->prd_info.inspect_date[2],
+		d->prd_info.inspect_time[0], d->prd_info.inspect_time[1], d->prd_info.inspect_time[2]);
+	TOUCH_I("======================================\n");
 
-	return 0;
+error:
+	return ret;
 }
 
 static int s3707_set_configured(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	u8 dev_status = 0;
 	u8 dev_ctrl_data = 0;
 	int ret = 0;
 
 	ret = s3707_read(dev, DEVICE_STATUS_REG,
 				&dev_status, sizeof(dev_status));
-	ret |= s3707_read(dev, DEVICE_CONTROL_REG,
+	if (ret < 0) {
+		TOUCH_E("failed to read device status reg - ret : %d\n", ret);
+		goto error;
+	}
+
+	ret = s3707_read(dev, DEVICE_CONTROL_REG,
 				&dev_ctrl_data, sizeof(dev_ctrl_data));
 	if (ret < 0) {
-		TOUCH_E("failed to read device reg - ret : %d\n", ret);
-		return ret;
+		TOUCH_E("failed to read device control reg - ret : %d\n", ret);
+		goto error;
 	}
 
 	if (dev_status == 0x00) {
@@ -724,32 +862,39 @@ static int s3707_set_configured(struct device *dev)
 		dev_ctrl_data = 0x80;	/* Set Configured bit */
 		ret = s3707_write(dev, DEVICE_CONTROL_REG,
 					&dev_ctrl_data, sizeof(dev_ctrl_data));
-		ret |= s3707_read(dev, DEVICE_STATUS_REG,
+		if (ret < 0) {
+			TOUCH_E("failed to read device control reg - ret : %d\n", ret);
+			goto error;
+		}
+
+		ret = s3707_read(dev, DEVICE_STATUS_REG,
 					&dev_status, sizeof(dev_status));
 		if (ret < 0) {
-			TOUCH_E("failed to read/write device status - ret : %d\n", ret);
-			return ret;
+			TOUCH_E("failed to read device status reg - ret : %d\n\n", ret);
+			goto error;
 		}
 		TOUCH_I("%s - device_status bit cleared : 0x%x\n",
 				__func__, dev_status);
 	}
 	atomic_set(&d->state.config, IC_CONFIGURED_DONE);
-	return 0;
+
+error:
+	return ret;
 }
 
 static int s3707_sleep_control(struct device *dev, u8 mode)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
-	u8 val;
-	int ret;
+	u8 val = 0;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
 	ret = s3707_read(dev, DEVICE_CONTROL_REG, &val, sizeof(val));
 	if (ret < 0) {
 		TOUCH_E("failed to read device control reg - ret:%d\n", ret);
-		return ret;
+		goto error;
 	}
 
 	val &= 0xf8;	/* Clear No Sleep/Sleep Mode bit (3 bit) */
@@ -765,15 +910,18 @@ static int s3707_sleep_control(struct device *dev, u8 mode)
 	ret = s3707_write(dev, DEVICE_CONTROL_REG, &val, sizeof(val));
 	if (ret < 0) {
 		TOUCH_E("failed to write device control reg - ret:%d\n", ret);
-		return ret;
+		goto error;
 	}
 
 	TOUCH_I("%s - %s\n", __func__, mode ? "IC_DEEP_SLEEP" : "IC_NORMAL");
 
-	return 0;
+	touch_msleep(10);
+
+error:
+	return ret;
 }
 
-static int s3707_lpwg_debug(struct device *dev, int num)
+static int s3707_lpwg_debug(struct device *dev, int mode)
 {
 	struct s3707_data *d = to_s3707_data(dev);
 
@@ -782,29 +930,53 @@ static int s3707_lpwg_debug(struct device *dev, int num)
 	u8 buf = 0;
 	u8 i = 0;
 	u8 addr = 0;
-	u8 offset = num ? LPWG_MAX_BUFFER + 2 : 0;
+	u8 offset = (mode > LPWG_DOUBLE_TAP) ? LPWG_MAX_BUFFER + 2 : 0;
+	int ret = 0;
+	int ret_page = 0;
 
 	TOUCH_TRACE();
 
-	s3707_set_page(dev, LPWG_PAGE);
+	ret = s3707_set_page(dev, LPWG_PAGE);
+	if (ret < 0) {
+		TOUCH_E("failed to set LPWG_PAGE (ret: %d)\n", ret);
+		goto error;
+	}
 
-	s3707_read(dev, LPWG_TCI1_FAIL_COUNT_REG + offset, &count, sizeof(count));
-	s3707_read(dev, LPWG_TCI1_FAIL_INDEX_REG + offset, &index, sizeof(index));
+	ret = s3707_read(dev, LPWG_TCI1_FAIL_COUNT_REG + offset, &count, sizeof(count));
+	if (ret < 0) {
+		TOUCH_E("LPWG_TCI1_FAIL_COUNT_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_read(dev, LPWG_TCI1_FAIL_INDEX_REG + offset, &index, sizeof(index));
+	if (ret < 0) {
+		TOUCH_E("LPWG_TCI1_FAIL_INDEX_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
 
 	for (i = 1; i <= count; i++) {
 		addr = LPWG_TCI1_FAIL_BUFFER_REG + offset +
 			((index + LPWG_MAX_BUFFER - i) % LPWG_MAX_BUFFER);
-		s3707_read(dev, addr, &buf, sizeof(buf));
-		TOUCH_I("TCI(%d)-Fail[%d/%d] : %s\n", num, count - i + 1, count,
+		ret = s3707_read(dev, addr, &buf, sizeof(buf));
+		if (ret < 0) {
+			TOUCH_E("failed to read lpwg fail buffer (ret: %d)\n", ret);
+			goto error;
+		}
+		TOUCH_I("TCI(%d)-Fail[%d/%d] : %s\n", mode, count - i + 1, count,
 			(buf >= TCI_FAIL_NUM) ? tci_debug_str[0] : tci_debug_str[buf]);
 
 		if (i == LPWG_MAX_BUFFER)
 			break;
 	}
 
-	s3707_set_page(dev, DEFAULT_PAGE);
+error:
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
+	}
 
-	return 0;
+	return ret;
 }
 
 /*
@@ -824,6 +996,7 @@ static int s3707_lpwg_fail_control(struct device *dev, u16 value)
 	struct s3707_data *d = to_s3707_data(dev);
 	u8 buffer[2] = {0};
 	int ret = 0;
+	int ret_page = 0;
 
 	TOUCH_TRACE();
 
@@ -840,25 +1013,26 @@ static int s3707_lpwg_fail_control(struct device *dev, u16 value)
 
 	ret = s3707_write(dev, LPWG_FAIL_INT_ENABLE_REG, buffer, sizeof(buffer));
 	if (ret < 0) {
-		TOUCH_I("LPWG_FAIL_INT_ENABLE_REG write error\n");
+		TOUCH_E("LPWG_FAIL_INT_ENABLE_REG write error (ret: %d)\n", ret);
 		goto error;
 	} else {
 		TOUCH_I("LPWG_FAIL_INT_ENABLE_REG write success\n");
 	}
 
-	s3707_set_page(dev, DEFAULT_PAGE);
-
-	return 0;
-
 error:
-	TOUCH_E("%s - %d : LPWG fail interrupt control error\n", __func__, __LINE__);
-	s3707_set_page(dev, DEFAULT_PAGE);
-	return 0;
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
+	}
+
+	return ret;
 }
 
-static void s3707_debug_swipe(struct device *dev)
+static int s3707_debug_swipe(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int ret = 0;
 	u8 count = 0;
 	u8 buf[SWIPE_FAIL_BUFFER_SIZE] = {0};
@@ -876,7 +1050,7 @@ static void s3707_debug_swipe(struct device *dev)
 				|| d->swipe.info[SWIPE_D].debug_enable
 				|| d->swipe.info[SWIPE_L].debug_enable
 				|| d->swipe.info[SWIPE_R].debug_enable)) {
-		return;
+		return 0;
 	}
 
 	ret = s3707_set_page(dev, LPWG_PAGE);
@@ -899,7 +1073,7 @@ static void s3707_debug_swipe(struct device *dev)
 		goto exit;
 	}
 
-	/* read SWIPE_FAIL_BUFFER_REG(size: SWIPE_FAIL_BUFFER_REG)*/
+	/* read SWIPE_FAIL_BUFFER_REG(size: SWIPE_FAIL_BUFFER_REG) */
 	ret = s3707_read(dev, SWIPE_FAIL_BUFFER_REG, buf, sizeof(buf));
 	if (ret < 0) {
 		TOUCH_E("failed to read SWIPE_FAIL_BUFFER_REG (ret = %d)\n", ret);
@@ -919,22 +1093,24 @@ static void s3707_debug_swipe(struct device *dev)
 exit:
 	ret = s3707_set_page(dev, DEFAULT_PAGE);
 	if (ret < 0)
-		TOUCH_E("failed to read set DEFAULT_PAGE (ret = %d)\n", ret);
+		TOUCH_E("failed to set DEFAULT_PAGE (ret: %d)\n", ret);
+
+	return ret;
 }
 
 static int s3707_irq_enable(struct device *dev, bool enable)
 {
 	struct s3707_data *d = to_s3707_data(dev);
 
-	u8 val;
-	int ret;
+	u8 val = 0;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
 	ret = s3707_read(dev, INTERRUPT_ENABLE_REG, &val, sizeof(val));
 	if (ret < 0) {
 		TOUCH_E("failed to read interrupt enable - ret:%d\n", ret);
-		return ret;
+		goto error;
 	}
 
 	if (enable)
@@ -945,12 +1121,13 @@ static int s3707_irq_enable(struct device *dev, bool enable)
 	ret = s3707_write(dev, INTERRUPT_ENABLE_REG, &val, sizeof(val));
 	if (ret < 0) {
 		TOUCH_E("failed to write interrupt enable - ret:%d\n", ret);
-		return ret;
+		goto error;
 	}
 
 	TOUCH_I("write interrupt : enable:%d, val:%02X\n", enable, val);
 
-	return 0;
+error:
+	return ret;
 }
 
 int s3707_tci_report_enable(struct device *dev, bool enable)
@@ -963,31 +1140,29 @@ int s3707_tci_report_enable(struct device *dev, bool enable)
 	TOUCH_TRACE();
 
 	if (d->f12_reg.ctrl != NULL) {
-		s3707_irq_enable(dev, enable ? false : true);
-
 		ret = s3707_read(dev, FINGER_REPORT_REG, val, sizeof(val));
 		if (ret < 0) {
 			TOUCH_E("failed to read finger report enable - ret:%d\n", ret);
-			return ret;
+			goto error;
 		}
 
-		val[2] &= 0xfc;
-
-		if (enable || d->lpwg_abs.enable)
+		if (enable)
 			val[2] |= 0x2;
+		else
+			val[2] &= 0xfc;
 
 		ret = s3707_write(dev, FINGER_REPORT_REG, val, sizeof(val));
 		if (ret < 0) {
 			TOUCH_E("failed to write finger report enable - ret:%d\n", ret);
-			return ret;
+			goto error;
 		}
-
-		s3707_force_update(dev);
 	} else {
 		TOUCH_E("f12_reg.ctrl is not allocated\n");
 		atomic_set(&d->state.scan_pdt, true);
+		ret = -ENOMEM;
 	}
 
+error:
 	return ret;
 }
 
@@ -997,8 +1172,9 @@ static int s3707_tci_knock(struct device *dev)
 	struct s3707_data *d = to_s3707_data(dev);
 	struct tci_info *info;
 
-	u8 lpwg_data[7];
-	int ret;
+	u8 lpwg_data[7] = {0,};
+	int ret = 0;
+	int ret_page = 0;
 	u8 tci_reg[2] = {LPWG_TAPCOUNT_REG, LPWG_TAPCOUNT_REG2};
 	int i = 0;
 
@@ -1013,25 +1189,16 @@ static int s3707_tci_knock(struct device *dev)
 
 	ret = s3707_set_page(dev, LPWG_PAGE);
 	if (ret < 0) {
-		TOUCH_E("failed to set page to LPWG_PAGE\n");
-		return ret;
+		TOUCH_E("failed to set LPWG_PAGE (ret: %d)\n", ret);
+		goto error;
 	}
 
 	for (i = 0; i < 2; i++) {
 		if ((ts->tci.mode & (1 << i)) == 0x0) {
-
-			TOUCH_I("%s - TCI %s disable\n", __func__, i?"KNOCK-CODE":"KNOCK-ON  ");
-
 			lpwg_data[0] = 0;
 			s3707_write(dev, tci_reg[i], lpwg_data, sizeof(u8));
 		} else {
 			info = &ts->tci.info[i];
-
-			TOUCH_I("%s - TCI %s tap_count(%d), intertap_time(%d/%d) touch_slop(%d), tap_distance(%d), intr_delay(%d)\n",
-					__func__, i ? "KNOCK-CODE":"KNOCK-ON  ",
-					info->tap_count, info->min_intertap,
-					info->max_intertap, info->touch_slop,
-					info->tap_distance, info->intr_delay);
 
 			lpwg_data[0] = ((info->tap_count << 3) | 1);
 			lpwg_data[1] = info->min_intertap;
@@ -1043,10 +1210,11 @@ static int s3707_tci_knock(struct device *dev)
 		}
 	}
 
-	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0) {
-		TOUCH_E("failed to set page to DEFAULT_PAGE\n");
-		return ret;
+error:
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
 	}
 
 	return ret;
@@ -1056,6 +1224,8 @@ static int s3707_lpwg_control(struct device *dev, int mode, int tci_control)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 
+	int ret = 0;
+
 	TOUCH_TRACE();
 
 	TOUCH_I("%s - mode = %d\n", __func__, mode);
@@ -1063,28 +1233,38 @@ static int s3707_lpwg_control(struct device *dev, int mode, int tci_control)
 	switch (mode) {
 	case LPWG_NONE:
 		ts->tci.mode = 0x00;
-		s3707_tci_knock(dev);
+		ret = s3707_tci_knock(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to set LPWG_NONE (ret: %d)\n", ret);
+			goto error;
+		}
 		break;
 
 	case LPWG_DOUBLE_TAP:
 		ts->tci.mode = 0x01;
-		s3707_tci_knock(dev);
+		ret = s3707_tci_knock(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to set LPWG_DOUBLE_TAP (ret: %d)\n", ret);
+			goto error;
+		}
 		break;
 
 	case LPWG_PASSWORD:
 		ts->tci.mode = 0x03;
-		s3707_tci_knock(dev);
+		ret = s3707_tci_knock(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to set LPWG_PASSWORD (ret: %d)\n", ret);
+			goto error;
+		}
 		break;
 
 	case LPWG_PASSWORD_ONLY:
 		ts->tci.mode = 0x02;
-		s3707_tci_knock(dev);
-		break;
-
-	case LPWG_PARTIAL:
-		ts->tci.mode = 0x01;
-		s3707_tci_knock(dev);
-		//TBD: LPWG_PARTIAL_REG SETTING
+		ret = s3707_tci_knock(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to set LPWG_PASSWORD_ONLY (ret: %d)\n", ret);
+			goto error;
+		}
 		break;
 
 	default:
@@ -1093,24 +1273,34 @@ static int s3707_lpwg_control(struct device *dev, int mode, int tci_control)
 	}
 
 	if (tci_control == TCI_REPORT_ENABLE) {
-		TOUCH_I("%s - TCI_REPORT_ENABLE\n", __func__);
-		s3707_tci_report_enable(dev, true);
+		ret = s3707_tci_report_enable(dev, true);
+		if (ret < 0) {
+			TOUCH_E("failed to set TCI_REPORT_ENABLE (ret: %d)\n", ret);
+			goto error;
+		}
+		TOUCH_I("%s: TCI_REPORT_ENABLE\n", __func__);
 	} else if (tci_control == TCI_REPORT_DISABLE) {
-		TOUCH_I("%s - TCI_REPORT_DISABLE\n", __func__);
-		s3707_tci_report_enable(dev, false);
+		ret = s3707_tci_report_enable(dev, false);
+		if (ret < 0) {
+			TOUCH_E("failed to set TCI_REPORT_DISABLE (ret: %d)\n", ret);
+			goto error;
+		}
+		TOUCH_I("%s: TCI_REPORT_DISABLE\n", __func__);
 	} else if (tci_control == TCI_REPORT_NOT_SET) {
 		TOUCH_I("%s - TCI_REPORT_NOT_SET\n", __func__);
 	} else {
 		TOUCH_E("Unknown tci control case = %d\n", tci_control);
 	}
 
-	return 0;
+error:
+	return ret;
 }
 
 static int s3707_swipe_enable(struct device *dev, u8 enable)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int i = 0;
 	int ret = 0;
 	int enable_bit = 1;
@@ -1165,33 +1355,33 @@ static int s3707_swipe_enable(struct device *dev, u8 enable)
 				d->swipe_buf.data[i].area.y2 = (s16)ts->caps.max_y;
 
 			d->swipe_buf.data[i].start_area.x1 =
-					d->swipe.info[i].start_area.x1 - d->swipe.info[i].border_area.x1;
+					d->swipe.info[i].start_area.x1 - d->swipe.info[i].start_border_area.x1;
 			if (d->swipe_buf.data[i].start_area.x1 < 0)
 				d->swipe_buf.data[i].start_area.x1 = 0;
 
 			d->swipe_buf.data[i].start_area.y1 =
-					d->swipe.info[i].start_area.y1 - d->swipe.info[i].border_area.y1;
+					d->swipe.info[i].start_area.y1 - d->swipe.info[i].start_border_area.y1;
 			if (d->swipe_buf.data[i].start_area.y1 < 0)
 				d->swipe_buf.data[i].start_area.y1 = 0;
 
 			d->swipe_buf.data[i].start_area.x2 =
-					d->swipe.info[i].start_area.x2 + d->swipe.info[i].border_area.x2;
+					d->swipe.info[i].start_area.x2 + d->swipe.info[i].start_border_area.x2;
 			if (d->swipe_buf.data[i].start_area.x2 > (s16)ts->caps.max_x)
 				d->swipe_buf.data[i].start_area.x2 = (s16)ts->caps.max_x;
 
 			d->swipe_buf.data[i].start_area.y2 =
-					d->swipe.info[i].start_area.y2 + d->swipe.info[i].border_area.y2;
+					d->swipe.info[i].start_area.y2 + d->swipe.info[i].start_border_area.y2;
 			if (d->swipe_buf.data[i].start_area.y2 > (s16)ts->caps.max_y)
 				d->swipe_buf.data[i].start_area.y2 = (s16)ts->caps.max_y;
 
-			if (d->swipe.mode | (enable_bit << i))
+			if (d->swipe.mode & (enable_bit << i))
 				d->swipe.info[i].debug_enable = true;
 		}
 
 		ret = s3707_write(dev, SWIPE_ENABLE_REG, (u8 *)&d->swipe_buf,
 				sizeof(u8) + sizeof(*(d->swipe_buf.data)) * 4);
 		if (ret < 0)
-			TOUCH_E("failed to set SWIPE_ENABLE_REG\n");
+			TOUCH_E("failed to set SWIPE_ENABLE_REG (ret: %d)\n", ret);
 	} else {
 		for (i = 0; i < SWIPE_NUM; i++)
 			d->swipe.info[i].debug_enable = false;
@@ -1200,7 +1390,7 @@ static int s3707_swipe_enable(struct device *dev, u8 enable)
 		ret = s3707_write(dev, SWIPE_ENABLE_REG, (u8 *)&d->swipe_buf,
 				sizeof(u8) + sizeof(*(d->swipe_buf.data)) * 4);
 		if (ret < 0)
-			TOUCH_E("failed to clear SWIPE_ENABLE_REG\n");
+			TOUCH_E("failed to clear SWIPE_ENABLE_REG (ret: %d)\n", ret);
 	}
 
 	return ret;
@@ -1212,6 +1402,7 @@ static int s3707_lpwg_abs_enable(struct device *dev, bool enable)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int ret_page = 0;
 
 	TOUCH_TRACE();
 
@@ -1220,7 +1411,7 @@ static int s3707_lpwg_abs_enable(struct device *dev, bool enable)
 
 	ret = s3707_set_page(dev, LPWG_PAGE);
 	if (ret < 0) {
-		TOUCH_E("failed to set page to LPWG_PAGE\n");
+		TOUCH_E("failed to set LPWG_PAGE (ret: %d)\n", ret);
 		return ret;
 	}
 
@@ -1270,27 +1461,22 @@ static int s3707_lpwg_abs_enable(struct device *dev, bool enable)
 	touch_report_all_event(ts);
 	ts->tcount = 0;
 
-	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0) {
-		TOUCH_E("failed to set page to DEFAULT_PAGE\n");
-		return ret;
-	}
-
-	if (atomic_read(&ts->state.fb) == FB_SUSPEND) {
-		if (enable)
-			s3707_tci_report_enable(dev, false);
-		else
-			s3707_tci_report_enable(dev, true);
-	}
-
 error:
-	return s3707_set_page(dev, DEFAULT_PAGE);
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
+	}
+
+	return ret;
 }
 
 static int s3707_lpwg_mode(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
+	int ret = 0;
 
 	TOUCH_TRACE();
 
@@ -1307,47 +1493,85 @@ static int s3707_lpwg_mode(struct device *dev)
 	if (atomic_read(&ts->state.fb) == FB_SUSPEND) {
 		if (ts->role.mfts_lpwg) {
 			/* Forced lpwg set in minios suspend mode */
-			s3707_lpwg_control(dev, LPWG_DOUBLE_TAP, TCI_REPORT_ENABLE);
-			s3707_swipe_enable(dev, true);
+			ret = s3707_lpwg_control(dev, LPWG_DOUBLE_TAP, TCI_REPORT_ENABLE);
+			if (ret < 0) {
+				TOUCH_E("failed to set lpwg control (ret: %d)\n", ret);
+				goto error;
+			}
+
+			ret = s3707_swipe_enable(dev, d->swipe.mode);
+			if (ret < 0) {
+				TOUCH_E("failed to set swipe enable (ret: %d)\n", ret);
+				goto error;
+			}
+
 			return 0;
 		}
 
 		if (ts->lpwg.screen) {
-			TOUCH_I("%s %d line - skip lpwg\n", __func__, __LINE__);
-			s3707_lpwg_debug(dev, TCI_1);
-			s3707_lpwg_debug(dev, TCI_2);
-			s3707_debug_swipe(dev);
+			TOUCH_I("Skip lpwg_mode\n");
+			ret = s3707_lpwg_debug(dev, ts->lpwg.mode);
+			if (ret < 0) {
+				TOUCH_E("failed to print lpwg debug (ret: %d)\n", ret);
+				goto error;
+			}
+
+			ret = s3707_debug_swipe(dev);
+			if (ret < 0) {
+				TOUCH_E("failed to print swipe debug (ret: %d)\n", ret);
+				goto error;
+			}
 		} else if (ts->lpwg.sensor == PROX_NEAR) {
-			TOUCH_I("%s %d line - deep sleep by prox\n", __func__, __LINE__);
-			if (atomic_read(&ts->state.sleep) == IC_NORMAL)
-				s3707_sleep_control(dev, IC_DEEP_SLEEP);
+			TOUCH_I("suspend sensor == PROX_NEAR\n");
+			ret = s3707_sleep_control(dev, IC_DEEP_SLEEP);
+			if (ret < 0) {
+				TOUCH_E("failed to set IC_DEEP_SLEEP (ret: %d)\n", ret);
+				goto error;
+			}
+		} else if (ts->lpwg.qcover == HALL_NEAR) {
+			TOUCH_I("Qcover == HALL_NEAR\n");
+			ret = s3707_sleep_control(dev, IC_DEEP_SLEEP);
+			if (ret < 0) {
+				TOUCH_E("failed to set IC_DEEP_SLEEP (ret: %d)\n", ret);
+				goto error;
+			}
 		} else {
 			/* Knock On Case */
-			TOUCH_I("%s %d line - knock mode %d, screen %d, proxy %d, qcover %d\n",
-				__func__, __LINE__,
-				ts->lpwg.mode, ts->lpwg.screen,
-				ts->lpwg.sensor, ts->lpwg.qcover);
-
 			if (d->lpwg_fail_reason)
 				s3707_lpwg_fail_control(dev, 0xFFFF);
 
-			if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
-				/* IC_DEEP_SLEEP -> LPWG case */
-				if (ts->lpwg.mode > LPWG_NONE)
-					s3707_sleep_control(dev, IC_NORMAL);
-
-				return 0;
-			}
-
 			if (ts->lpwg.mode == LPWG_NONE && !d->swipe.mode) {
-				if (atomic_read(&ts->state.sleep) == IC_NORMAL)
-					s3707_sleep_control(dev, IC_DEEP_SLEEP);
+				ret = s3707_sleep_control(dev, IC_DEEP_SLEEP);
+				if (ret < 0) {
+					TOUCH_E("failed to set IC_DEEP_SLEEP (ret: %d)\n", ret);
+					goto error;
+				}
 			} else {
-				s3707_lpwg_control(dev, ts->lpwg.mode, TCI_REPORT_ENABLE);
-				s3707_swipe_enable(dev, d->swipe.mode);
+				ret = s3707_sleep_control(dev, IC_NORMAL);
+				if (ret < 0) {
+					TOUCH_E("failed to set IC_NORMAL (ret: %d)\n", ret);
+					goto error;
+				}
+
+				ret = s3707_lpwg_control(dev, ts->lpwg.mode, TCI_REPORT_ENABLE);
+				if (ret < 0) {
+					TOUCH_E("failed to set lpwg control (ret: %d)\n", ret);
+					goto error;
+				}
+
+				ret = s3707_swipe_enable(dev, d->swipe.mode);
+				if (ret < 0) {
+					TOUCH_E("failed to set swipe enable (ret: %d)\n", ret);
+					goto error;
+				}
+
 				if (d->lpwg_abs.enable) {
 					TOUCH_I("%s: enable lpwg_abs\n", __func__);
-					s3707_lpwg_abs_enable(dev, d->lpwg_abs.enable);
+					ret = s3707_lpwg_abs_enable(dev, d->lpwg_abs.enable);
+					if (ret < 0) {
+						TOUCH_E("failed to set lpwg abs enable (ret: %d)\n", ret);
+						goto error;
+					}
 				}
 			}
 		}
@@ -1358,22 +1582,51 @@ static int s3707_lpwg_mode(struct device *dev)
 	touch_report_all_event(ts);
 	if (ts->lpwg.screen) {
 		/* normal */
-		TOUCH_I("%s %d line - normal\n", __func__, __LINE__);
-		s3707_lpwg_control(dev, LPWG_NONE, TCI_REPORT_DISABLE);
-		s3707_sleep_control(dev, IC_NORMAL);
+		TOUCH_I("resume ts->lpwg.screen on\n");
+		ret = s3707_sleep_control(dev, IC_NORMAL);
+		if (ret < 0) {
+			TOUCH_E("failed to set IC_NORMAL (ret: %d)\n", ret);
+			goto error;
+		}
+
+		ret = s3707_lpwg_control(dev, LPWG_NONE, TCI_REPORT_DISABLE);
+		if (ret < 0) {
+			TOUCH_E("failed to set lpwg control (ret: %d)\n", ret);
+			goto error;
+		}
 	} else if (ts->lpwg.sensor == PROX_NEAR) {
 		/* wake up */
-		TOUCH_I("%s %d line - wake up on screen off and prox\n", __func__, __LINE__);
-		if (atomic_read(&ts->state.sleep) == IC_NORMAL)
-			s3707_sleep_control(dev, IC_DEEP_SLEEP);
+		TOUCH_I("resume ts->lpwg.sensor == PROX_NEAR\n");
+		ret = s3707_sleep_control(dev, IC_DEEP_SLEEP);
+		if (ret < 0) {
+			TOUCH_E("failed to set IC_DEEP_SLEEP (ret: %d)\n", ret);
+			goto error;
+		}
+	} else if (ts->lpwg.qcover == HALL_NEAR) {
+		TOUCH_I("resume ts->lpwg.qcover == HALL_NEAR\n");
+		ret = s3707_sleep_control(dev, IC_DEEP_SLEEP);
+		if (ret < 0) {
+			TOUCH_E("failed to set IC_DEEP_SLEEP (ret: %d)\n", ret);
+			goto error;
+		}
 	} else {
 		/* partial */
-		TOUCH_I("%s %d line - partial is not ready\n", __func__, __LINE__);
-		s3707_lpwg_control(dev, LPWG_PARTIAL, TCI_REPORT_NOT_SET);
-		s3707_swipe_enable(dev, true);
+		TOUCH_I("resume Partial - Do not set\n");
+		ret = s3707_lpwg_control(dev, ts->lpwg.mode, TCI_REPORT_ENABLE);
+		if (ret < 0) {
+			TOUCH_E("failed to set lpwg control (ret: %d)\n", ret);
+			goto error;
+		}
+
+		ret = s3707_swipe_enable(dev, d->swipe.mode);
+		if (ret < 0) {
+			TOUCH_E("failed to set swipe enable (ret: %d)\n", ret);
+			goto error;
+		}
 	}
 
-	return 0;
+error:
+	return ret;
 }
 
 static void s3707_init_tci_info(struct device *dev)
@@ -1421,6 +1674,10 @@ static void s3707_init_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_U].border_area.y1 = 0;
 	d->swipe.info[SWIPE_U].border_area.x2 = 0;
 	d->swipe.info[SWIPE_U].border_area.y2 = 0;
+	d->swipe.info[SWIPE_U].start_border_area.x1 = 0;
+	d->swipe.info[SWIPE_U].start_border_area.y1 = 0;
+	d->swipe.info[SWIPE_U].start_border_area.x2 = 0;
+	d->swipe.info[SWIPE_U].start_border_area.y2 = 0;
 	d->swipe.info[SWIPE_U].debug_enable = false;
 
 	d->swipe.info[SWIPE_D].data.distance = 15;
@@ -1442,6 +1699,10 @@ static void s3707_init_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_D].border_area.y1 = 30;
 	d->swipe.info[SWIPE_D].border_area.x2 = 30;
 	d->swipe.info[SWIPE_D].border_area.y2 = 30;
+	d->swipe.info[SWIPE_D].start_border_area.x1 = 30;
+	d->swipe.info[SWIPE_D].start_border_area.y1 = 30;
+	d->swipe.info[SWIPE_D].start_border_area.x2 = 30;
+	d->swipe.info[SWIPE_D].start_border_area.y2 = 30;
 	d->swipe.info[SWIPE_D].debug_enable = false;
 
 	d->swipe.info[SWIPE_L].data.distance = 7;
@@ -1459,10 +1720,14 @@ static void s3707_init_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_L].start_area.y1 = 0;
 	d->swipe.info[SWIPE_L].start_area.x2 = 1439;
 	d->swipe.info[SWIPE_L].start_area.y2 = 300;
-	d->swipe.info[SWIPE_L].border_area.x1 = 100;
+	d->swipe.info[SWIPE_L].border_area.x1 = 200;
 	d->swipe.info[SWIPE_L].border_area.y1 = 100;
-	d->swipe.info[SWIPE_L].border_area.x2 = 100;
-	d->swipe.info[SWIPE_L].border_area.y2 = 100;
+	d->swipe.info[SWIPE_L].border_area.x2 = 200;
+	d->swipe.info[SWIPE_L].border_area.y2 = 400;
+	d->swipe.info[SWIPE_L].start_border_area.x1 = 100;
+	d->swipe.info[SWIPE_L].start_border_area.y1 = 100;
+	d->swipe.info[SWIPE_L].start_border_area.x2 = 100;
+	d->swipe.info[SWIPE_L].start_border_area.y2 = 200;
 	d->swipe.info[SWIPE_L].debug_enable = false;
 
 	d->swipe.info[SWIPE_R].data.distance = 7;
@@ -1480,10 +1745,14 @@ static void s3707_init_swipe_info(struct device *dev)
 	d->swipe.info[SWIPE_R].start_area.y1 = 0;
 	d->swipe.info[SWIPE_R].start_area.x2 = 1439;
 	d->swipe.info[SWIPE_R].start_area.y2 = 300;
-	d->swipe.info[SWIPE_R].border_area.x1 = 100;
+	d->swipe.info[SWIPE_R].border_area.x1 = 200;
 	d->swipe.info[SWIPE_R].border_area.y1 = 100;
-	d->swipe.info[SWIPE_R].border_area.x2 = 100;
-	d->swipe.info[SWIPE_R].border_area.y2 = 100;
+	d->swipe.info[SWIPE_R].border_area.x2 = 200;
+	d->swipe.info[SWIPE_R].border_area.y2 = 400;
+	d->swipe.info[SWIPE_R].start_border_area.x1 = 100;
+	d->swipe.info[SWIPE_R].start_border_area.y1 = 100;
+	d->swipe.info[SWIPE_R].start_border_area.x2 = 100;
+	d->swipe.info[SWIPE_R].start_border_area.y2 = 200;
 	d->swipe.info[SWIPE_R].debug_enable = false;
 
 	d->swipe.mode = 0;
@@ -1512,7 +1781,7 @@ static void s3707_print_swipe_info(struct device *dev)
 
 	for (i = 0; i < SWIPE_NUM; i++) {
 		TOUCH_I("%s: %s %s\n", __func__, swipe_str[i],
-				(d->swipe.mode | (enable_bit << i)) ? "Enable" : "Disable");
+				(d->swipe.mode & (enable_bit << i)) ? "Enable" : "Disable");
 		TOUCH_I("%s: active_area(%d,%d)(%d,%d)\n", __func__,
 				d->swipe.info[i].area.x1,
 				d->swipe.info[i].area.y1,
@@ -1523,7 +1792,6 @@ static void s3707_print_swipe_info(struct device *dev)
 				d->swipe.info[i].start_area.y1,
 				d->swipe.info[i].start_area.x2,
 				d->swipe.info[i].start_area.y2);
-
 	}
 }
 
@@ -1565,8 +1833,9 @@ static int s3707_remove(struct device *dev)
 static int s3707_get_status(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	u8 status[2] = {0, };
-	int ret;
+	int ret = 0;
 	u8 retry = 0;
 
 	TOUCH_TRACE();
@@ -1611,6 +1880,7 @@ static int s3707_irq_clear(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
 	u8 status[2] = {0, };
 	int ret = 0;
 	u8 retry = 0;
@@ -1640,30 +1910,56 @@ static int s3707_noise_log(struct device *dev)
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
 
+	int ret = 0;
+	int ret_page = 0;
 	u8 buffer[2] = {0};
 	u8 buf_lsb = 0, buf_msb = 0, cns = 0;
 	u16 im = 0, cid_im = 0, freq_scan_im = 0;
 
 	TOUCH_TRACE();
 
-	s3707_set_page(dev, ANALOG_PAGE);
-	s3707_read(dev, INTERFERENCE_METRIC_LSB_REG, &buf_lsb, sizeof(buf_lsb));
-	s3707_read(dev, INTERFERENCE_METRIC_MSB_REG, &buf_msb, sizeof(buf_msb));
+	ret = s3707_set_page(dev, ANALOG_PAGE);
+	if (ret < 0) {
+		TOUCH_E("failed to set ANALOG_PAGE (ret: %d)\n", ret);
+		goto error;
+	}
 
+	ret = s3707_read(dev, INTERFERENCE_METRIC_LSB_REG, &buf_lsb, sizeof(buf_lsb));
+	if (ret < 0) {
+		TOUCH_E("INTERFERENCE_METRIC_LSB_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_read(dev, INTERFERENCE_METRIC_MSB_REG, &buf_msb, sizeof(buf_msb));
+	if (ret < 0) {
+		TOUCH_E("INTERFERENCE_METRIC_MSB_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
 	im = (buf_msb << 8) | buf_lsb;
 	d->noise.im_sum += im;
 
-	s3707_read(dev, CURRENT_NOISE_STATUS_REG, &cns, sizeof(cns));
+	ret = s3707_read(dev, CURRENT_NOISE_STATUS_REG, &cns, sizeof(cns));
+	if (ret < 0) {
+		TOUCH_E("CURRENT_NOISE_STATUS_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
 	d->noise.cns_sum += cns;
 
-	s3707_read(dev, CID_IM_REG, buffer, sizeof(buffer));
+	ret = s3707_read(dev, CID_IM_REG, buffer, sizeof(buffer));
+	if (ret < 0) {
+		TOUCH_E("CID_IM_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
 	cid_im = (buffer[1] << 8) | buffer[0];
 	d->noise.cid_im_sum += cid_im;
 
-	s3707_read(dev, FREQ_SCAN_IM_REG, buffer, sizeof(buffer));
+	ret = s3707_read(dev, FREQ_SCAN_IM_REG, buffer, sizeof(buffer));
+	if (ret < 0) {
+		TOUCH_E("FREQ_SCAN_IM_REG read error (ret: %d)\n", ret);
+		goto error;
+	}
 	freq_scan_im = (buffer[1] << 8) | buffer[0];
 	d->noise.freq_scan_im_sum += freq_scan_im;
-	s3707_set_page(dev, DEFAULT_PAGE);
 
 	d->noise.cnt++;
 
@@ -1701,7 +1997,14 @@ static int s3707_noise_log(struct device *dev)
 			d->noise.cid_im_avg = d->noise.freq_scan_im_avg = 0;
 	}
 
-	return 0;
+error:
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
+	}
+
+	return ret;
 }
 
 static int s3707_get_finger_count(struct device *dev)
@@ -1711,15 +2014,14 @@ static int s3707_get_finger_count(struct device *dev)
 	u8 touch_cnt = d->max_num_of_fingers;
 	u8 buf[2] = {0,};
 	u16 touch_attention = 0;
-	int ret;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
 	if (d->f12_reg.data != NULL) {
 		ret = s3707_read(dev, FINGER_REPORT_DATA, (u8 *) buf, sizeof(buf));
 		if (ret < 0) {
-			TOUCH_E("%s, %d : get touch_attention data failed\n",
-					__func__, __LINE__);
+			TOUCH_E("get touch_attention data failed (ret: %d)\n", ret);
 			return ret;
 		}
 
@@ -1738,11 +2040,12 @@ static int s3707_get_finger_count(struct device *dev)
 
 	return touch_cnt;
 }
-/* [bringup] */
+
 static int s3707_check_status(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
 	struct touch_core_data *ts = to_touch_core(dev);
+
 	bool checking_log_flag = false;
 	const int checking_log_size = 1024;
 	char *checking_log = NULL;
@@ -1779,7 +2082,7 @@ static int s3707_check_status(struct device *dev)
 			}
 		}
 
-	    /* ESD Status Check */
+		/* ESD Status Check */
 		if ((d->info.device_status) == 0x45 || (d->info.device_status) == 0x89 ||
 			(d->info.device_status) == 0x81 || (d->info.device_status) == 0x09) {
 			if (atomic_read(&d->state.esd_recovery) == ESD_RECOVERY_DONE) {
@@ -1805,7 +2108,7 @@ static int s3707_check_status(struct device *dev)
 			checking_log_flag = true;
 			length += snprintf(checking_log + length,
 					checking_log_size - length,
-					"[0x01]Device reset occured last time ");
+					"[0x01]Device reset occurred last time ");
 		}
 		if (status == INVALID_CONF_MASK_STATUS) {
 			checking_log_flag = true;
@@ -1879,10 +2182,7 @@ static int s3707_check_status(struct device *dev)
 		}
 	}
 
-	if (checking_log != NULL)
-		kfree(checking_log);
-
-	return ret;
+	kfree(checking_log);
 
 error:
 	return ret;
@@ -1892,6 +2192,7 @@ static void s3707_lpwg_abs_filter(struct device *dev, u8 touch_id)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
 	u16 old_y = ts->tdata[touch_id].y;
 	u16 new_y = old_y - d->lpwg_abs.offset_y;
 	u16 old_mask = ts->old_mask;
@@ -1927,6 +2228,7 @@ static int s3707_irq_abs_data(struct device *dev)
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
 	struct touch_data *tdata;
+
 	u8 finger_index = 0;
 	int ret = 0;
 	int i = 0;
@@ -1935,13 +2237,25 @@ static int s3707_irq_abs_data(struct device *dev)
 
 	ts->new_mask = 0;
 
-	if (d->info.touch_cnt == 0)
+	if (d->info.touch_cnt == 0) {
+		if (d->is_palm) {
+			TOUCH_I("Palm Released\n");
+			d->is_palm = false;
+		}
 		goto end;
+	}
+
+	if (d->f12_reg.data == NULL) {
+		TOUCH_E("f12_reg.data is not allocated\n");
+		atomic_set(&d->state.scan_pdt, true);
+		ret = -ENOMEM;
+		goto end;
+	}
 
 	ret = s3707_read(dev, FINGER_DATA_REG,
 			d->info.data, sizeof(*(d->info.data)) * d->info.touch_cnt);
 	if (ret < 0) {
-		TOUCH_E("failed to read finger data\n");
+		TOUCH_E("failed to read finger data (ret: %d)\n", ret);
 		goto end;
 	}
 
@@ -1949,7 +2263,7 @@ static int s3707_irq_abs_data(struct device *dev)
 			d->info.angle_data,
 			sizeof(*(d->info.angle_data)) * d->info.touch_cnt);
 	if (ret < 0) {
-		TOUCH_E("failed to read finger angle data\n");
+		TOUCH_E("failed to read finger angle data (ret: %d)\n", ret);
 		goto end;
 	}
 
@@ -1957,12 +2271,11 @@ static int s3707_irq_abs_data(struct device *dev)
 			d->info.width_data,
 			sizeof(*(d->info.width_data)) * d->info.touch_cnt);
 	if (ret < 0) {
-		TOUCH_E("failed to read finger width data\n");
+		TOUCH_E("failed to read finger width data (ret: %d)\n", ret);
 		goto end;
 	}
 
 	for (i = 0; i < d->info.touch_cnt; i++) {
-
 		if (d->info.data[i].type == F12_NO_OBJECT_STATUS)
 			continue;
 
@@ -1970,7 +2283,17 @@ static int s3707_irq_abs_data(struct device *dev)
 			TOUCH_D(ABS, "id : %d, type : %d\n",
 					i, d->info.data[i].type);
 
-		if (d->info.data[i].type == F12_FINGER_STATUS || d->info.data[i].type == F12_PALM_STATUS) {
+		if (d->info.data[i].type == F12_PALM_STATUS && !d->is_palm) {
+			ts->is_cancel = 1;
+			TOUCH_I("Palm Detected\n");
+			d->is_palm = true;
+			ts->tcount = 0;
+			ts->intr_status = TOUCH_IRQ_FINGER;
+
+			return ret;
+		}
+
+		if (d->info.data[i].type == F12_FINGER_STATUS) {
 			ts->new_mask |= (1 << i);
 			tdata = ts->tdata + i;
 
@@ -2004,7 +2327,11 @@ static int s3707_irq_abs_data(struct device *dev)
 
 	if (d->noise.check_noise == NOISE_ENABLE
 			|| d->noise.noise_log == NOISE_ENABLE) {
-		s3707_noise_log(dev);
+		if (ts->old_mask != ts->new_mask) {
+			ret = s3707_noise_log(dev);
+			if (ret < 0)
+				TOUCH_E("failed to print noise log (ret: %d)\n", ret);
+		}
 	}
 
 end:
@@ -2017,15 +2344,18 @@ end:
 static int s3707_irq_abs(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int ret = 0;
 
 	TOUCH_TRACE();
 
-	d->info.touch_cnt = s3707_get_finger_count(dev);
-	if (d->info.touch_cnt < 0) {
-		TOUCH_E("failed to read touch_cnt\n");
+	ret = s3707_get_finger_count(dev);
+	if (ret < 0) {
+		TOUCH_E("failed to read touch_cnt (ret: %d)\n", ret);
 		return ret;
 	}
+
+	d->info.touch_cnt = ret;
 
 	return s3707_irq_abs_data(dev);
 }
@@ -2034,9 +2364,10 @@ static int s3707_tci_getdata(struct device *dev, int count)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
-	u32 buffer[12];
+
+	u32 buffer[12] = {0,};
 	int i = 0;
-	int ret;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
@@ -2045,11 +2376,12 @@ static int s3707_tci_getdata(struct device *dev, int count)
 	if (!count)
 		return 0;
 
-	ret = s3707_read(dev, LPWG_DATA_REG,
-					 buffer, sizeof(u32) * count);
-
-	if (ret < 0)
+	ret = s3707_read(dev, LPWG_DATA_REG, buffer, sizeof(u32) * count);
+	if (ret < 0) {
+		TOUCH_E("LPWG_DATA_REG read error (ret: %d)\n", ret);
+		ts->intr_status = TOUCH_IRQ_ERROR;
 		return ret;
+	}
 
 	for (i = 0; i < count; i++) {
 		ts->lpwg.code[i].x = buffer[i] & 0xffff;
@@ -2078,7 +2410,8 @@ static int s3707_swipe_getdata(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
-	u8 buffer[11];
+
+	u8 buffer[11] = {0,};
 	int ret = 0;
 	char str[8] = {0};
 	u16 start_x = 0;
@@ -2091,7 +2424,7 @@ static int s3707_swipe_getdata(struct device *dev)
 
 	ret = s3707_read(dev, SWIPE_START_X_REG, buffer, sizeof(buffer));
 	if (ret < 0) {
-		TOUCH_E("failed to read swipe registers\n");
+		TOUCH_E("failed to read swipe registers (ret: %d)\n", ret);
 		ts->intr_status = TOUCH_IRQ_ERROR;
 		return ret;
 	}
@@ -2114,10 +2447,22 @@ static int s3707_swipe_getdata(struct device *dev)
 	case SWIPE_L:
 		snprintf(str, sizeof(str), "LEFT");
 		ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
+		if (d->lpwg_abs.enable) {
+			TOUCH_I("%s: lpwg_abs is enabled - skip SWIPE_L gesture\n",
+					__func__);
+			ts->intr_status = TOUCH_IRQ_NONE;
+			return ret;
+		}
 		break;
 	case SWIPE_R:
 		snprintf(str, sizeof(str), "RIGHT");
 		ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
+		if (d->lpwg_abs.enable) {
+			TOUCH_I("%s: lpwg_abs is enabled - skip SWIPE_R gesture\n",
+					__func__);
+			ts->intr_status = TOUCH_IRQ_NONE;
+			return ret;
+		}
 		break;
 	default:
 		TOUCH_E("unknown swipe direction(0x%02X)\n", buffer[0]);
@@ -2142,38 +2487,55 @@ static int s3707_irq_lpwg(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
-	u8 status;
-	u8 buffer;
-	u8 fail_buffer;
-	char reason[NUM_OF_EACH_FINGER_DATA];
-	int ret;
+
+	u8 status = 0;
+	u8 buffer = 0;
+	u8 fail_buffer = 0;
+	char reason[NUM_OF_EACH_FINGER_DATA] = {0,};
+	int ret = 0;
+	int ret_page = 0;
 
 	TOUCH_TRACE();
 
 	ret = s3707_set_page(dev, LPWG_PAGE);
-
 	if (ret < 0) {
-		s3707_set_page(dev, DEFAULT_PAGE);
-		return ret;
+		TOUCH_E("failed to set LPWG_PAGE (ret: %d)\n", ret);
+		goto error;
 	}
 
-	ret = s3707_read(dev, LPWG_STATUS_REG, &status, 1);
+	ret = s3707_read(dev, LPWG_STATUS_REG, &status, sizeof(status));
 	if (ret < 0) {
-		s3707_set_page(dev, DEFAULT_PAGE);
-		return ret;
+		TOUCH_E("LPWG_STATUS_REG read error (ret: %d)\n", ret);
+		goto error;
 	}
 
 	if (status & LPWG_STATUS_DOUBLETAP) {
-		s3707_tci_getdata(dev, ts->tci.info[TCI_1].tap_count);
+		ret = s3707_tci_getdata(dev, ts->tci.info[TCI_1].tap_count);
+		if (ret < 0) {
+			TOUCH_E("failed to DOUBLE_TAP get data (reg: %d)\n", ret);
+			goto error;
+		}
 		ts->intr_status = TOUCH_IRQ_KNOCK;
 	} else if (status & LPWG_STATUS_PASSWORD) {
-		s3707_tci_getdata(dev, ts->tci.info[TCI_2].tap_count);
+		ret = s3707_tci_getdata(dev, ts->tci.info[TCI_2].tap_count);
+		if (ret < 0) {
+			TOUCH_E("failed to PASSWORD get data (reg: %d)\n", ret);
+			goto error;
+		}
 		ts->intr_status = TOUCH_IRQ_PASSWD;
 	} else if (status & LPWG_STATUS_SWIPE) {
-		s3707_swipe_getdata(dev);
+		ret = s3707_swipe_getdata(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to SWIPE getdata (reg: %d)\n", ret);
+			goto error;
+		}
 	} else if (d->lpwg_fail_reason) {
 		TOUCH_I("LPWG Fail Detected\n");
-		s3707_read(dev, LPWG_FAIL_REASON_REALTIME_INT, &fail_buffer, 1);
+		ret = s3707_read(dev, LPWG_FAIL_REASON_REALTIME_INT, &fail_buffer, sizeof(fail_buffer));
+		if (ret < 0) {
+			TOUCH_E("failed to read lpwg fail reason realtime int reg (ret: %d)\n", ret);
+			goto error;
+		}
 		reason[0] = fail_buffer & 0x0F;
 		reason[1] = (fail_buffer & 0xF0) >> 4;
 		if (reason != NULL) {
@@ -2184,7 +2546,12 @@ static int s3707_irq_lpwg(struct device *dev)
 		}
 	} else {
 		/* Overtab */
-		s3707_read(dev, LPWG_OVER_TAPCOUNT, &buffer, 1);
+		ret = s3707_read(dev, LPWG_OVER_TAPCOUNT, &buffer, sizeof(buffer));
+		if (ret < 0) {
+			TOUCH_E("LPWG_OVER_TAPCOUNT_REG read error (ret: %d)\n", ret);
+			goto error;
+		}
+
 		if (buffer > ts->tci.info[TCI_2].tap_count) {
 			s3707_tci_getdata(dev, ts->tci.info[TCI_2].tap_count + 1);
 			ts->intr_status = TOUCH_IRQ_PASSWD;
@@ -2192,12 +2559,20 @@ static int s3707_irq_lpwg(struct device *dev)
 		}
 	}
 
-	return s3707_set_page(dev, DEFAULT_PAGE);
+error:
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+		ret = ret_page;
+	}
+
+	return ret;
 }
 
 static int s3707_irq_handler(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int ret = 0;
 
 	TOUCH_TRACE();
@@ -2207,8 +2582,7 @@ static int s3707_irq_handler(struct device *dev)
 	ret = s3707_get_status(dev);
 	if (ret < 0) {
 		TOUCH_E("s3707_get_status failed, ret : %d\n", ret);
-		pm_qos_update_request(&d->pm_qos_req, PM_QOS_DEFAULT_VALUE);
-		return ret;
+		goto error;
 	}
 
 	ret = s3707_check_status(dev);
@@ -2221,6 +2595,7 @@ static int s3707_irq_handler(struct device *dev)
 		TOUCH_E("s3707_check_status failed, ret = %d\n", ret);
 	}
 
+error:
 	pm_qos_update_request(&d->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 
 	return ret;
@@ -2254,12 +2629,12 @@ static int s3707_rmidev_init(struct device *dev)
 		ret = rmidev_fhandler.exp_fn->init(dev);
 
 		if (ret < 0)
-			TOUCH_I("%s : Failed to init rmi_dev settings\n", __func__);
+			TOUCH_E("failed to rmi_dev init (ret: %d)\n", ret);
 		else
 			rmidev_fhandler.initialized = true;
 	}
 
-	return 0;
+	return ret;
 }
 
 #if defined(CONFIG_DRM) && defined(CONFIG_FB)
@@ -2280,15 +2655,6 @@ static int s3707_drm_notifier_callback(struct notifier_block *self,
 		d->blank_status.curr = *blank;
 		TOUCH_I("%s: msm_drm_blank - prev[%d] curr[%d]\n",
 				__func__, d->blank_status.prev, d->blank_status.curr);
-
-		/* [Bringup] drm notifier cannot notify U2, U2 unblank. use touch_notifier
-		if (d->blank_status.curr == MSM_DRM_BLANK_UNBLANK) {
-			touch_resume(ts->dev);
-		} else {
-			if (d->blank_status.prev == MSM_DRM_BLANK_UNBLANK)
-				touch_suspend(ts->dev);
-		}
-		*/
 	}
 
 	return 0;
@@ -2352,12 +2718,12 @@ static int s3707_fwu_init(struct device *dev)
 		ret = fwu_fhandler.exp_fn->init(dev);
 
 		if (ret < 0)
-			TOUCH_E("Failed to fwu init\n");
+			TOUCH_E("Failed to fwu init (ret: %d)\n", ret);
 		else
 			fwu_fhandler.initialized = true;
 	}
 
-	return 0;
+	return ret;
 }
 
 int s3707_reset(struct device *dev, int mode)
@@ -2365,7 +2731,6 @@ int s3707_reset(struct device *dev, int mode)
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
 
-	TOUCH_I("%s : HW Reset(%d)\n", __func__, mode);
 	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
 	if (mode == SW_RESET) {
 		s3707_reset_ctrl(dev, SW_RESET);
@@ -2425,7 +2790,7 @@ static int s3707_power(struct device *dev, int ctrl)
 
 	default:
 		TOUCH_I("%s, Unknown Power ctrl!!\n", __func__);
-
+		break;
 	}
 
 	return 0;
@@ -2435,6 +2800,7 @@ static int s3707_suspend(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int mfts_mode = 0;
 	int ret = 0;
 
@@ -2450,10 +2816,10 @@ static int s3707_suspend(struct device *dev)
 		TOUCH_I("%s : touch_suspend - MFTS\n", __func__);
 		touch_interrupt_control(dev, INTERRUPT_DISABLE);
 		s3707_power(dev, POWER_OFF);
-		return 0;
-	} else {
-		TOUCH_I("%s : touch_suspend start\n", __func__);
+		return -EPERM;
 	}
+
+	TOUCH_I("%s : touch_suspend start\n", __func__);
 
 	if (atomic_read(&d->state.power) == POWER_OFF) {
 		TOUCH_I("%s: d->state.power is POWER_OFF\n", __func__);
@@ -2461,7 +2827,11 @@ static int s3707_suspend(struct device *dev)
 	}
 
 	if (atomic_read(&d->state.init) == IC_INIT_DONE) {
-		s3707_lpwg_mode(dev);
+		ret = s3707_lpwg_mode(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to set lpwg mode (ret: %d)\n", ret);
+			return ret;
+		}
 	} else {
 		TOUCH_I("%s: d->state.init is IC_INIT_NEED\n", __func__);
 		ret = 1;
@@ -2476,19 +2846,24 @@ static int s3707_resume(struct device *dev)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int mfts_mode = 0;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
 	if (d->lpwg_abs.enable) {
 		TOUCH_I("%s: disable lpwg_abs\n", __func__);
 		d->lpwg_abs.enable = false;
-		s3707_lpwg_abs_enable(dev, d->lpwg_abs.enable);
+		ret = s3707_lpwg_abs_enable(dev, d->lpwg_abs.enable);
+		if (ret < 0) {
+			TOUCH_E("failed to set lpwg_abs disable (ret: %d)\n", ret);
+			return ret;
+		}
 	}
 
 	if (touch_boot_mode() == TOUCH_CHARGER_MODE) {
-		TOUCH_I("%s : Charger mode!!!\n", __func__);
-		/* Deep Sleep */
-		s3707_sleep_control(dev, 1);
+		TOUCH_I("%s: Charger mode!!!\n", __func__);
+		touch_interrupt_control(dev, INTERRUPT_DISABLE);
+		s3707_power(dev, POWER_OFF);
 		return -EPERM;
 	}
 
@@ -2496,7 +2871,15 @@ static int s3707_resume(struct device *dev)
 	if ((mfts_mode >= MINIOS_MFTS_FOLDER) && !ts->role.mfts_lpwg) {
 		s3707_power(dev, POWER_ON);
 		touch_msleep(ts->caps.hw_reset_delay);
-		s3707_ic_info(dev);
+		atomic_set(&d->state.scan_pdt, true);
+		ret = s3707_ic_info(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to get ic_info in mfts mode (ret: %d)\n", ret);
+			return ret;
+		}
+	} else {
+		touch_interrupt_control(dev, INTERRUPT_DISABLE);
+		s3707_reset_ctrl(dev, SW_RESET);
 	}
 
 	if (atomic_read(&d->state.power) == POWER_OFF) {
@@ -2509,7 +2892,7 @@ static int s3707_resume(struct device *dev)
 		return 0;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int s3707_lpwg(struct device *dev, u32 code, void *param)
@@ -2517,6 +2900,7 @@ static int s3707_lpwg(struct device *dev, u32 code, void *param)
 	struct touch_core_data *ts = to_touch_core(dev);
 
 	int *value = (int *)param;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
@@ -2548,7 +2932,11 @@ static int s3707_lpwg(struct device *dev, u32 code, void *param)
 			ts->lpwg.screen ? "ON" : "OFF",
 			ts->lpwg.sensor ? "FAR" : "NEAR",
 			ts->lpwg.qcover ? "CLOSE" : "OPEN");
-		s3707_lpwg_mode(dev);
+		ret = s3707_lpwg_mode(dev);
+		if (ret < 0) {
+			TOUCH_E("failed to set lpwg mode (ret: %d)\n", ret);
+			return ret;
+		}
 		break;
 	}
 
@@ -2567,7 +2955,7 @@ static int s3707_bin_fw_version(struct device *dev)
 
 	rc = request_firmware(&fw, ts->def_fwpath[0], dev);
 	if (rc != 0) {
-		TOUCH_E("[%s] request_firmware() failed %d\n", __func__, rc);
+		TOUCH_E("request_firmware() failed %d\n", rc);
 		return -EIO;
 	}
 
@@ -2641,12 +3029,11 @@ static int s3707_get_cmd_version(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 	int offset = 0;
 	int ret = 0;
+	char str[7] = {0};
 
 	TOUCH_TRACE();
 
 	ret = s3707_ic_info(dev);
-	ret += s3707_bin_fw_version(dev);
-
 	if (ret < 0) {
 		offset += snprintf(buf + offset, PAGE_SIZE, "-1\n");
 		offset += snprintf(buf + offset, PAGE_SIZE - offset,
@@ -2654,8 +3041,32 @@ static int s3707_get_cmd_version(struct device *dev, char *buf)
 		return offset;
 	}
 
-	offset = snprintf(buf + offset, PAGE_SIZE - offset,
+	ret = s3707_bin_fw_version(dev);
+	if (ret < 0) {
+		offset += snprintf(buf + offset, PAGE_SIZE, "-1\n");
+		offset += snprintf(buf + offset, PAGE_SIZE - offset,
+				"Read bin_fw_version\n");
+		return offset;
+	}
+
+	snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
+
+	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+			"===== Production Info =====\n");
+	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+			"Product_ID : %s\n", str);
+	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+			"Chip_ver: %d, FPC_ver: %d, Sensor_ver: %d\n",
+			d->prd_info.chip_ver, d->prd_info.fpc_ver, d->prd_info.sensor_ver);
+	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+			"Inspector_channel : %d\n", d->prd_info.inspect_channel);
+	offset += snprintf(buf + offset, PAGE_SIZE - offset, "Time : 20%d/%d/%d - %dh %dm %ds\n",
+			d->prd_info.inspect_date[0], d->prd_info.inspect_date[1], d->prd_info.inspect_date[2],
+			d->prd_info.inspect_time[0], d->prd_info.inspect_time[1], d->prd_info.inspect_time[2]);
+
+	offset += snprintf(buf + offset, PAGE_SIZE - offset,
 				"\n======== Firmware Info ========\n");
+
 	/* IC_Info */
 	offset += snprintf(buf + offset, PAGE_SIZE - offset,
 			"ic_version RAW = %02X %02X %02X %02X\n",
@@ -2690,12 +3101,6 @@ static int s3707_get_cmd_version(struct device *dev, char *buf)
 	else
 		offset += snprintf(buf + offset, PAGE_SIZE - offset,
 			"Touch product ID read fail\n");
-	if (d->ic_info.bootloader_type)
-		offset += snprintf(buf + offset, PAGE_SIZE - offset,
-			"Bootloader Type : Optimized\n");
-	else
-		offset += snprintf(buf + offset, PAGE_SIZE - offset,
-			"Bootloader Type : Non-Optimized\n");
 
 	return offset;
 }
@@ -2778,11 +3183,14 @@ static int s3707_check_mode(struct device *dev)
 	return ret;
 }
 
-static void s3707_connect(struct device *dev)
+static int s3707_connect(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int charger_state = atomic_read(&ts->state.connect);
+	u8 buffer = 0;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
@@ -2808,44 +3216,107 @@ static void s3707_connect(struct device *dev)
 	TOUCH_I("%s: write charger_state = 0x%02X\n", __func__, atomic_read(&d->state.charger));
 	if (atomic_read(&ts->state.pm) > DEV_PM_RESUME) {
 		TOUCH_I("DEV_PM_SUSPEND - Don't try I2C\n");
-		return;
+		return 0;
 	}
 
-	// TBD : implement if needed for S3707
+	ret = s3707_read(dev, DEVICE_CONTROL_REG, &buffer, sizeof(buffer));
+	if (ret < 0) {
+		TOUCH_E("failed to read device control reg - ret:%d\n", ret);
+		goto error;
+	}
+
+	if (atomic_read(&d->state.charger))
+		buffer |= DEVICE_CONTROL_CHARGER_BIT;
+	else
+		buffer &= (~DEVICE_CONTROL_CHARGER_BIT);
+
+	ret = s3707_write(dev, DEVICE_CONTROL_REG, &buffer, sizeof(buffer));
+	if (ret < 0)
+		TOUCH_E("failed to write device control reg - ret:%d\n", ret);
+
+error:
+	return ret;
 }
 
 static int s3707_usb_status(struct device *dev, u32 mode)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 
+	int ret = 0;
+
 	TOUCH_TRACE();
+
 	TOUCH_I("TA Type: %d\n", atomic_read(&ts->state.connect));
-	s3707_connect(dev);
-	return 0;
+
+	ret = s3707_connect(dev);
+	if (ret < 0)
+		TOUCH_E("failed to set usb status (ret: %d)\n", ret);
+
+	return ret;
+}
+
+static int s3707_ime_status(struct device *dev)
+{
+	struct touch_core_data *ts = to_touch_core(dev);
+	struct s3707_data *d = to_s3707_data(dev);
+
+	u8 buffer[20] = {0,};
+	int ret = 0;
+	int ime_state = atomic_read(&ts->state.ime);
+
+	TOUCH_TRACE();
+
+	TOUCH_I("ime_status: %d\n", ime_state);
+
+	if (d->f12_reg.ctrl == NULL) {
+		TOUCH_E("f12_reg.ctrl is not allocated\n");
+		atomic_set(&d->state.scan_pdt, true);
+		return -ENOMEM;
+	}
+
+	ret = s3707_read(dev, NOISE_FLOOR_REG, &buffer, sizeof(buffer));
+	if (ret < 0) {
+		TOUCH_E("failed to read noise floor reg - ret:%d\n", ret);
+		goto error;
+	}
+
+	if (ime_state) {
+		buffer[3] = IME_DRUMMING_ACCELERATION_THRESHOLD;
+		buffer[4] = IME_MIN_DRUMMING_DISTANCE;
+	} else {
+		buffer[3] = DRUMMING_ACCELERATION_THRESHOLD;
+		buffer[4] = MIN_DRUMMING_DISTANCE;
+	}
+
+	ret = s3707_write(dev, NOISE_FLOOR_REG, buffer, sizeof(buffer));
+	if (ret < 0)
+		TOUCH_E("failed to write noise floor reg - ret:%d\n", ret);
+
+error:
+	return ret;
 }
 
 static int s3707_debug_option(struct device *dev, u32 *data)
 {
 	u32 chg_mask = data[0];
 	u32 enable = data[1];
+	int ret = 0;
 
 	TOUCH_TRACE();
 
 	switch (chg_mask) {
-	case DEBUG_OPTION_0:
-		TOUCH_I("DEBUG_OPTION_0 : Palm filter %s\n", enable ? "Enable" : "Disable");
-		break;
 	case DEBUG_OPTION_4:
-		TOUCH_I("TA Simulator mode %s\n",
-			enable ? "Enable" : "Disable");
-		s3707_connect(dev);
+		TOUCH_I("TA Simulator mode %s\n", enable ? "Enable" : "Disable");
+		ret = s3707_connect(dev);
+		if (ret < 0)
+			TOUCH_E("failed to set charger bit (ret: %d)\n", ret);
 		break;
 	default:
 		TOUCH_E("Not supported debug option\n");
 		break;
 	}
 
-	return 0;
+	return ret;
 }
 
 static int s3707_notify(struct device *dev, ulong event, void *data)
@@ -2857,7 +3328,7 @@ static int s3707_notify(struct device *dev, ulong event, void *data)
 
 	TOUCH_TRACE();
 
-	TOUCH_I("%s event=0x%x", __func__, (unsigned int)event);
+	TOUCH_D(TRACE, "%s event=0x%x", __func__, (unsigned int)event);
 
 	switch (event) {
 	case NOTIFY_TOUCH_RESET:
@@ -2871,16 +3342,33 @@ static int s3707_notify(struct device *dev, ulong event, void *data)
 		else
 			ret = 0;
 		break;
+	case NOTIFY_CONNECTION:
+		TOUCH_I("%s: NOTIFY_CONNECTION!\n", __func__);
+		ret = s3707_usb_status(dev, *(u32 *)data);
+		if (ret < 0)
+			TOUCH_E("failed to set usb status (ret: %d)\n", ret);
+		break;
+	case NOTIFY_WIRELEES:
+		TOUCH_I("%s: NOTIFY_WIRELEES!\n", __func__);
+		/* To-Do Wireless charger */
+		break;
+	case NOTIFY_IME_STATE:
+		TOUCH_I("%s: NOTIFY_IME_STATE!\n", __func__);
+		ret = s3707_ime_status(dev);
+		if (ret < 0)
+			TOUCH_E("failed to set ime status (ret: %d)\n", ret);
+		break;
+	case NOTIFY_CALL_STATE:
+		TOUCH_I("%s: NOTIFY_CALL_STATE!\n", __func__);
+		break;
 	case NOTIFY_DEBUG_OPTION:
 		TOUCH_I("NOTIFY_DEBUG_OPTION!\n");
 		ret = s3707_debug_option(dev, (u32 *)data);
-		break;
-	case NOTIFY_CONNECTION:
-		TOUCH_I("NOTIFY_CONNECTION!\n");
-		ret = s3707_usb_status(dev, *(u32 *)data);
+		if (ret < 0)
+			TOUCH_E("failed to set debug_option (ret: %d)\n", ret);
 		break;
 	default:
-		TOUCH_E("unknown event\n");
+		TOUCH_E("%lu is not supported\n", event);
 		break;
 	}
 
@@ -2912,6 +3400,8 @@ static ssize_t store_reg_ctrl(struct device *dev,
 	u32 reg = 0;
 	int offset = 0;
 	u32 value = 0;
+	int ret = 0;
+	int ret_page = 0;
 
 	TOUCH_TRACE();
 
@@ -2925,13 +3415,33 @@ static ssize_t store_reg_ctrl(struct device *dev,
 	}
 
 	mutex_lock(&ts->lock);
-	s3707_set_page(dev, page);
+	ret = s3707_set_page(dev, page);
+	if (ret < 0) {
+		TOUCH_E("failed to set page (ret: %d)\n", ret);
+		goto error;
+	}
+
 	if (!strcmp(command, "write")) {
-		s3707_read(dev, reg, buffer, offset + 1);
+		ret = s3707_read(dev, reg, buffer, offset + 1);
+		if (ret < 0) {
+			TOUCH_E("reg read error (ret: %d)\n", ret);
+			goto error;
+		}
+
 		buffer[offset] = (u8)value;
-		s3707_write(dev, reg, buffer, offset + 1);
+
+		ret = s3707_write(dev, reg, buffer, offset + 1);
+		if (ret < 0) {
+			TOUCH_E("reg write error (ret: %d)\n", ret);
+			goto error;
+		}
 	} else if (!strcmp(command, "read")) {
-		s3707_read(dev, reg, buffer, offset + 1);
+		ret = s3707_read(dev, reg, buffer, offset + 1);
+		if (ret < 0) {
+			TOUCH_E("reg read error (ret: %d)\n", ret);
+			goto error;
+		}
+
 		TOUCH_I("page[%d] reg[%x] offset[%d] = 0x%x\n",
 				page, reg, offset, buffer[offset]);
 	} else {
@@ -2939,7 +3449,12 @@ static ssize_t store_reg_ctrl(struct device *dev,
 		TOUCH_E("Write page reg offset value\n");
 		TOUCH_E("Read page reg offset\n");
 	}
-	s3707_set_page(dev, DEFAULT_PAGE);
+
+error:
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0)
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+
 	mutex_unlock(&ts->lock);
 	return count;
 }
@@ -3048,6 +3563,7 @@ static ssize_t store_noise_log(struct device *dev,
 static ssize_t store_reset_ctrl(struct device *dev, const char *buf, size_t count)
 {
 	int value = 0;
+	int ret = 0;
 
 	TOUCH_TRACE();
 
@@ -3056,7 +3572,11 @@ static ssize_t store_reset_ctrl(struct device *dev, const char *buf, size_t coun
 
 	touch_interrupt_control(dev, INTERRUPT_DISABLE);
 	s3707_reset_ctrl(dev, value);
-	s3707_init(dev);
+
+	ret = s3707_init(dev);
+	if (ret < 0)
+		TOUCH_E("failed to init (ret: %d)\n", ret);
+
 	touch_interrupt_control(dev, INTERRUPT_ENABLE);
 	return count;
 }
@@ -3097,6 +3617,7 @@ static ssize_t store_lpwg_fail_reason(struct device *dev, const char *buf, size_
 static ssize_t show_swipe_enable(struct device *dev, char *buf)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int value = 0;
 	u8 mask = SWIPE_UP_BIT;
 	int ret = 0;
@@ -3118,6 +3639,7 @@ static ssize_t store_swipe_enable(struct device *dev,
 		const char *buf, size_t count)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int value = 0;
 	u8 mask = SWIPE_UP_BIT;
 
@@ -3144,8 +3666,9 @@ static ssize_t store_swipe_enable(struct device *dev,
 static ssize_t show_swipe_tool(struct device *dev, char *buf)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+
 	int value = 0;
-	u8 mask = SWIPE_DOWN_BIT | SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT;
+	u8 mask = SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT;
 	int ret = 0;
 
 	TOUCH_TRACE();
@@ -3166,6 +3689,8 @@ static ssize_t store_swipe_tool(struct device *dev,
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
+	int ret = 0;
 	int enable = 0;
 	int offset_y = 0;
 	int start_x = 0;
@@ -3174,7 +3699,7 @@ static ssize_t store_swipe_tool(struct device *dev,
 	int height = 0;
 	int end_x = 0;
 	int end_y = 0;
-	u32 mask = SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT;
+	u8 mask = SWIPE_LEFT_BIT | SWIPE_RIGHT_BIT;
 
 	TOUCH_TRACE();
 
@@ -3219,7 +3744,10 @@ static ssize_t store_swipe_tool(struct device *dev,
 	}
 
 	mutex_lock(&ts->lock);
-	s3707_swipe_enable(dev, d->swipe.mode);
+	ret = s3707_swipe_enable(dev, d->swipe.mode);
+	if (ret < 0)
+		TOUCH_E("failed to set swipe enable (ret: %d)\n", ret);
+
 	mutex_unlock(&ts->lock);
 
 	return count;
@@ -3245,6 +3773,8 @@ static ssize_t store_lpwg_abs(struct device *dev,
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
+	int ret = 0;
 	int enable = 0;
 	int offset_y = 0;
 	int start_x = 0;
@@ -3283,7 +3813,10 @@ static ssize_t store_lpwg_abs(struct device *dev,
 	d->lpwg_abs.enable = (bool)enable;
 
 	mutex_lock(&ts->lock);
-	s3707_lpwg_abs_enable(dev, d->lpwg_abs.enable);
+	ret = s3707_lpwg_abs_enable(dev, d->lpwg_abs.enable);
+	if (ret < 0)
+		TOUCH_E("failed to set lpwg_abs enable (ret: %d)\n", ret);
+
 	mutex_unlock(&ts->lock);
 
 	return count;
@@ -3295,39 +3828,45 @@ static ssize_t show_grip_suppression(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int ret_page = 0;
+	int offset = 0;
 	u8 buffer = 0;
-	u8 enable = 0;
+	int enable = 0;
 
 	TOUCH_TRACE();
 
 	mutex_lock(&ts->lock);
 	ret = s3707_set_page(dev, LPWG_PAGE);
 	if (ret < 0) {
-		TOUCH_E("failed to read set LPWG_PAGE (ret = %d)\n", ret);
+		TOUCH_E("failed to set LPWG_PAGE (ret = %d)\n", ret);
+		enable = -EINVAL;
 		goto error;
 	}
 
 	ret = s3707_read(dev, GRIP_SUPPRESSION_CTRL_REG, &buffer, sizeof(buffer));
 	if (ret < 0) {
 		TOUCH_E("failed to read grip suppression control reg - ret:%d\n", ret);
+		enable = -EINVAL;
 		goto error;
 	}
 
 	enable = buffer & 0x01;
 
-	ret += snprintf(buf, PAGE_SIZE, "grip suppression %s\n",
-			enable ? "enable" : "disable");
 	TOUCH_I("%s: grip suppression %s\n", __func__,
 			enable ? "enable" : "disable");
 
 error:
-	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0)
-		TOUCH_E("failed to read set DEFAULT_PAGE (ret = %d)\n", ret);
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0) {
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
+		enable = -EINVAL;
+	}
 
 	mutex_unlock(&ts->lock);
 
-	return ret;
+	offset += snprintf(buf + offset, PAGE_SIZE - offset, "%d\n", enable);
+
+	return offset;
 }
 
 static ssize_t store_grip_suppression(struct device *dev,
@@ -3337,6 +3876,7 @@ static ssize_t store_grip_suppression(struct device *dev,
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int ret_page = 0;
 	int value = 0;
 	u8 buffer = 0;
 
@@ -3344,14 +3884,14 @@ static ssize_t store_grip_suppression(struct device *dev,
 		return count;
 
 	if (value < 0 || value > 1) {
-		TOUCH_E("%s: invalid value(%d), use only 0 and 1\n", __func__, value);
+		TOUCH_E("invalid value(%d), use only 0 and 1\n", value);
 		return count;
 	}
 
 	mutex_lock(&ts->lock);
 	ret = s3707_set_page(dev, LPWG_PAGE);
 	if (ret < 0) {
-		TOUCH_E("failed to read set LPWG_PAGE (ret = %d)\n", ret);
+		TOUCH_E("failed to set LPWG_PAGE (ret = %d)\n", ret);
 		goto error;
 	}
 
@@ -3376,15 +3916,35 @@ static ssize_t store_grip_suppression(struct device *dev,
 			value ? "enable" : "disable");
 
 error:
-	ret = s3707_set_page(dev, DEFAULT_PAGE);
-	if (ret < 0)
-		TOUCH_E("failed to read set DEFAULT_PAGE (ret = %d)\n", ret);
+	ret_page = s3707_set_page(dev, DEFAULT_PAGE);
+	if (ret_page < 0)
+		TOUCH_E("failed to set DEFAUT_PAGE (ret: %d)\n", ret_page);
 
 	mutex_unlock(&ts->lock);
 
 	return count;
 }
 
+static ssize_t show_gpio_pin(struct device *dev, char *buf)
+{
+	struct touch_core_data *ts = to_touch_core(dev);
+	int reset_pin = 0;
+	int int_pin = 0;
+	int ret = 0;
+
+	TOUCH_TRACE();
+
+	reset_pin = gpio_get_value(ts->reset_pin);
+	int_pin = gpio_get_value(ts->int_pin);
+
+	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			"reset_pin = %d , int_pin = %d\n",
+			reset_pin, int_pin);
+	TOUCH_I("%s: reset_pin = %d , int_pin = %d\n",
+			__func__, reset_pin, int_pin);
+
+	return ret;
+}
 
 static TOUCH_ATTR(reg_ctrl, NULL, store_reg_ctrl);
 static TOUCH_ATTR(ts_noise, show_check_noise, store_check_noise);
@@ -3395,6 +3955,7 @@ static TOUCH_ATTR(swipe_enable, show_swipe_enable, store_swipe_enable);
 static TOUCH_ATTR(swipe_tool, show_swipe_tool, store_swipe_tool);
 static TOUCH_ATTR(lpwg_abs, show_lpwg_abs, store_lpwg_abs);
 static TOUCH_ATTR(grip_suppression, show_grip_suppression, store_grip_suppression);
+static TOUCH_ATTR(gpio_pin, show_gpio_pin, NULL);
 
 static struct attribute *s3707_attribute_list[] = {
 	&touch_attr_reg_ctrl.attr,
@@ -3406,6 +3967,7 @@ static struct attribute *s3707_attribute_list[] = {
 	&touch_attr_swipe_tool.attr,
 	&touch_attr_lpwg_abs.attr,
 	&touch_attr_grip_suppression.attr,
+	&touch_attr_gpio_pin.attr,
 	NULL,
 };
 
@@ -3416,6 +3978,7 @@ static const struct attribute_group s3707_attribute_group = {
 static int s3707_register_sysfs(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
+
 	int ret = 0;
 
 	TOUCH_TRACE();
@@ -3466,6 +4029,7 @@ static int s3707_fw_compare(struct device *dev, const struct firmware *fw)
 	struct s3707_data *d = to_s3707_data(dev);
 	struct s3707_version *device = &d->ic_info.version;
 	struct s3707_version *binary = NULL;
+
 	int update = 0;
 
 	TOUCH_TRACE();
@@ -3475,7 +4039,6 @@ static int s3707_fw_compare(struct device *dev, const struct firmware *fw)
 	d->ic_info.img_version.major = (d->ic_info.img_raws[3] & 0x80 ? 1 : 0);
 	d->ic_info.img_version.minor = (d->ic_info.img_raws[3] & 0x7F);
 	binary = &d->ic_info.img_version;
-	d->ic_info.bootloader_type = ((fw->data[0x06] & 0x08) ? 1 : 0);
 
 	if (ts->force_fwup) {
 		update = 1;
@@ -3488,12 +4051,10 @@ static int s3707_fw_compare(struct device *dev, const struct firmware *fw)
 			update = 1;
 	}
 
-	TOUCH_I("%s : binary[%d.%02d.%d] device[%d.%02d.%d] -> update: %d, force: %d\n",
+	TOUCH_I("%s: binary[%d.%02d.%d] device[%d.%02d.%d] -> update: %d, force: %d\n",
 			__func__, binary->major, binary->minor, binary->build,
 			device->major, device->minor, device->build,
 			update, ts->force_fwup);
-	TOUCH_I("%s : fw bootloader_type = %s",
-			__func__, d->ic_info.bootloader_type ? "Optimized" : "Non-Optimized");
 
 	return update;
 }
@@ -3501,6 +4062,7 @@ static int s3707_upgrade(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct s3707_data *d = to_s3707_data(dev);
+
 	const struct firmware *fw = NULL;
 	char fwpath[256] = {0};
 	int ret = 0;
@@ -3512,7 +4074,7 @@ static int s3707_upgrade(struct device *dev)
 		return 0;
 	}
 
-	if (atomic_read(&d->state.init) == IC_INIT_NEED) {
+	if ((ts->force_fwup == 0) && (atomic_read(&d->state.init) == IC_INIT_NEED)) {
 		TOUCH_I("%s: d.init is IC_INIT_NEED\n", __func__);
 		return -EPERM;
 	}
@@ -3564,10 +4126,9 @@ static int s3707_upgrade(struct device *dev)
 
 	if (s3707_fw_compare(dev, fw) == 1) {
 		atomic_set(&d->state.scan_pdt, true);
-		s3707_irq_enable(dev, false);
 		ret = synaptics_fw_updater(fw->data);
 		if (ret < 0) {
-			TOUCH_E("Firmware Upgrade failed\n");
+			TOUCH_E("Firmware Upgrade failed (ret: %d)\n", ret);
 			release_firmware(fw);
 			goto error;
 		}
@@ -3577,8 +4138,6 @@ static int s3707_upgrade(struct device *dev)
 		goto error;
 	}
 
-	s3707_reset_ctrl(dev, HW_RESET);
-	s3707_set_configured(dev);
 	release_firmware(fw);
 
 error:
@@ -3598,6 +4157,7 @@ int s3707_init(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
 	struct touch_core_data *ts = to_touch_core(dev);
+
 	int ret = 0;
 
 	TOUCH_TRACE();
@@ -3625,35 +4185,74 @@ int s3707_init(struct device *dev)
 
 	ret = s3707_ic_info(dev);
 	if (ret < 0) {
-		TOUCH_E("Failed to get ic info\n");
+		TOUCH_E("Failed to get ic info (ret: %d)\n", ret);
 		if (ts->force_fwup == 1) {
 			TOUCH_I("%s : Forcefully trigger f/w Upgrade\n", __func__);
 			touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
 			ret = s3707_upgrade(dev);
 			if (ret < 0) {
-				TOUCH_E("Failed to f/w upgrade\n");
+				TOUCH_E("Failed to f/w upgrade (ret: %d)\n", ret);
 				goto error;
 			}
 			ts->force_fwup = 0;
 			touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
 			ret = s3707_ic_info(dev);
 			if (ret < 0) {
-				TOUCH_E("Failed to get ic info\n");
+				TOUCH_E("Failed to get ic info (ret: %d)\n", ret);
 				goto error;
 			}
+		} else {
+			atomic_set(&d->state.init, IC_INIT_NEED);
+			goto error;
 		}
 	}
 
-	s3707_lpwg_mode(dev);
-	s3707_set_configured(dev);
-	s3707_rmidev_init(dev);
+	ret = s3707_set_configured(dev);
+	if (ret < 0) {
+		TOUCH_E("failed to set configured (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_rmidev_init(dev);
+	if (ret < 0) {
+		TOUCH_E("failed to rmidev init (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_connect(dev);
+	if (ret < 0) {
+		TOUCH_E("failed to set charger connect (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_ime_status(dev);
+	if (ret < 0) {
+		TOUCH_E("failed to set ime status (ret: %d)\n", ret);
+		goto error;
+	}
 
 	atomic_set(&d->state.init, IC_INIT_DONE);
 	atomic_set(&d->state.esd_recovery, ESD_RECOVERY_DONE);
 
 	TOUCH_I("%s: int_pin is %s", __func__, gpio_get_value(ts->int_pin) ? "HIGH" : "LOW");
-	s3707_irq_enable(dev, true);
-	s3707_irq_clear(dev);
+
+	ret = s3707_irq_enable(dev, true);
+	if (ret < 0) {
+		TOUCH_E("failed to set irq enable (ret: %d)\n", ret);
+		goto error;
+	}
+
+	ret = s3707_lpwg_mode(dev);
+	if (ret < 0)
+		TOUCH_E("failed to set lpwg mode (ret: %d)\n", ret);
+
+	touch_interrupt_control(dev, INTERRUPT_ENABLE);
+
+	ret = s3707_irq_clear(dev);
+	if (ret < 0) {
+		TOUCH_E("failed to set irq clear (ret: %d)\n", ret);
+		goto error;
+	}
 
 error:
 	return ret;
@@ -3694,7 +4293,7 @@ static int s3707_probe(struct device *dev)
 	touch_gpio_direction_input(ts->int_pin);
 
 	touch_power_init(dev);
-	touch_bus_init(dev, 4096);
+	touch_bus_init(dev, I2C_BUF_SIZE);
 
 	s3707_init_works(dev);
 
@@ -3705,9 +4304,10 @@ static int s3707_probe(struct device *dev)
 
 	atomic_set(&d->state.scan_pdt, true);
 	//atomic_set(&ts->state.debug_option_mask, DEBUG_OPTION_0);
-	d->ic_info.fw_pid_addr = 0x98; //[bringup] need to check
+	d->ic_info.fw_pid_addr = 0x98;
 	d->ic_info.fw_ver_addr = 0x150;
 	d->lpwg_fail_reason = 0;
+	d->noise.noise_log = NOISE_ENABLE;
 
 	return 0;
 }

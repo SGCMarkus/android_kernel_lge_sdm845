@@ -66,6 +66,8 @@ struct _extension_qnovo {
 	int set_fcc;
 	int locked_fv;
 	int locked_fcc;
+	bool is_dc;
+	int dc_volt;
 
 	int old_error_sts2;
 	bool is_qnovo_ready;
@@ -271,6 +273,8 @@ static void reset_qnovo_config(struct qnovo *chip)
 		ext_qnovo.set_fcc = 0;
 		ext_qnovo.locked_fv = 0;
 		ext_qnovo.locked_fcc = 0;
+		ext_qnovo.is_dc = false;
+		ext_qnovo.dc_volt = 0;
 
 		set_qps(QPS_QNI_READY);
 		vote(chip->not_ok_to_qnovo_votable, CHG_PROBATION_VOTER, false, 0);
@@ -480,8 +484,7 @@ static int monitor_fcc(struct qnovo *chip)
 {
 	u8 val = 0;
 	int rc = -1;
-	int now_fcc;
-	int now_health;
+	int now_fcc = 0, now_health = 0, now_dc_volt = 0;
 	union power_supply_propval pval = {0, };
 	char health_str[12][22] = {
 		"unknown",
@@ -498,10 +501,9 @@ static int monitor_fcc(struct qnovo *chip)
 		"hot"
 	};
 
-	if (!is_batt_available(chip))
-		return -EINVAL;
-
-	if (!is_veneer_available())
+	if (!is_batt_available(chip)
+		|| !is_veneer_available()
+		|| !is_wireless_available())
 		return -EINVAL;
 
 	rc = qnovo_read(chip, QNOVO_PE_CTRL, &val, 1);
@@ -521,17 +523,27 @@ static int monitor_fcc(struct qnovo *chip)
 			POWER_SUPPLY_PROP_HEALTH, &pval);
 	now_health = !rc ? pval.intval : 0;
 
+	/* get dc voltage */
+	if (ext_qnovo.is_dc) {
+		rc = power_supply_get_property(ext_qnovo.wireless_psy,
+				POWER_SUPPLY_PROP_VOLTAGE_NOW, &pval);
+		now_dc_volt = !rc ? pval.intval : 0;
+	}
+
 	/* check duplication */
-	if (now_fcc == ext_qnovo.set_fcc && now_health == ext_qnovo.health)
+	if (now_fcc == ext_qnovo.set_fcc
+		&& now_health == ext_qnovo.health
+		&& now_dc_volt == ext_qnovo.dc_volt)
 		return -EINVAL;
 
 	pr_info("[QNI-PROB] run-time monitor_fcc: "
-			"now=%d, old=%d, locked=%d, health: %s\n",
-			now_fcc/1000, ext_qnovo.set_fcc/1000,
-			ext_qnovo.locked_fcc/1000, health_str[now_health]);
+			"now=%d, old=%d, locked=%d, dc_volt=%d, health: %s\n",
+			now_fcc/1000, ext_qnovo.set_fcc/1000, ext_qnovo.locked_fcc/1000,
+			now_dc_volt/1000, health_str[now_health]);
 
 	ext_qnovo.set_fcc = now_fcc;
 	ext_qnovo.health = now_health;
+	ext_qnovo.dc_volt = now_dc_volt;
 
 	return 0;
 }
@@ -544,11 +556,16 @@ static int rt_qni_probation(struct qnovo *chip)
 	if (!is_main_available())
 		return -EINVAL;
 
-	if (ext_qnovo.set_fcc > ext_dt.qni_probation_enter_fcc ||
-			!(ext_qnovo.health == POWER_SUPPLY_HEALTH_GOOD
-				|| ext_qnovo.health == POWER_SUPPLY_HEALTH_COOL)) {
-		release_qni_probation(chip);
-		return 0;
+	if ((ext_qnovo.set_fcc > ext_dt.qni_probation_enter_fcc) ||
+		!(ext_qnovo.health == POWER_SUPPLY_HEALTH_GOOD)      ){
+		if (!ext_qnovo.is_dc) {
+			release_qni_probation(chip);
+			return 0;
+		}
+		else if (ext_qnovo.dc_volt != DC_VOLTAGE_MV_BPP) {
+			release_qni_probation(chip);
+			return 0;
+		}
 	}
 
 	/* current */
@@ -578,21 +595,28 @@ static int rt_qni_probation(struct qnovo *chip)
 
 	pr_info("[QNI-PROB] set run-time qni probation: "
 			"[fcc] now:%d, max:%d, sel:%d "
-			"[fv] now:%d, min:%d, qnovo:%d, sel:%d\n",
+			"[fv] now:%d, min:%d, qnovo:%d, sel:%d "
+			"[wlc] en:%d, volt:%d\n",
 				ext_qnovo.set_fcc/1000,
 				ext_dt.qni_probation_max_fcc/1000,
 				ext_qnovo.locked_fcc/1000,
 				qnovo_config.val[VLIM1]/1000,
 				ext_dt.qni_probation_min_fv/1000,
 				chip->fv_uV_request/1000,
-				ext_qnovo.locked_fv/1000
+				ext_qnovo.locked_fv/1000,
+				ext_qnovo.is_dc, ext_qnovo.dc_volt/1000
 	);
 
 	if (get_qps() == QPS_RUNTIME_READY &&
-		(ext_qnovo.health == POWER_SUPPLY_HEALTH_GOOD ||
-		 ext_qnovo.health == POWER_SUPPLY_HEALTH_COOL )) {
-		set_qps(QPS_IN_RUNTIME);
-		enter_qni_probation(ext_qnovo.me);
+		ext_qnovo.health == POWER_SUPPLY_HEALTH_GOOD) {
+		if (!ext_qnovo.is_dc) {
+			set_qps(QPS_IN_RUNTIME);
+			enter_qni_probation(ext_qnovo.me);
+		}
+		else if (ext_qnovo.dc_volt == DC_VOLTAGE_MV_BPP) {
+			set_qps(QPS_IN_RUNTIME);
+			enter_qni_probation(ext_qnovo.me);
+		}
 	}
 
 	return 0;
@@ -674,6 +698,7 @@ bool pred_qni_probation(struct qnovo *chip, bool is_dc)
 		return false;
 
 	/* When input is plugged, confirm qni probation */
+	ext_qnovo.is_dc = is_dc;
 	is_pred_probation = is_dc ?
 			pred_dc_probation(chip) : pred_usb_probation(chip);
 

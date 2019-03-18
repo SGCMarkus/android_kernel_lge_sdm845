@@ -51,8 +51,8 @@
 			pinctrl-names = "default", "sleep";
 			/* [Fixed] List of phandles, each pointing at a pin configuration node within a pin controller.
 				The list of names to assign states, List entry 0 defines the name for integer state ID 0... */
-			pinctrl-0 = <&spi_tdmb_active>;
-			pinctrl-1 = <&spi_tdmb_suspend>;
+			pinctrl-0 = <&qupv3_se7_spi_active>;
+			pinctrl-1 = <&qupv3_se7_spi_sleep>;
 
 			dmas = <&gpi_dma0 0 7 1 64 0>, <&gpi_dma0 1 7 1 64 0>;
 			dma-names = "tx", "rx";
@@ -71,9 +71,6 @@
 		// [Fixed] Specifies maximum SPI clock frequency of DMB chipset(38.4 MHz). (ref. FC8080 datasheet)
 		spi-max-frequency = <40000000>;
 
-		/* [Modified] List of phandles, each pointing at a pin configuration node within a pin controller.
-			The list of names to assign states, List entry 0,1,2... define the name for integer state ID 0,1,2...
-			Ex. control cases are INT(tdmb_int), EN(tdmb_ctrl), ANT SW(tdmb_ant) LNA Gain Ctrl(tdmb_lna_ctrtl) LNA EN(tdmb_lna_en)*/
 	/* [2. GPIO Information]
 	*  1) tdmb_int      (DMB_INT)                     : GPIO #91
 	*  2) tdmb_ctrl     (DMB_EN)                      : GPIO #100
@@ -81,13 +78,21 @@
 	*  4) tdmb_lna_ctrl (DMB_GAIN_CTRL)               : GPIO #129
 	*  5) tdmb_lna_en   (DMB_LNA_EN)                  : GPIO #128
 	*/
-		pinctrl-names = "tdmb_int", "tdmb_ctrl", "tdmb_ant", "tdmb_lna_ctrl", "tdmb_lna_en";
+		/* [Fixed] The list of names to assign states, List entry 0,1,2... define the name for integer state ID 0,1,2...
+			- tdmb_pin_active : set to pinctrl-0 list (set to active)
+			- tdmb_pin_sleep : set to pinctrl-1 list (set to sleep)
+		*/
+		pinctrl-names = "tdmb_pin_active", "tdmb_pin_sleep";
 
-		pinctrl-0 = <&tdmb_int>;
-		pinctrl-1 = <&tdmb_ctrl>;
-		pinctrl-2 = <&tdmb_ant>;
-		pinctrl-3 = <&tdmb_lna_ctrl>;
-		pinctrl-4 = <&tdmb_lna_en>;
+		/* [Modified] The pin cofig lists can be for control pin.
+			- pinctrl-0 : active state
+			- pinctrl-1 : active sleep(suspend)
+			The pin config lists shall be defined in the "(model)-pinctrl.dtsi" file
+			The control pins lists are interrupt(tdmb_int), enable(tdmb_en), FM/DMB antenna swtiching(tdmb_ant), LNA gain control & enable(tdmb_lna)
+			Additional items may vary depending on model schematic.
+		*/
+		pinctrl-0 = <&tdmb_int_active>, <&tdmb_en_active>, <&tdmb_ant_active>, <&tdmb_lna_active>; 
+		pinctrl-1 = <&tdmb_int_suspend>, <&tdmb_en_suspend>, <&tdmb_ant_suspend>, <&tdmb_lna_suspend>; 
 
 		/* [Modified] when using clock buffer,
 			 you should check which clock buffer used for dmb device */

@@ -48,6 +48,7 @@ int trx_short_limit[TRX_BITMAP_LENGTH];
 int ext_trx_short_limit[2];
 int high_resistance_upper;
 int high_resistance_lower;
+char logbuf[LOG_BUF_SIZE] = {0};
 
 int Read8BitRegisters(struct device *dev, unsigned short regAddr,
 				void *data, int length)
@@ -61,6 +62,29 @@ int Write8BitRegisters(struct device *dev, unsigned short regAddr,
 	return s3707_write(dev, regAddr, data, length);
 }
 
+void print_sd_log(char *buf)
+{
+	int i = 0;
+	int index = 0;
+
+	while (index < strlen(buf) && buf[index] != '\0' && i < LOG_BUF_SIZE - 1) {
+		logbuf[i++] = buf[index];
+
+		/* Final character is not '\n' */
+		if ((index == strlen(buf) - 1 || i == LOG_BUF_SIZE - 2)
+				&& logbuf[i - 1] != '\n')
+			logbuf[i++] = '\n';
+
+		if (logbuf[i - 1] == '\n') {
+			logbuf[i - 1] = '\0';
+			if (i - 1 != 0)
+				TOUCH_I("%s\n", logbuf);
+
+			i = 0;
+		}
+		index++;
+	}
+}
 static void log_file_size_check(struct device *dev)
 {
 	char *fname = NULL;
@@ -100,7 +124,7 @@ static void log_file_size_check(struct device *dev)
 		file = filp_open(fname, O_RDONLY, 0666);
 		sys_chmod(fname, 0666);
 	} else {
-		TOUCH_E("%s : fname is NULL, can not open FILE\n", __func__);
+		TOUCH_E("fname is NULL, can not open FILE\n");
 		goto error;
 	}
 
@@ -132,8 +156,7 @@ static void log_file_size_check(struct device *dev)
 
 				if (i == (MAX_LOG_FILE_COUNT - 1)) {
 					if (sys_unlink(buf1) < 0) {
-						TOUCH_E("%s : failed to remove file [%s]\n",
-								__func__, buf1);
+						TOUCH_E("failed to remove file [%s]\n", buf1);
 						goto error;
 					}
 
@@ -142,8 +165,8 @@ static void log_file_size_check(struct device *dev)
 					snprintf(buf2, sizeof(buf2), "%s.%d", fname, (i + 1));
 
 					if (sys_rename(buf1, buf2) < 0) {
-						TOUCH_E("%s : failed to rename file [%s] -> [%s]\n",
-								__func__, buf1, buf2);
+						TOUCH_E("failed to rename file [%s] -> [%s]\n",
+								buf1, buf2);
 						goto error;
 					}
 
@@ -198,7 +221,7 @@ void write_file(struct device *dev, char *data, int write_time)
 		fd = sys_open(fname, O_WRONLY|O_CREAT|O_APPEND, 0666);
 		sys_chmod(fname, 0666);
 	} else {
-		TOUCH_E("%s : fname is NULL, can not open FILE\n", __func__);
+		TOUCH_E("fname is NULL, can not open FILE\n");
 		set_fs(old_fs);
 		return;
 	}
@@ -220,9 +243,67 @@ void write_file(struct device *dev, char *data, int write_time)
 		sys_write(fd, data, strlen(data));
 		sys_close(fd);
 	} else {
-		TOUCH_I("File open failed\n");
+		TOUCH_E("File open failed (fd: %d)\n", fd);
 	}
 	set_fs(old_fs);
+}
+
+static int sdcard_spec_file_read(struct device *dev)
+{
+	int ret = 0;
+	int fd = 0;
+	int path_idx = 0;
+	int size = 0;
+	char *path[3] = {"/sdcard/judypn_limit.txt",
+		"/data/touch/judypn/judypn_limit.txt",
+		"/data/touch/judypn/judypn_limit_mfts.txt"};
+	int boot_mode = 0;
+	mm_segment_t old_fs = get_fs();
+
+	TOUCH_TRACE();
+
+	boot_mode = touch_boot_mode_check(dev);
+
+	if (boot_mode >= MINIOS_MFTS_FOLDER)
+		path_idx = 2;
+	else if (boot_mode == MINIOS_AAT)
+		path_idx = 1;
+	else
+		path_idx = 0;
+
+	set_fs(KERNEL_DS);
+	fd = sys_open(path[path_idx], O_RDONLY, 0);
+	if (fd >= 0) {
+		size = sys_lseek(fd, 0, SEEK_END);
+
+		if (line) {
+			TOUCH_I("%s: line is already allocated. kfree line\n",
+					__func__);
+			kfree(line);
+			line = NULL;
+		}
+
+		line = kzalloc(size, GFP_KERNEL);
+		if (line == NULL) {
+			TOUCH_E("failed to kzalloc line\n");
+			sys_close(fd);
+			set_fs(old_fs);
+			return -ENOMEM;
+		}
+
+		sys_lseek(fd, 0, SEEK_SET);
+		sys_read(fd, line, size);
+		sys_close(fd);
+		TOUCH_I("%s file existing\n", path[path_idx]);
+	} else {
+		TOUCH_I("%s: file open failed.\n", __func__);
+		set_fs(old_fs);
+		return -ENFILE;
+	}
+
+	set_fs(old_fs);
+
+	return ret;
 }
 
 static int spec_file_read(struct device *dev)
@@ -250,9 +331,9 @@ static int spec_file_read(struct device *dev)
 	}
 
 	ret = request_firmware(&fwlimit, path[path_idx], dev);
-	if (ret < 0) {
+	if (ret) {
 		TOUCH_E("request ihex is failed in normal mode\n");
-		ret = -ENOENT;
+		//ret = -ENOENT;
 		goto error;
 	}
 
@@ -294,7 +375,6 @@ error:
 int s3707_get_limit(struct device *dev, char *breakpoint,
 			unsigned char tx, unsigned char rx, int *buf)
 {
-
 	int ret = 0;
 	int boot_mode = 0;
 	int buf_size = (int)tx * (int)rx;
@@ -333,7 +413,7 @@ int s3707_get_limit(struct device *dev, char *breakpoint,
 	if (found != NULL) {
 		q = found - line;
 	} else {
-		TOUCH_I("failed to find breakpoint(%s). The panel_spec_file is wrong\n",
+		TOUCH_E("failed to find breakpoint(%s). The panel_spec_file is wrong\n",
 				breakpoint);
 		ret = -EAGAIN;
 		goto error;
@@ -377,13 +457,15 @@ error:
 	return ret;
 }
 
-static void firmware_version_log(struct device *dev)
+static int firmware_version_log(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int ic_info_ret = 0;
 	unsigned char buffer[LOG_BUF_SIZE] = {0,};
 	int mfts_mode = 0;
+	char str[7] = {0};
 
 	TOUCH_TRACE();
 
@@ -391,74 +473,57 @@ static void firmware_version_log(struct device *dev)
 
 	mfts_mode = touch_boot_mode_check(dev);
 
-	if (mfts_mode >= MINIOS_MFTS_FOLDER)
-		ret = s3707_ic_info(dev);
+	if (mfts_mode >= MINIOS_MFTS_FOLDER) {
+		atomic_set(&d->state.scan_pdt, true);
+		ic_info_ret = s3707_ic_info(dev);
+		if (ic_info_ret < 0) {
+			TOUCH_E("failed to read ic info (ic_info_ret: %d)\n", ic_info_ret);
+			return ic_info_ret;
+		}
+	}
 
 	ret = snprintf(buffer, LOG_BUF_SIZE, "======== Firmware Info ========\n");
-
 	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
 					"version : v%d.%02d\n",
 					d->ic_info.version.major,
 					d->ic_info.version.minor);
 
+	snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
 	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
-			"product id : %s\n", d->ic_info.product_id);
+			"\n=========== Production Info ===========\n");
 	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
-			"===============================\n\n");
+			"Product_ID : %s\n", str);
+	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
+			"Chip_ver: %d, FPC_ver: %d, Sensor_ver: %d\n",
+			d->prd_info.chip_ver, d->prd_info.fpc_ver, d->prd_info.sensor_ver);
+	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
+			"Inspector_channel : %d\n", d->prd_info.inspect_channel);
+	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret, "Time : 20%d/%d/%d - %dh %dm %ds\n\n",
+			d->prd_info.inspect_date[0], d->prd_info.inspect_date[1], d->prd_info.inspect_date[2],
+			d->prd_info.inspect_time[0], d->prd_info.inspect_time[1], d->prd_info.inspect_time[2]);
 
 	write_file(dev, buffer, TIME_INFO_SKIP);
+
+	return 0;
 }
 
-static void production_info_log(struct device *dev)
+static int production_info_check(struct device *dev)
 {
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
-	u8 buf = 0;
-	u8 block_size = 0;
-	u8 offset[2] = {0};
-	u8 length[2] = {0};
-	u8 property[5] = {0};
-	u8 data[LOG_BUF_SIZE * 2] = {0};
-	unsigned char buffer[LOG_BUF_SIZE] = {0,};
+	char str[7] = {0};
 
-	TOUCH_TRACE();
+	snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
 
-	ret = snprintf(buffer, LOG_BUF_SIZE, "======== Production Info ========\n");
+	if (strncmp(d->prd_info.product_id, "PLG661", 6)) {
+		TOUCH_E("invalid product id : [%s]\n", str);
+		ret = -EINVAL;
+	} else {
+		TOUCH_I("%s: product_id : [%s]\n", __func__, str);
+	}
 
-	s3707_read(dev, FLASH_PROPERTY_REG, &property, 3);
-	block_size = (property[2] << 8) | property[1];
-
-	buf = 0x05;
-	s3707_write(dev, PARTITION_ID_REG, &buf, sizeof(buf));
-	s3707_write(dev, BLOCK_OFFSET_REG, &offset, sizeof(offset));
-
-	length[0] = 0x14;
-	length[1] = 0x00;
-	s3707_write(dev, TRANSFER_LENGTH_REG, &length, sizeof(length));
-
-	buf = 0x02;
-	s3707_write(dev, PROGRAMING_CMD_REG, &buf, sizeof(buf));
-	touch_msleep(50);
-
-	s3707_read(dev, PAYLOAD_REG, &data, block_size);
-
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
-			"Chip_ver : %d, FPC_ver : %d, Sensor_ver : %d\n",
-			data[6], data[7], data[8]);
-
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
-			"Inspector_channel : %d\n", data[9]);
-
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
-				"Time : 20%02X/%02X/%02X - %02Xh %02Xm %02Xs\n",
-				data[10], data[11], data[12],
-				data[13], data[14], data[15]);
-
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
-				"=================================\n\n");
-
-	write_file(dev, buffer, TIME_INFO_SKIP);
+	return ret;
 }
 
 static int s3707_sd(struct device *dev, char *buf)
@@ -466,6 +531,7 @@ static int s3707_sd(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int retval = 0;
 	int lower_limit = 0;
 	int upper_limit = 0;
 	int rawdata_ret = 0;
@@ -483,10 +549,15 @@ static int s3707_sd(struct device *dev, char *buf)
 		atomic_set(&d->state.scan_pdt, false);
 	}
 
-	ret = spec_file_read(dev);
-	if (ret < 0) {
-		TOUCH_E("failed to read spec file\n");
-		goto exit;
+	retval = sdcard_spec_file_read(dev);
+	if (retval) {
+		TOUCH_I("%s: There's no spec file. read it from F/W\n",	__func__);
+		retval = spec_file_read(dev);
+		if (retval) {
+			TOUCH_E("failed to read spec file (retval: %d)\n", retval);
+			ret = retval;
+			goto exit;
+		}
 	}
 
 	lower_limit = s3707_get_limit(dev, "FULL_RAWDATA_LOWER",
@@ -518,23 +589,20 @@ static int s3707_sd(struct device *dev, char *buf)
 		TOUCH_E("[Fail] Can not check the limit\n");
 		ret = snprintf(buf + ret, PAGE_SIZE - ret,
 				"Can not check the limit\n");
+		goto exit;
 	} else {
 		TOUCH_I("[Success] Can check the limit of Raw Cap image\n");
 		rawdata_ret = F54Test(dev, eRT_FullRawCapacitance, 0, NULL);
 		touch_msleep(30);
 		jitter_ret = F54Test(dev, eRT_Normalized16BitImageReport, 0, NULL);
 		touch_msleep(30);
-		hybrid_abs_ret = F54Test(dev, eRT_HybirdRawCap, 0, buf);
+		hybrid_abs_ret = F54Test(dev, eRT_HybirdRawCap, 0, NULL);
 		touch_msleep(30);
-		trx_short_ret = F54Test(dev, eRT_ExtendedTRexShortRT100, 1, buf);
+		trx_short_ret = F54Test(dev, eRT_ExtendedTRexShortRT100, 2, NULL);
 		touch_msleep(50);
 		high_resistance_ret = F54Test(dev, eRT_HighResistance, 0, NULL);
 		touch_msleep(50);
 	}
-
-	atomic_set(&d->state.scan_pdt, true);
-	s3707_init(dev);
-	touch_msleep(30);
 
 	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n========RESULT=======\n");
 	ret += snprintf(buf + ret, PAGE_SIZE - ret, "Channel Status : %s",
@@ -557,8 +625,14 @@ static int s3707_sd(struct device *dev, char *buf)
 					(jitter_ret != 1 ? "0" : "1"),
 					(hybrid_abs_ret != 1 ? "0" : "1"));
 	}
+	ret += snprintf(buf + ret, PAGE_SIZE - ret, "=====================\n");
 
 exit:
+	atomic_set(&d->state.scan_pdt, true);
+	retval = s3707_init(dev);
+	if (retval < 0)
+		TOUCH_E("failed to init (retval: %d)\n", retval);
+
 	kfree(line);
 	line = NULL;
 
@@ -571,6 +645,8 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int fw_ver_ret = 0;
+	int prd_info_ret = 0;
 
 	TOUCH_TRACE();
 
@@ -590,8 +666,33 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	write_file(dev, "\n", TIME_INFO_WRITE);
 	TOUCH_I("Show_sd Test Start\n");
 
-	firmware_version_log(dev);
-	production_info_log(dev);
+	fw_ver_ret = firmware_version_log(dev);
+	if (fw_ver_ret < 0) {
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"\n========RESULT=======\n");
+		TOUCH_I("========RESULT=======\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"Raw Data : Fail (Check connector)\n");
+		TOUCH_I("Raw Data : Fail (Check connector)\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"Channel Status : Fail (Check connector)\n");
+		TOUCH_I("Channel Status : Fail (Check connector)\n");
+		goto exit;
+	}
+
+	prd_info_ret = production_info_check(dev);
+	if (prd_info_ret < 0) {
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"\n========RESULT=======\n");
+		TOUCH_I("========RESULT=======\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"Raw Data : Fail (Invalid Product ID)\n");
+		TOUCH_I("Raw Data : Fail (Invalid Product ID)\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"Channel Status : Fail (Invalid Product ID)\n");
+		TOUCH_I("Channel Status : Fail (Invalid Product ID)\n");
+		goto exit;
+	}
 
 	if (s3707_is_product(d, "PLG661", 6)) {
 		ret = s3707_sd(dev, buf);
@@ -601,7 +702,10 @@ static ssize_t show_sd(struct device *dev, char *buf)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
-	write_file(dev, "Show_sd Test End\n\n", TIME_INFO_WRITE);
+exit:
+	print_sd_log(buf);
+	write_file(dev, buf, TIME_INFO_SKIP);
+	write_file(dev, "\nShow_sd Test End\n\n", TIME_INFO_WRITE);
 	TOUCH_I("Show_sd Test End\n");
 	log_file_size_check(dev);
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
@@ -616,6 +720,7 @@ static ssize_t show_delta(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int f54_ret = 0;
 
 	TOUCH_TRACE();
 
@@ -635,7 +740,9 @@ static ssize_t show_delta(struct device *dev, char *buf)
 
 	if (s3707_is_product(d, "PLG661", 6)) {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "======== delta ========\n");
-		ret += F54Test(dev, eRT_Normalized16BitImageReport, 1, buf);
+		f54_ret = F54Test(dev, eRT_Normalized16BitImageReport, 1, buf);
+		if (f54_ret > 0)
+			ret += f54_ret;
 	} else {
 		TOUCH_E("Delta Test Error!!!(product_id error)\n");
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
@@ -653,6 +760,8 @@ static ssize_t show_rawdata(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int retval = 0;
+	int f54_ret = 0;
 
 	TOUCH_TRACE();
 
@@ -674,14 +783,19 @@ static ssize_t show_rawdata(struct device *dev, char *buf)
 
 	if (s3707_is_product(d, "PLG661", 6)) {
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "======== rawdata ========\n");
-		ret = F54Test(dev, eRT_FullRawCapacitance, 1, buf);
+		f54_ret = F54Test(dev, eRT_FullRawCapacitance, 1, buf);
+		if (f54_ret > 0)
+			ret += f54_ret;
 	} else {
 		TOUCH_E("Rawdata Test Error!!!(product_id error)\n");
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
-	s3707_init(dev);
+	retval = s3707_init(dev);
+	if (retval < 0)
+		TOUCH_E("failed to init (retval: %d)\n", retval);
+
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
 	mutex_unlock(&ts->lock);
 
@@ -694,7 +808,10 @@ static ssize_t show_noise(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int retval = 0;
 	int noise_ret = 0;
+	int lower_limit = 0;
+	int upper_limit = 0;
 
 	TOUCH_TRACE();
 
@@ -707,30 +824,67 @@ static ssize_t show_noise(struct device *dev, char *buf)
 	}
 
 	mutex_lock(&ts->lock);
+	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
+
+	retval = sdcard_spec_file_read(dev);
+	if (retval) {
+		TOUCH_I("%s: There's no spec file. read it from F/W\n",	__func__);
+		retval = spec_file_read(dev);
+		if (retval) {
+			TOUCH_E("failed to read spec file (retval: %d)\n", retval);
+			ret = retval;
+			goto exit;
+		}
+	}
+
+	lower_limit += s3707_get_limit(dev, "JITTER_LOWER", 1, 1, &jitter_lower);
+	upper_limit += s3707_get_limit(dev, "JITTER_UPPER", 1, 1, &jitter_upper);
+
+	if (lower_limit < 0 || upper_limit < 0) {
+		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
+				lower_limit, upper_limit);
+		TOUCH_E("[Fail] Can not check the limit\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"Can not check the limit\n");
+		goto exit;
+	}
 
 	if (atomic_read(&d->state.scan_pdt) == true) {
 		SCAN_PDT(dev);
 		atomic_set(&d->state.scan_pdt, false);
 	}
 
-	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
-
 	if (s3707_is_product(d, "PLG661", 6)) {
 		noise_ret = F54Test(dev, eRT_Normalized16BitImageReport, 0, NULL);
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret, "=========RESULT=========\n");
 
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Noise Test result : %s",
 					(noise_ret == 1) ? "Pass\n" : "Fail\n");
+
+		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========================\n");
 	} else {
 		TOUCH_E("Noise Test Error!!!(product_id error)\n");
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
-	s3707_init(dev);
+	print_sd_log(buf);
+	write_file(dev, buf, TIME_INFO_SKIP);
+	write_file(dev, "\nShow_noise Test End\n\n", TIME_INFO_WRITE);
+	TOUCH_I("Show_noise Test End\n");
+	log_file_size_check(dev);
+
+exit:
+	retval = s3707_init(dev);
+	if (retval < 0)
+		TOUCH_E("failed to init (retval: %d)\n", retval);
+
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
 	mutex_unlock(&ts->lock);
+
+	kfree(line);
+	line = NULL;
 
 	return ret;
 }
@@ -741,7 +895,10 @@ static ssize_t show_hybrid_abs(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int retval = 0;
 	int hybrid_ret = 0;
+	int lower_limit = 0;
+	int upper_limit = 0;
 
 	TOUCH_TRACE();
 
@@ -754,16 +911,44 @@ static ssize_t show_hybrid_abs(struct device *dev, char *buf)
 	}
 
 	mutex_lock(&ts->lock);
+	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
+
+	retval = sdcard_spec_file_read(dev);
+	if (retval) {
+		TOUCH_I("%s: There's no spec file. read it from F/W\n",	__func__);
+		retval = spec_file_read(dev);
+		if (retval) {
+			TOUCH_E("failed to read spec file (retval: %d)\n", retval);
+			ret = retval;
+			goto exit;
+		}
+	}
+
+	lower_limit += s3707_get_limit(dev, "HYBRID_ABS_RX_RAWDATA_LOWER",
+				1, RxChannelCount, (int *)hybrid_abs_rx_lower);
+	upper_limit += s3707_get_limit(dev, "HYBRID_ABS_RX_RAWDATA_UPPER",
+				1, RxChannelCount, (int *)hybrid_abs_rx_upper);
+	lower_limit += s3707_get_limit(dev, "HYBRID_ABS_TX_RAWDATA_LOWER",
+				1, TxChannelCount, (int *)hybrid_abs_tx_lower);
+	upper_limit += s3707_get_limit(dev, "HYBRID_ABS_TX_RAWDATA_UPPER",
+				1, TxChannelCount, (int *)hybrid_abs_tx_upper);
+
+	if (lower_limit < 0 || upper_limit < 0) {
+		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
+				lower_limit, upper_limit);
+		TOUCH_E("[Fail] Can not check the limit\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"Can not check the limit\n");
+		goto exit;
+	}
 
 	if (atomic_read(&d->state.scan_pdt) == true) {
 		SCAN_PDT(dev);
 		atomic_set(&d->state.scan_pdt, false);
 	}
 
-	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
-
 	if (s3707_is_product(d, "PLG661", 6)) {
-		hybrid_ret = F54Test(dev, eRT_HybirdRawCap, 0, buf);
+		hybrid_ret = F54Test(dev, eRT_HybirdRawCap, 0, NULL);
 
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
 
@@ -775,9 +960,16 @@ static ssize_t show_hybrid_abs(struct device *dev, char *buf)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
-	s3707_init(dev);
+exit:
+	retval = s3707_init(dev);
+	if (retval < 0)
+		TOUCH_E("failed to init (retval: %d)\n", retval);
+
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
 	mutex_unlock(&ts->lock);
+
+	kfree(line);
+	line = NULL;
 
 	return ret;
 }
@@ -789,7 +981,10 @@ static ssize_t show_ext_trx_short(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int retval = 0;
 	int ext_short_ret = 0;
+	int lower_limit = 0;
+	int upper_limit = 0;
 
 	TOUCH_TRACE();
 
@@ -802,16 +997,40 @@ static ssize_t show_ext_trx_short(struct device *dev, char *buf)
 	}
 
 	mutex_lock(&ts->lock);
+	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
+
+	retval = sdcard_spec_file_read(dev);
+	if (retval) {
+		TOUCH_I("%s: There's no spec file. read it from F/W\n",	__func__);
+		retval = spec_file_read(dev);
+		if (retval) {
+			TOUCH_E("failed to read spec file (retval: %d)\n", retval);
+			ret = retval;
+			goto exit;
+		}
+	}
+
+	lower_limit += s3707_get_limit(dev, "TRX_SHORT_LIMIT",
+				1, TRX_BITMAP_LENGTH, (int *)trx_short_limit);
+	upper_limit += s3707_get_limit(dev, "EXTENDED_TRX_SHORT_LIMIT",
+				1, 2, (int *)ext_trx_short_limit);
+
+	if (lower_limit < 0 || upper_limit < 0) {
+		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
+				lower_limit, upper_limit);
+		TOUCH_E("[Fail] Can not check the limit\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"Can not check the limit\n");
+		goto exit;
+	}
 
 	if (atomic_read(&d->state.scan_pdt) == true) {
 		SCAN_PDT(dev);
 		atomic_set(&d->state.scan_pdt, false);
 	}
 
-	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
-
 	if (s3707_is_product(d, "PLG661", 6)) {
-		ext_short_ret = F54Test(dev, eRT_ExtendedTRexShortRT100, 1, buf);
+		ext_short_ret = F54Test(dev, eRT_ExtendedTRexShortRT100, 2, NULL);
 
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
 
@@ -823,9 +1042,16 @@ static ssize_t show_ext_trx_short(struct device *dev, char *buf)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
-	s3707_init(dev);
+exit:
+	retval = s3707_init(dev);
+	if (retval < 0)
+		TOUCH_E("failed to init (retval: %d)\n", retval);
+
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
 	mutex_unlock(&ts->lock);
+
+	kfree(line);
+	line = NULL;
 
 	return ret;
 }
@@ -835,6 +1061,7 @@ static int s3707_lpwg_sd(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int retval = 0;
 	int lower_limit = 0;
 	int upper_limit = 0;
 	int lpwg_rawdata_ret = 0;
@@ -849,10 +1076,15 @@ static int s3707_lpwg_sd(struct device *dev, char *buf)
 		atomic_set(&d->state.scan_pdt, false);
 	}
 
-	ret = spec_file_read(dev);
-	if (ret < 0) {
-		TOUCH_E("failed to read spec file\n");
-		goto exit;
+	retval = sdcard_spec_file_read(dev);
+	if (retval) {
+		TOUCH_I("%s: There's no spec file. read it from F/W\n",	__func__);
+		retval = spec_file_read(dev);
+		if (retval) {
+			TOUCH_E("failed to read spec file (retval: %d)\n", retval);
+			ret = retval;
+			goto exit;
+		}
 	}
 
 	lower_limit = s3707_get_limit(dev, "LPWG_FULL_RAWDATA_LOWER",
@@ -868,6 +1100,7 @@ static int s3707_lpwg_sd(struct device *dev, char *buf)
 		TOUCH_E("[Fail] Can not check the limit of Raw Cap image\n");
 		ret = snprintf(buf + ret, PAGE_SIZE - ret,
 				"Can not check the limit of Raw Cap\n");
+		goto exit;
 	} else {
 		touch_msleep(200);
 		lpwg_rawdata_ret = F54Test(dev, eRT_FullRawCapacitance, 0, NULL);
@@ -876,7 +1109,7 @@ static int s3707_lpwg_sd(struct device *dev, char *buf)
 		touch_msleep(30);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
+	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n========RESULT=======\n");
 
 	ret += snprintf(buf + ret, PAGE_SIZE - ret, "LPWG RawData : %s",
 			(lpwg_rawdata_ret == 1 && lpwg_jitter_ret == 1)
@@ -888,9 +1121,14 @@ static int s3707_lpwg_sd(struct device *dev, char *buf)
 					(lpwg_jitter_ret != 1 ? "0" : "1"));
 	}
 
-	atomic_set(&d->state.scan_pdt, true);
+	ret += snprintf(buf + ret, PAGE_SIZE - ret, "=====================\n");
 
 exit:
+	atomic_set(&d->state.scan_pdt, true);
+	retval = s3707_init(dev);
+	if (retval)
+		TOUCH_E("failed to init (retval: %d)\n", retval);
+
 	kfree(line);
 	line = NULL;
 
@@ -903,6 +1141,8 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 	struct s3707_data *d = to_s3707_data(dev);
 
 	int ret = 0;
+	int fw_ver_ret = 0;
+	int prd_info_ret = 0;
 
 	TOUCH_TRACE();
 
@@ -924,8 +1164,27 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 	write_file(dev, "\n", TIME_INFO_WRITE);
 	TOUCH_I("Show_lpwg_sd Test Start\n");
 
-	firmware_version_log(dev);
-	production_info_log(dev);
+	fw_ver_ret = firmware_version_log(dev);
+	if (fw_ver_ret < 0) {
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"\n========RESULT=======\n");
+		TOUCH_I("========RESULT=======\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			"LPWG RawData : Fail (Check connector)\n");
+		TOUCH_I("LPWG RawData : Fail (Check connector)\n");
+		goto exit;
+	}
+
+	prd_info_ret = production_info_check(dev);
+	if (prd_info_ret < 0) {
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+				"\n========RESULT=======\n");
+		TOUCH_I("========RESULT=======\n");
+		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			"LPWG RawData : Fail (Invalid Product ID)\n");
+		TOUCH_I("LPWG RawData : Fail (Invalid Product ID)\n");
+		goto exit;
+	}
 
 	if (s3707_is_product(d, "PLG661", 6)) {
 		ret = s3707_lpwg_sd(dev, buf);
@@ -935,60 +1194,19 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
-	write_file(dev, "Show_lpwg_sd Test End\n", TIME_INFO_WRITE);
+exit:
+	print_sd_log(buf);
+	write_file(dev, buf, TIME_INFO_SKIP);
+	write_file(dev, "\nShow_lpwg_sd Test End\n", TIME_INFO_WRITE);
 	TOUCH_I("Show_lpwg_sd Test End\n");
 	log_file_size_check(dev);
 
 	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
 	mutex_unlock(&ts->lock);
-	return ret;
-}
-
-static ssize_t show_trx_short(struct device *dev, char *buf)
-{
-	struct touch_core_data *ts  = to_touch_core(dev);
-	struct s3707_data *d = to_s3707_data(dev);
-
-	int ret = 0;
-	int trx_short_ret = 0;
-
-	TOUCH_TRACE();
-
-	TOUCH_I("%s\n", __func__);
-
-	if (d->lcd_mode != LCD_MODE_U3) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
-				"LCD off!!!. Can not trx short test.\n");
-		return ret;
-	}
-
-	mutex_lock(&ts->lock);
-	if (atomic_read(&d->state.scan_pdt) == true) {
-		SCAN_PDT(dev);
-		atomic_set(&d->state.scan_pdt, false);
-	}
-
-	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
-
-	if (s3707_is_product(d, "PLG661", 6)) {
-		trx_short_ret = F54Test(dev, eRT_TRexShort, 0, buf);
-
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
-
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "TRx Short Test result : %s",
-					(trx_short_ret == 1) ? "Pass\n" : "Fail\n");
-	} else {
-		TOUCH_E("TRx Short Test Error!!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
-	}
-
-	s3707_init(dev);
-	touch_interrupt_control(ts->dev, INTERRUPT_ENABLE);
-	mutex_unlock(&ts->lock);
 
 	return ret;
 }
+
 static TOUCH_ATTR(sd, show_sd, NULL);
 static TOUCH_ATTR(delta, show_delta, NULL);
 static TOUCH_ATTR(rawdata, show_rawdata, NULL);
@@ -996,7 +1214,6 @@ static TOUCH_ATTR(noise_test, show_noise, NULL);
 static TOUCH_ATTR(hybrid_abs, show_hybrid_abs, NULL);
 static TOUCH_ATTR(ext_trx_short, show_ext_trx_short, NULL);
 static TOUCH_ATTR(lpwg_sd, show_lpwg_sd, NULL);
-static TOUCH_ATTR(trx_short, show_trx_short, NULL);
 static struct attribute *prd_attribute_list[] = {
 	&touch_attr_sd.attr,
 	&touch_attr_delta.attr,
@@ -1005,7 +1222,6 @@ static struct attribute *prd_attribute_list[] = {
 	&touch_attr_hybrid_abs.attr,
 	&touch_attr_ext_trx_short.attr,
 	&touch_attr_lpwg_sd.attr,
-	&touch_attr_trx_short.attr,
 	NULL,
 };
 
@@ -1016,16 +1232,15 @@ static const struct attribute_group prd_attribute_group = {
 int s3707_prd_register_sysfs(struct device *dev)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
+
 	int ret = 0;
 
 	TOUCH_TRACE();
 
 	ret = sysfs_create_group(&ts->kobj, &prd_attribute_group);
 
-	if (ret < 0) {
+	if (ret < 0)
 		TOUCH_E("failed to create sysfs\n");
-		return ret;
-	}
 
 	return ret;
 }

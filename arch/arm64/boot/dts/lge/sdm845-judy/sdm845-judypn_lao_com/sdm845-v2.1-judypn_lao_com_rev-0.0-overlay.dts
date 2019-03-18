@@ -15,6 +15,9 @@
 /plugin/;
 
 #include "sdm845-judypn_lao_com.dtsi"
+#include "../sdm845-judy_common/sdm845-judy_common-usb_ext_pulldown_ctrl.dtsi"
+#include "../sdm845-camera/sdm845-storm-camera_rev-0.dtsi"
+#include "sdm845-judypn_lao_com-sound.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. SDM845 V2.1 - LG Electronics, judypn_lao rev_0";
@@ -31,4 +34,37 @@
 	qcom,icnss@18800000 {
 		status = "disabled";
 	};
+	gpio_keys {
+		hot1_key {
+			label = "hot1_key";
+			gpios = <&tlmm 89 GPIO_ACTIVE_LOW>;
+			linux,input-type = <1>;
+			linux,code = <377>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};
+
+&soc{
+	fingerprint@0 {
+		goodix,vddio-supply = <&pm8998_l22>;
+		gf,vddio-uV = <2800000>;
+	};
+	rpmh-regulator-ldoa22 {
+		pm8998_l22: regulator-l22 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage = <2800000>;
+		};
+	};
+};
+
+&qupv3_se12_i2c { /*QUPV3 SE12 */
+                dw7912@59 {
+                        status = "ok";
+                };
+                dw7800@59 {
+                        status = "disabled";
+                };
 };

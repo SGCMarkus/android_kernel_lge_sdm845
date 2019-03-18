@@ -83,7 +83,7 @@
 #define INTERRUPT_MASK_BUTTON		(1 << 4)
 #define INTERRUPT_MASK_CUSTOM		(1 << 5)
 #define INTERRUPT_MASK_LPWG		INTERRUPT_MASK_CUSTOM
-/* [bringup] RMI_DEVICE_STATUS */
+
 #define STATUS_CODE_MASK                0x0F
 #define NORMAL_MASK_STATUS              0x00
 #define RESET_MASK_STATUS               0x01
@@ -97,6 +97,7 @@
 #define DISPLAY_FAILURE_MASK_STATUS     0x09
 #define FLASH_PROG_MASK_STATUS          (1<<6)
 #define DEVICE_UNCONF_MASK_STATUS       (1<<7)
+#define DEVICE_CONTROL_CHARGER_BIT      (1<<5)
 
 #define FINGER_DATA_REG			(d->f12_reg.data[1])
 #define FINGER_ANGLE_DATA_REG		(d->f12_reg.data[10])
@@ -117,8 +118,14 @@
 #define F12_MAX_OBJECT				(0x06)
 #define FINGER_REPORT_DATA			(d->f12_reg.data[15])
 #define FINGER_REPORT_REG			(d->f12_reg.ctrl[20])
+#define NOISE_FLOOR_REG			(d->f12_reg.ctrl[10])
 #define OBJECT_REPORT_ENABLE_REG	(d->f12_reg.ctrl[23])
 #define WAKEUP_GESTURE_ENABLE_REG	(d->f12_reg.ctrl[27])
+
+#define DRUMMING_ACCELERATION_THRESHOLD		(15)
+#define MIN_DRUMMING_DISTANCE			(10)
+#define IME_DRUMMING_ACCELERATION_THRESHOLD	(5)
+#define IME_MIN_DRUMMING_DISTANCE		(5)
 
 #define LPWG_STATUS_REG				(d->f51.dsc.data_base)
 #define LPWG_STATUS_DOUBLETAP		(1 << 0)
@@ -134,7 +141,6 @@
 #define LPWG_TAP_DISTANCE_REG		(d->f51.dsc.control_base + 4)
 #define LPWG_INTERRUPT_DELAY_REG	(d->f51.dsc.control_base + 6)
 #define LPWG_BLKSIZ			7	/* 4-page */
-//#define LPWG_PARTIAL_REG		(LPWG_INTERRUPT_DELAY_REG2 + 35)
 
 #define LPWG_TAPCOUNT_REG2		(d->f51.dsc.control_base + 7)
 #define LPWG_MIN_INTERTAP_REG2		(d->f51.dsc.control_base + 8)
@@ -153,9 +159,9 @@
 /* Real-Time LPWG Fail Reason Ctrl */
 #define NUM_OF_EACH_FINGER_DATA		8
 #define MAX_NUM_OF_FAIL_REASON		2
-// F51_CUSTOM_DATA31 (Multitap Fail Reason Real-Time Interrupt)
+/* F51_CUSTOM_DATA31 (Multitap Fail Reason Real-Time Interrupt) */
 #define LPWG_FAIL_REASON_REALTIME_INT	(d->f51.dsc.data_base + 74)
-// F51_CUSTOM_CTRL06.00 (MultiTap Fail Real-Time Interrupt Enable)
+/* F51_CUSTOM_CTRL06.00 (MultiTap Fail Real-Time Interrupt Enable) */
 #define LPWG_FAIL_INT_ENABLE_REG	(d->f51.dsc.control_base + 15)
 
 /* Swipe Data Reg */
@@ -194,13 +200,9 @@
 #define FREQ_SCAN_IM_REG		(d->f54.dsc.data_base + 11)
 
 #define DYNAMIC_SENSING_CTRL_REG	(d->f54.dsc.control_base + 33)
-// F54_ANALOG_CTRL91(Transcap/Feedback Capacitance) - Electrode Open
 #define ANALOG_CONTROL2		(d->f54.dsc.control_base + 36)
-// F54_ANALOG_CTRL99 (Integration Duration) - AMP/Electrode Open
 #define WAVEFORM_DURATION_CTRL_REG	(d->f54.dsc.control_base + 41)
-// F54_ANALOG_CTRL103 (TDDI CBC Enable) - AMP Short
 #define TDDI_CBC_ENABLE_CTRL_REG	(d->f54.dsc.control_base + 44)
-// F54_ANALOG_CTRL182 (CBC TIMING CONTROL) - Electrode Open
 #define CBC_TIMING_CONTROL		(d->f54.dsc.control_base + 46)
 
 #define ANALOG_COMMAND_REG		(d->f54.dsc.command_base)
@@ -233,7 +235,7 @@
 #define F35_CHUNK_COMMAND_OFFSET	18
 
 #define F35_CHUNK_SIZE			16
-#define F35_ERASE_ALL_WAIT_MS		8000	// [bringup] 2000
+#define F35_ERASE_ALL_WAIT_MS		8000
 #define F35_RESET_WAIT_MS		250
 
 #define PDT_PROPS			0x00EF
@@ -399,6 +401,16 @@ struct s3707_ic_info {
 	u8 bootloader_type;
 };
 
+struct s3707_prd_info {
+	u8 product_id[6];
+	u8 chip_ver;
+	u8 fpc_ver;
+	u8 sensor_ver;
+	u8 inspect_channel;
+	u8 inspect_date[3];
+	u8 inspect_time[3];
+} __packed;
+
 struct s3707_noise_ctrl {
 	u8 noise_log;
 	u8 check_noise;
@@ -499,6 +511,7 @@ struct s3707_swipe_info {
 	struct s3707_active_area area;
 	struct s3707_active_area start_area;
 	struct s3707_active_area border_area;
+	struct s3707_active_area start_border_area;
 	bool debug_enable;
 };
 
@@ -541,10 +554,10 @@ struct s3707_data {
 	struct s3707_f12_reg f12_reg;
 	struct s3707_touch_info info;
 	struct s3707_ic_info ic_info;
+	struct s3707_prd_info prd_info;
 	struct s3707_noise_ctrl noise;
 	struct synaptics_blank blank_status;
 
-	u8 uBL_addr;/* Micro BL mode slave address */
 	u8 curr_page;
 	u8 object_report;
 	u8 max_num_of_fingers;
@@ -555,6 +568,7 @@ struct s3707_data {
 
 	u8 lcd_mode;
 	u8 prev_lcd_mode;
+	bool is_palm;
 
 	struct s3707_swipe_ctrl swipe;
 	struct s3707_swipe_buf swipe_buf;

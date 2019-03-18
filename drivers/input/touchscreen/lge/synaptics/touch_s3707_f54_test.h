@@ -36,6 +36,7 @@
 #define TRX_MAX			34
 #define TRX_BITMAP_LENGTH	8
 #define TRX_MAPPING_MAX		64
+#define NOISE_TEST_COUNT	5
 
 /* Define of page */
 #define DEFAULT			0x00
@@ -129,4 +130,5 @@ extern int Write8BitRegisters(struct device *dev, unsigned short regAddr,
 extern int s3707_get_limit(struct device *dev, char *breakpoint,
 					unsigned char tx, unsigned char rx,
 					int *buf);
+extern void print_sd_log(char *buf);
 

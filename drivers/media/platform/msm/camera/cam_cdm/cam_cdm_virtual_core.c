@@ -47,7 +47,6 @@ static void cam_virtual_cdm_work(struct work_struct *work)
 			CAM_DBG(CAM_CDM, "CDM HW Gen/inline IRQ with data=%x",
 				payload->irq_data);
 			mutex_lock(&cdm_hw->hw_mutex);
-			print_bl_list(&core->bl_request_list);
 			node = cam_cdm_find_request_by_bl_tag(
 				payload->irq_data,
 				&core->bl_request_list);
@@ -174,7 +173,6 @@ int cam_virtual_cdm_submit_bl(struct cam_hw_info *cdm_hw,
 				mutex_lock(&cdm_hw->hw_mutex);
 				list_add_tail(&node->entry,
 					&core->bl_request_list);
-				print_bl_list(&core->bl_request_list);
 				mutex_unlock(&cdm_hw->hw_mutex);
 
 				payload = kzalloc(sizeof(

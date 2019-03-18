@@ -22,8 +22,6 @@ enum lge_ddic_dsi_cmd_set_type {
 	LGE_DDIC_DSI_SET_CM_NATIVE,
 	LGE_DDIC_DSI_DISP_CTRL_COMMAND_1,
 	LGE_DDIC_DSI_DISP_CTRL_COMMAND_2,
-	LGE_DDIC_DSI_DISP_CTRL_DEFAULT_COMMAND_1,
-	LGE_DDIC_DSI_DISP_CTRL_DEFAULT_COMMAND_2,
 	LGE_DDIC_DSI_DISP_DG_COMMAND_DUMMY,
 	LGE_DDIC_DSI_BC_DIMMING,
 	LGE_DDIC_DSI_BC_DEFAULT_DIMMING,
@@ -60,6 +58,8 @@ enum lge_ddic_dsi_cmd_set_type {
 	LGE_DDIC_DSI_IRC_CTRL,
 	LGE_DDIC_DSI_ACE_TUNE,
 	LGE_DDIC_DSI_ACE_RESTORE,
+	LGE_DDIC_DSI_AOD_AREA,
+	LGE_DDIC_DSI_DISP_CM_COMMAND_DUMMY,
 	LGE_DDIC_DSI_CMD_SET_MAX
 };
 
@@ -124,10 +124,11 @@ struct lge_ddic_ops {
 	/* For DISPLAY_AMBIENT */
 	int (*store_aod_area)(struct dsi_panel *panel, struct lge_rect rect);
 	int (*prepare_aod_cmds)(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count);
+	void (*prepare_aod_area)(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count);
 	/* For DISPLAY_COLOR_MANAGER */
 	void (*lge_bc_dim_set)(struct dsi_panel *panel, u8 bc_dim_en, u8 bc_dim_f_cnt);
 	int (*lge_set_therm_dim)(struct dsi_panel *panel, int input);
-	void (*lge_get_brightness_dim)(struct dsi_panel *panel);
+	int (*lge_get_brightness_dim)(struct dsi_panel *panel);
 	void (*lge_set_brightness_dim)(struct dsi_panel *panel, int input);
 	void (*lge_set_custom_rgb)(struct dsi_panel *panel, bool send_cmd);
 	void (*lge_set_rgb_tune)(struct dsi_panel *panel, bool send_cmd);
@@ -170,8 +171,8 @@ struct lge_ddic_ops {
 	int (*get_current_res)(struct dsi_panel *panel);
 	void (*get_support_res)(int idx, void* input);
 	struct backup_info* (*get_reg_backup_list)(int *cnt);
-	int (*set_pps_cmds)(struct dsi_panel *panel, enum dsi_cmd_set_type type);
-	int (*unset_pps_cmds)(struct dsi_panel *panel, enum dsi_cmd_set_type type);
+	int (*set_pps_cmds)(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type);
+	int (*unset_pps_cmds)(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type);
 
 	/* For DISPLAY_FACTORY */
 	void (*lge_check_vert_black_line)(struct dsi_panel *panel);

@@ -44,7 +44,7 @@ void individual_calibration_results(tfa98xx_handle_t handle);
  * @param dsc pointer to nxpTfa descriptor
  * @return descriptor string
  */
-char *tfa_cont_get_string(struct tfa_desc_ptr *dsc); //TODO
+char *tfa_cont_get_string(struct tfa_desc_ptr *dsc); // TODO
 
 /**
  * Gets the string for the given command type number
@@ -61,7 +61,7 @@ char *tfa_cont_get_command_string(uint32_t type);
  * @param dev_idx device index
  * @return descriptor string
  */
-int tfa_cont_get_devid(struct tfa_container *cnt, int dev_idx) ;
+int tfa_cont_get_devid(struct tfa_container *cnt, int dev_idx);
 
 /**
  * Get the number of devices from the container
@@ -79,7 +79,7 @@ void tfa_cont_verbose(int level);
  * Return the pointer to the loaded container file
  * @return pointer to container, NULL if not loaded.
  */
-struct tfa_container* tfa98xx_get_cnt(void);
+struct tfa_container *tfa98xx_get_cnt(void);
 
 /**
  * Lookup slave and return device index
@@ -140,6 +140,22 @@ enum tfa98xx_error tfa_cont_write_files(int dev_idx);
 unsigned int tfa98xx_get_profile_sr(int dev_idx, unsigned int prof_idx);
 
 /**
+ * Get channel selection from passed profile index
+ * @param dev_idx the index of the device
+ * @param prof_idx the index of the profile
+ * @return CHSA value (Max1)
+ */
+unsigned int tfa98xx_get_profile_chsa(int dev_idx, unsigned int prof_idx);
+
+/**
+ * Get channel selection from passed profile index
+ * @param dev_idx the index of the device
+ * @param prof_idx the index of the profile
+ * @return TDMSPKS value (Max2)
+ */
+unsigned int tfa98xx_get_profile_tdmspks(int dev_idx, unsigned int prof_idx);
+
+/**
  * Open the specified device after looking up the target address.
  * @param dev_idx the index of the device
  * @return Tfa98xx_Error
@@ -183,7 +199,15 @@ int tfa_cont_get_cal_profile(int dev_idx);
 int tfa_cont_is_tap_profile(int dev_idx, int prof_idx);
 
 /**
- * Get the name of the profile at certain index for a device in the container file
+ * Is the profile specific to device ?
+ * @param dev_idx the index of the device
+ * @param prof_idx the index of the profile
+ * @return 1 if the profile belongs to device or 0 if not
+ */
+int tfa_cont_is_dev_specific_profile(int dev_idx, int prof_idx);
+
+/**
+ * Get the name of the profile at certain index for a device in container file
  * @param dev_idx the index of the device
  * @param prof_idx the index of the profile
  * @return profile name string or error string if not found
@@ -205,7 +229,8 @@ int tfa_cont_max_profile(int dev_idx);
  * @param vstep_idx index of the vstep
  * @return Tfa98xx_Error
  */
-enum tfa98xx_error tfa_cont_write_profile(int dev_idx, int prof_idx, int vstep_idx);
+enum tfa98xx_error tfa_cont_write_profile
+(int dev_idx, int prof_idx, int vstep_idx);
 
 /**
  * Specify the speaker configurations (cmd id) (Left, right, both, none)
@@ -227,7 +252,8 @@ void tfa_cont_set_current_vstep(int channel, int vstep_idx);
  */
 int tfa_cont_get_current_vstep(int channel);
 
-enum tfa98xx_error tfa_cont_write_filterbank(int dev_idx, struct tfa_filter *filter);
+enum tfa98xx_error tfa_cont_write_filterbank
+(int dev_idx, struct tfa_filter *filter);
 
 /**
  * Write all  param files in the profilelist to the target
@@ -237,11 +263,14 @@ enum tfa98xx_error tfa_cont_write_filterbank(int dev_idx, struct tfa_filter *fil
  * @param vstep_idx the index of the vstep
  * @return Tfa98xx_Error
  */
-enum tfa98xx_error tfa_cont_write_files_prof(int dev_idx, int prof_idx, int vstep_idx);
+enum tfa98xx_error tfa_cont_write_files_prof
+(int dev_idx, int prof_idx, int vstep_idx);
 
 
-enum tfa98xx_error tfa_cont_write_files_vstep(int dev_idx, int prof_idx, int vstep_idx);
-enum tfa98xx_error tfa_cont_write_drc_file(int dev_idx, int size, uint8_t data[]);
+enum tfa98xx_error tfa_cont_write_files_vstep
+(int dev_idx, int prof_idx, int vstep_idx);
+enum tfa98xx_error tfa_cont_write_drc_file
+(int dev_idx, int size, uint8_t data[]);
 
 /**
  * Get the device list dsc from the tfaContainer
@@ -249,7 +278,8 @@ enum tfa98xx_error tfa_cont_write_drc_file(int dev_idx, int size, uint8_t data[]
  * @param dev_idx the index of the device
  * @return device list pointer
  */
-struct tfa_device_list *tfa_cont_get_dev_list(struct tfa_container * cont, int dev_idx);
+struct tfa_device_list *tfa_cont_get_dev_list
+(struct tfa_container *cont, int dev_idx);
 
 /**
  * Get the Nth profile for the Nth device
@@ -258,7 +288,8 @@ struct tfa_device_list *tfa_cont_get_dev_list(struct tfa_container * cont, int d
  * @param prof_idx the index of the profile
  * @return profile list pointer
  */
-struct tfa_profile_list *tfa_cont_get_dev_prof_list(struct tfa_container *cont, int dev_idx, int prof_idx);
+struct tfa_profile_list *tfa_cont_get_dev_prof_list
+(struct tfa_container *cont, int dev_idx, int prof_idx);
 
 /**
  * Get the Nth livedata for the Nth device
@@ -267,7 +298,8 @@ struct tfa_profile_list *tfa_cont_get_dev_prof_list(struct tfa_container *cont, 
  * @param livedata_idx the index of the livedata
  * @return livedata list pointer
  */
-struct tfa_livedata_list *tfa_cont_get_dev_livedata_list(struct tfa_container *cont, int dev_idx, int livedata_idx);
+struct tfa_livedata_list *tfa_cont_get_dev_livedata_list
+(struct tfa_container *cont, int dev_idx, int livedata_idx);
 
 /**
  * Check CRC for container
@@ -289,7 +321,7 @@ struct tfa_device_list *tfa_cont_device(int dev_idx);
  * @param prof_ipx the index of the profile
  * @return profile list pointer
  */
-struct tfa_profile_list* tfa_cont_profile(int dev_idx, int prof_ipx);
+struct tfa_profile_list *tfa_cont_profile(int dev_idx, int prof_ipx);
 
 /**
  * Return the pointer to the first profile in a list from the tfaContainer
@@ -303,21 +335,23 @@ struct tfa_profile_list *tfa_cont_get_1st_prof_list(struct tfa_container *cont);
  * @param prof is the pointer to the profile list
  * @return profile list pointer
  */
-struct tfa_profile_list* tfa_cont_next_profile(struct tfa_profile_list *prof);
+struct tfa_profile_list *tfa_cont_next_profile(struct tfa_profile_list *prof);
 
 /**
  * Return the pointer to the first livedata in a list from the tfaContainer
  * @param cont pointer to the tfaContainer
  * @return pointer to first livedata in profile list
  */
-struct tfa_livedata_list *tfa_cont_get_1st_livedata_list(struct tfa_container *cont);
+struct tfa_livedata_list *tfa_cont_get_1st_livedata_list
+(struct tfa_container *cont);
 
 /**
  * Return the pointer to the next livedata in a list
  * @param livedata_idx is the pointer to the livedata list
  * @return livedata list pointer
  */
-struct tfa_livedata_list* tfa_cont_next_livedata(struct tfa_livedata_list *livedata_idx);
+struct tfa_livedata_list *tfa_cont_next_livedata
+(struct tfa_livedata_list *livedata_idx);
 
 /**
  * Write a bit field
@@ -325,7 +359,8 @@ struct tfa_livedata_list* tfa_cont_next_livedata(struct tfa_livedata_list *lived
  * @param bf bitfield to write
  * @return Tfa98xx_Error
  */
-enum tfa98xx_error tfa_run_write_bitfield(tfa98xx_handle_t dev_idx,  struct tfa_bitfield bf);//TODO move to run core
+enum tfa98xx_error tfa_run_write_bitfield
+(tfa98xx_handle_t dev_idx,  struct tfa_bitfield bf); // TODO move to run core
 
 /**
  * Write a parameter file to the device
@@ -335,7 +370,8 @@ enum tfa98xx_error tfa_run_write_bitfield(tfa98xx_handle_t dev_idx,  struct tfa_
  * @param vstep_msg_idx index to vstep message
  * @return Tfa98xx_Error
  */
-enum tfa98xx_error tfa_cont_write_file(int dev_idx,  struct tfa_file_dsc *file, int vstep_idx, int vstep_msg_idx);
+enum tfa98xx_error tfa_cont_write_file
+(int dev_idx, struct tfa_file_dsc *file, int vstep_idx, int vstep_msg_idx);
 
 /**
  * Get the max volume step associated with Nth profile for the Nth device
@@ -355,7 +391,8 @@ int tfa_cont_get_max_vstep(int dev_idx, int prof_idx);
  * @return 0 NULL if file type is not found
  * @return 1 file contents
  */
-struct tfa_file_dsc *tfa_cont_get_file_data(int dev_idx, int prof_idx, enum tfa_header_type type);
+struct tfa_file_dsc *tfa_cont_get_file_data
+(int dev_idx, int prof_idx, enum tfa_header_type type);
 
 /**
  * Dump the contents of the file header
@@ -369,21 +406,24 @@ void tfa_cont_show_header(struct tfa_header *hdr);
  * @param bf bitfield to read out
  * @return Tfa98xx_Error
  */
-enum tfa98xx_error tfa_run_read_bitfield(tfa98xx_handle_t dev_idx,  struct tfa_bitfield *bf);
+enum tfa98xx_error tfa_run_read_bitfield
+(tfa98xx_handle_t dev_idx,  struct tfa_bitfield *bf);
 
 /**
  * Get hw feature bits from container file
  * @param dev_idx device index
  * @param hw_feature_register pointer to where hw features are stored
  */
-void get_hw_features_from_cnt(tfa98xx_handle_t dev_idx, int *hw_feature_register);
+void get_hw_features_from_cnt
+(tfa98xx_handle_t dev_idx, int *hw_feature_register);
 
 /**
  * Get sw feature bits from container file
  * @param dev_idx device index
  * @param sw_feature_register pointer to where sw features are stored
  */
-void get_sw_features_from_cnt(tfa98xx_handle_t dev_idx, int sw_feature_register[2]);
+void get_sw_features_from_cnt
+(tfa98xx_handle_t dev_idx, int sw_feature_register[2]);
 
 /**
  * Factory trimming for the Boost converter

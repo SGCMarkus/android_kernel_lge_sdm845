@@ -94,47 +94,50 @@ static char dg_ctrl_values[NUM_DG_PRESET][OFFSET_DG_CTRL] = {
 	{0x37, 0x37, 0x37, 0x37, 0x37, 0x37, 0x37, 0x37}
 };
 
-#define NUM_SHA_CTRL	5
-#define SHA_OFF		0
-#define SHA_ON		1
+#define NUM_SHA_CTRL		5
+#define SHA_OFF			0
+#define SHA_ON			1
 
 
-#define NUM_SC_CTRL	3
-#define OFFSET_SC_CTRL	1
+#define NUM_SC_CTRL		4
+#define OFFSET_SC_CTRL		1
 
-#define NUM_SAT_CTRL	5
-#define OFFSET_SAT_CTRL	6
+#define NUM_SAT_CTRL		6
+#define OFFSET_SAT_CTRL		8
 
-#define NUM_HUE_CTRL	5
-#define OFFSET_HUE_CTRL	2
+#define NUM_HUE_CTRL		5
+#define OFFSET_HUE_CTRL		2
 
-#define IDX_SC_CTRL1	0
-#define REG_SC_CTRL1	0xF3
-#define NUM_SC_CTRL1	0x06
-#define OFFSET_SC_CTRL1	2
+#define IDX_SC_CTRL1		0
+#define REG_SC_CTRL1		0xF3
+#define NUM_SC_CTRL1		0x06
+#define OFFSET_SC_CTRL1		2
 
-#define IDX_SC_CTRL2	1
-#define REG_SC_CTRL2	0xF4
-#define NUM_SC_CTRL2	0x0E
-#define OFFSET_SC_CTRL2	9
+#define IDX_SC_CTRL2		1
+#define REG_SC_CTRL2		0xF4
+#define NUM_SC_CTRL2		0x0E
+#define OFFSET_SC_CTRL2		9
 
-#define SC_MODE_MAX	4
+#define SC_MODE_MAX		4
 
 #define LGE_SCREEN_TUNE_OFF	0
 #define LGE_SCREEN_TUNE_ON	1
-#define LGE_SCREEN_TUNE_MID	2
-#define LGE_SAT_FORCE_MODE	3
+#define LGE_SCREEN_TUNE_GAM	2
+#define LGE_SCREEN_TUNE_GAL	3
+#define LGE_SAT_GAM_MODE	3
+#define LGE_SAT_GAL_MODE	5
 
 static char sha_ctrl_values[NUM_SHA_CTRL] = {0x00, 0x0D, 0x1A, 0x30, 0xD2};
 
-static char sc_ctrl_values[NUM_SC_CTRL] = {0x00, 0x0F, 0x08};
+static char sc_ctrl_values[NUM_SC_CTRL] = {0x00, 0x0F, 0x08, 0x0C};
 
 static char sat_ctrl_values[NUM_SAT_CTRL][OFFSET_SAT_CTRL] = {
-	{0x00, 0x38, 0x70, 0xA8, 0xE1, 0x00},
-	{0x00, 0x3C, 0x78, 0xB4, 0xF1, 0x00},
-	{0x00, 0x40, 0x80, 0xC0, 0x00, 0x01},
-	{0x00, 0x43, 0x87, 0xCB, 0x00, 0x01},
-	{0x00, 0x47, 0x8F, 0xD7, 0x00, 0x01},
+	{0x00, 0x38, 0x70, 0xA8, 0xE1, 0x00, 0x00, 0x00},
+	{0x00, 0x3C, 0x78, 0xB4, 0xF1, 0x00, 0x00, 0x00},
+	{0x00, 0x40, 0x80, 0xC0, 0x00, 0x01, 0x00, 0x00},
+	{0x00, 0x43, 0x87, 0xCB, 0x00, 0x01, 0x00, 0x00},
+	{0x00, 0x47, 0x8F, 0xD7, 0x00, 0x01, 0x00, 0x00},
+	{0x00, 0x52, 0x8C, 0xD7, 0x00, 0x01, 0x90, 0x90},
 };
 
 static char hue_ctrl_values[NUM_HUE_CTRL][OFFSET_HUE_CTRL] = {
@@ -238,16 +241,26 @@ static void prepare_scroll_cmd(struct dsi_panel *panel, struct dsi_cmd_desc *cmd
 	}
 }
 
-static int prepare_aod_cmds_sw49410(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
+static void prepare_aod_area_sw49410(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
 {
-	int rc = 0, sr = 0, er = 0;
+	int sr = 0, er = 0;
 
 	if (panel == NULL || cmds == NULL || cmds_count == 0)
-		return -EINVAL;
+		return;
 
 	adjust_roi(panel, &sr, &er);
 	prepare_cmd(cmds, cmds_count, ADDR_PTLAR, sr, er);
 	prepare_scroll_cmd(panel, cmds, cmds_count, ADDR_U2CTRL, panel->lge.aod_area.y-1);
+
+	return;
+}
+
+static int prepare_aod_cmds_sw49410(struct dsi_panel *panel, struct dsi_cmd_desc *cmds, int cmds_count)
+{
+	int rc = 0;
+
+	if (panel == NULL || cmds == NULL || cmds_count == 0)
+		return -EINVAL;
 
 	return rc;
 }
@@ -445,22 +458,27 @@ static void lge_set_screen_tune_send_sw49410(struct dsi_panel *panel,
 		panel->lge.sharpness_control = true;
 
 		payload_ctrl2[1] = sc_ctrl_values[lge_screen_tune_status];
-		for(i = 0; i < OFFSET_SAT_CTRL; i++)
+		for (i = 0; i < OFFSET_SAT_CTRL; i++)
 			payload_ctrl2[i+2] = sat_ctrl_values[panel->lge.sc_sat_step][i];
-		for(i = 0; i < OFFSET_HUE_CTRL; i++)
+		for (i = 0; i < OFFSET_HUE_CTRL; i++)
 			payload_ctrl2[i+8] = hue_ctrl_values[panel->lge.sc_hue_step][i];
 	} else {
-		if(panel->lge.sharpness == SHA_OFF) {
+		if (panel->lge.sharpness == SHA_OFF) {
 			payload_ctrl1[1] = SHA_OFF;
 		} else {
 			payload_ctrl1[1] = SHA_ON;
 			payload_ctrl1[4] = panel->lge.sharpness;
 		}
 
-		if(panel->lge.screen_mode == LGE_COLOR_GAM) {
-			panel->lge.sc_sat_step = LGE_SAT_FORCE_MODE;
+		if (lge_screen_tune_status == LGE_SCREEN_TUNE_GAM) {
+			panel->lge.sc_sat_step = LGE_SAT_GAM_MODE;
 			payload_ctrl2[1] = sc_ctrl_values[lge_screen_tune_status];
-			for(i = 0; i < OFFSET_SAT_CTRL; i++)
+			for (i = 0; i < OFFSET_SAT_CTRL; i++)
+				payload_ctrl2[i+2] = sat_ctrl_values[panel->lge.sc_sat_step][i];
+		} else if (lge_screen_tune_status == LGE_SCREEN_TUNE_GAL) {
+			panel->lge.sc_sat_step = LGE_SAT_GAL_MODE;
+			payload_ctrl2[1] = sc_ctrl_values[lge_screen_tune_status];
+			for (i = 0; i < OFFSET_SAT_CTRL; i++)
 				payload_ctrl2[i+2] = sat_ctrl_values[panel->lge.sc_sat_step][i];
 		} else {
 			payload_ctrl2[1] = sc_ctrl_values[lge_screen_tune_status];
@@ -536,7 +554,7 @@ void mplus_mode_send_sw49410(struct dsi_panel *panel, enum lge_mplus_mode req_mp
 		break;
 	case LGE_COLOR_GAM:
 		gc_mode = LGE_GC_MOD_GAM;
-		lge_screen_tune_status = LGE_SCREEN_TUNE_MID;
+		lge_screen_tune_status = LGE_SCREEN_TUNE_GAM;
 		break;
 	case LGE_COLOR_MAN:
 		lge_screen_tune_status = LGE_SCREEN_TUNE_ON;
@@ -546,6 +564,11 @@ void mplus_mode_send_sw49410(struct dsi_panel *panel, enum lge_mplus_mode req_mp
 	case LGE_COLOR_OPT:
 	default:
 		break;
+	}
+
+	if ((panel->lge.mp_mode == LGE_MP_GAL) &&
+			(lge_screen_tune_status == LGE_SCREEN_TUNE_OFF)) {
+		lge_screen_tune_status = LGE_SCREEN_TUNE_GAL;
 	}
 
 	payload = (char *)panel->lge.lge_cmd_sets[LGE_DDIC_DSI_SET_MPLUS].cmds[0].msg.tx_buf;
@@ -835,6 +858,7 @@ void sharpness_set_sw49410(struct dsi_panel *panel, int mode)
 struct lge_ddic_ops sw49410_ops = {
 	.store_aod_area = store_aod_area,
 	.prepare_aod_cmds = prepare_aod_cmds_sw49410,
+	.prepare_aod_area = prepare_aod_area_sw49410,
 	.bist_ctrl = control_bist_cmds_sw49410,
 	.release_bist = release_bist_cmds_sw49410,
 	.lge_set_screen_mode = lge_set_screen_mode_sw49410,

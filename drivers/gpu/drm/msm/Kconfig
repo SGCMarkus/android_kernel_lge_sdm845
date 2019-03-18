@@ -195,3 +195,9 @@ config LGE_DISPLAY_SUPPORT_DP_KOPIN
 	default n
 	---help---
 	This config is for support only KOPIN devcie
+
+config LGE_DISPLAY_SUPPORT_DP_JUDYPN
+	bool "SUPPORT DISPLAYPORT JUDYPN"
+	default n
+	---help---
+	This config is for support only judypn device

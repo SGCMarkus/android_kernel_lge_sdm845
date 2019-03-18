@@ -9,7 +9,9 @@ TFA_VERSION              =tfa9872
 TFADSP_32BITS            =1
 TFADSP_DSP_MSG_APR_PACKET_STRATEGY=1
 TFADSP_DSP_BUFFER_POOL=1
-TFA_EXCEPTION_AT_OVERLAP_WITH_SAAM=1
+TFA_EXCEPTION_AT_TRANSITION=1
+TFA_USE_DEVICE_SPECIFIC_CONTROL=1
+TFA_PROFILE_ON_DEVICE    =1
 TFA_SOFTDSP              =1
 TFA_SRC_DIR              =/asoc/codecs/$(TFA_VERSION)
 TFA98XX_FLAGS           := -DUSE_TFA9872
@@ -30,8 +32,14 @@ endif
 ifdef TFADSP_DSP_BUFFER_POOL
 ccflags-y               += -DTFADSP_DSP_BUFFER_POOL
 endif
-ifdef TFA_EXCEPTION_AT_OVERLAP_WITH_SAAM
-ccflags-y               += -DTFA_FORCE_TO_STOP_RAM_AT_OVERLAPPED_OUTPUT
+ifdef TFA_EXCEPTION_AT_TRANSITION
+ccflags-y               += -DTFA_EXCEPTION_AT_TRANSITION
+endif
+ifdef TFA_USE_DEVICE_SPECIFIC_CONTROL
+ccflags-y               += -DTFA_USE_DEVICE_SPECIFIC_CONTROL
+endif
+ifdef TFA_PROFILE_ON_DEVICE
+ccflags-y               += -DTFA_PROFILE_ON_DEVICE
 endif
 ifdef TFA_SOFTDSP
 ccflags-y               += -DTFA_SOFTDSP
@@ -62,15 +70,6 @@ CFLAGS_tfa_dsp.o       += $(TFA98XX_FLAGS)
 CFLAGS_tfa_init.o  += $(TFA98XX_FLAGS)
 ifdef TFA_DEBUG
 CFLAGS_tfa_debug.o     += $(TFA98XX_FLAGS)
-endif
-
-ifdef TFADSP_DSP_MSG_BUFFERING
-#obj-m += snd-soc-tfa98xx-ext-dummy.o
-#snd-soc-tfa98xx-ext-dummy-objs += tfa_ext_dummy.o
-#obj-m += snd-soc-tfa98xx-ext-dummy-qcom.o
-#snd-soc-tfa98xx-ext-dummy-qcom-objs += tfa_ext_dummy_qcom.o
-#CFLAGS_tfa_ext_dummy.o     += $(TFA98XX_FLAGS)
-#CFLAGS_tfa_ext_dummy_qcom.o     += $(TFA98XX_FLAGS)
 endif
 
 # built-in driver

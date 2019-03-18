@@ -190,10 +190,12 @@ static bool charging_wakelock_acquire(struct wakeup_source* wakelock) {
 	return false;
 }
 
-static bool charging_wakelock_release(struct wakeup_source* wakelock) {
+static bool charging_wakelock_release(struct device* dev, struct wakeup_source* wakelock) {
 	if (wakelock->active) {
 		pr_veneer("%s\n", VENEER_WAKELOCK);
 		__pm_relax(wakelock);
+
+		pm_wakeup_event(dev, 1000);
 
 		return true;
 	}
@@ -207,7 +209,8 @@ static void update_veneer_wakelock(struct veneer* veneer_me) {
 	if (connected && !eoc)
 		charging_wakelock_acquire(&veneer_me->veneer_wakelock);
 	else
-		charging_wakelock_release(&veneer_me->veneer_wakelock);
+		charging_wakelock_release(veneer_me->veneer_dev,
+			&veneer_me->veneer_wakelock);
 }
 
 static void update_veneer_supplier(struct veneer* veneer_me) {
@@ -1176,6 +1179,7 @@ static int veneer_probe(struct platform_device *pdev) {
 	}
 
 	platform_set_drvdata(pdev, veneer_me);
+	device_init_wakeup(veneer_me->veneer_dev, true);
 	psy_external_logging(&veneer_me->dwork_logger.work);
 	return 0;
 

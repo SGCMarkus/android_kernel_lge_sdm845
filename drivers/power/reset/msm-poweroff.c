@@ -499,11 +499,14 @@ static void msm_restart_prepare(const char *cmd)
 				__raw_writel(0x77665568, restart_reason);
 				break;
 			}
-		} else
+		} else {
 #endif
 		qpnp_pon_set_restart_reason(
 			PON_RESTART_REASON_LAF_DLOAD_MODE);
 		__raw_writel(0x77665568, restart_reason);
+#ifdef CONFIG_LGE_USB_GADGET
+		}
+#endif
 	}
 
 	if (in_panic)

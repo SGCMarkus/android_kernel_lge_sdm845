@@ -75,8 +75,8 @@ tfa_probe(unsigned char slave_address, int *pDevice);
  * will be performed.\n
  * In case of a warm start only a power-on and un-mute will be executed.\n
  *
- * @param profile the profile to load, if -1 then don't change profile
- * @param vsteps the volume step selections for each channel, if -1 then softmute
+ * @param profile: profile to load, if -1 then don't change profile
+ * @param vsteps: volume step selections for each channel, if -1 then softmute
  *                        0 sets the maximum volume
  * @return enum tfa_error
  */

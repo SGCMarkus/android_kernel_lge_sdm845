@@ -49,6 +49,10 @@
 #include "../dsp/lge_dsp_nxp_lib.h"
 #endif
 
+#if defined(CONFIG_SND_LGE_CROSSTALK)
+#include "../dsp/lge_dsp_crosstalk.h"
+#endif
+
 #ifndef CONFIG_DOLBY_DAP
 #undef DOLBY_ADM_COPP_TOPOLOGY_ID
 #define DOLBY_ADM_COPP_TOPOLOGY_ID 0xFFFFFFFE
@@ -86,6 +90,9 @@ static int msm_route_ext_ec_ref;
 static bool is_custom_stereo_on;
 static bool is_ds2_on;
 static bool swap_ch;
+#if defined(CONFIG_SND_LGE_CROSSTALK)
+static int crosstalk_mode;
+#endif
 
 #define WEIGHT_0_DB 0x4000
 /* all the FEs which can support channel mixer */
@@ -12622,6 +12629,65 @@ static const struct snd_kcontrol_new msm_hifi_rec_controls[] = {
 };
 #endif
 
+#if defined(CONFIG_SND_LGE_CROSSTALK)
+static int msm_routing_get_crosstalk_headset_mode_control(struct snd_kcontrol *kcontrol,
+					  struct snd_ctl_elem_value *ucontrol)
+{
+    ucontrol->value.integer.value[0] = crosstalk_mode;
+    pr_debug("%s: crosstalk_mode value: %ld\n", __func__,
+             ucontrol->value.integer.value[0]);
+    return 0;
+}
+
+static int msm_routing_put_crosstalk_headset_mode_control(struct snd_kcontrol *kcontrol,
+    struct snd_ctl_elem_value *ucontrol)
+{
+	int i, idx, be_index, port_id;
+	int ret = 0;
+	unsigned long copp;
+
+	pr_debug("%s crosstalk_mode value:%ld\n", __func__,
+				ucontrol->value.integer.value[0]);
+
+	crosstalk_mode = ucontrol->value.integer.value[0];
+
+	for (be_index = 0; be_index < MSM_BACKEND_DAI_MAX; be_index++) {
+		port_id = msm_bedais[be_index].port_id;
+		if (!msm_bedais[be_index].active)
+			continue;
+
+		for_each_set_bit(i, &msm_bedais[be_index].fe_sessions[0],
+				MSM_FRONTEND_DAI_MM_SIZE) {
+			copp = session_copp_map[i][SESSION_TYPE_RX][be_index];
+			for (idx = 0; idx < MAX_COPPS_PER_PORT; idx++) {
+				if (!test_bit(idx, &copp))
+					continue;
+
+				pr_debug("%s: crosstalk mode control of portid:%d, coppid:%d\n",
+					 __func__, port_id, idx);
+				ret = q6adm_set_crosstalk_parms(
+					port_id, idx,
+					crosstalk_mode);
+				if (ret) {
+					pr_err("%s: crosstalk mode failed, err=%d\n",
+						 __func__, ret);
+					goto done;
+				}
+			}
+		}
+	}
+done:
+	return ret;
+
+}
+
+static const struct snd_kcontrol_new crosstalk_enable_mode_controls[] = {
+	SOC_SINGLE_EXT("Crosstalk Set Headsetmode", SND_SOC_NOPM, 0,
+	3, 0, msm_routing_get_crosstalk_headset_mode_control,
+	msm_routing_put_crosstalk_headset_mode_control),
+};
+#endif
+
 static const struct snd_kcontrol_new msm_source_tracking_controls[] = {
 	{
 		.access = SNDRV_CTL_ELEM_ACCESS_READWRITE,
@@ -17606,6 +17672,11 @@ static int msm_routing_probe(struct snd_soc_platform *platform)
 #if defined(CONFIG_SND_LGE_TX_NXP_LIB)
     snd_soc_add_platform_controls(platform, msm_hifi_rec_controls,
                     ARRAY_SIZE(msm_hifi_rec_controls));
+#endif
+
+#if defined(CONFIG_SND_LGE_CROSSTALK)
+    snd_soc_add_platform_controls(platform, crosstalk_enable_mode_controls,
+                    ARRAY_SIZE(crosstalk_enable_mode_controls));
 #endif
 
 	snd_soc_add_platform_controls(platform, stereo_channel_reverse_control,

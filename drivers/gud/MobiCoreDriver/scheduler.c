@@ -150,6 +150,13 @@ static int tee_scheduler(void *arg)
 					mc_scheduler_command(NSIQ);
 				}
 			}
+			/* If multiple commands have been posted,
+			 * signal only once. The SWd will not become idle
+			 * until they are all consumed
+			 */
+			while (try_wait_for_completion(
+				&sched_ctx.idle_complete))
+				;
 		}
 
 		if (kthread_should_stop() || !sched_ctx.thread_run)

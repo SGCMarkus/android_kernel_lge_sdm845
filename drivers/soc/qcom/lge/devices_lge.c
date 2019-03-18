@@ -432,9 +432,20 @@ int __init lge_sku_carrier_init(char *s)
 }
 __setup("androidboot.vendor.lge.sku_carrier=", lge_sku_carrier_init);
 
+char *lge_sku_str[] ={
+	"KR_ALL", "LGU", "SKT", "KT", "KR_RESERVED", "NA_GSM", "NA_ATT", "NA_TMUS",
+	"NA_RESERVED1", "NA_RESERVED2", "NA_CDMA", "NA_VZW", "NA_SPR", "NA_RESERVED3",
+	"NA_ALL", "GLOBAL", "ASIA", "MEA", "EU", "SCA", "SKU_ERR"
+};
+
 enum lge_sku_carrier_type lge_get_sku_carrier(void)
 {
 	return lge_sku_carrier;
+}
+
+char *lge_get_sku_carrier_str(void)
+{
+	return lge_sku_str[lge_sku_carrier];
 }
 EXPORT_SYMBOL(lge_get_sku_carrier);
 

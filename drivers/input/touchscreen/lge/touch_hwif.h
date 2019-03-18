@@ -65,6 +65,7 @@ struct touch_bus_msg {
 #define MAX_BUF_SIZE	(64 * 1024)
 #define MAX_XFER_BUF_SIZE	(1024)
 #define MAX_XFER_COUNT	15
+#define I2C_BUF_SIZE	(4 * 1024) + 1
 
 struct touch_xfer_data_t {
 	u16 addr;

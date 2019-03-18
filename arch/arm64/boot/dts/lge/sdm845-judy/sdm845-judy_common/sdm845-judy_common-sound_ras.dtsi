@@ -16,7 +16,7 @@
 	status = "ok";
 };
 */
-&soc {
+&audio_apr {
 	snd_934x: sound-tavil {
 		compatible = "qcom,sdm845-asoc-snd-tavil";
 		qcom,model = "sdm845-tavil-snd-card";
@@ -122,7 +122,9 @@
 		lge,fmradio-lna-enable-gpio = <&tlmm 128 0x00>;
 		lna-supply = <&pm8998_l16>;
 	};
+};
 
+&soc {
 	qcom,msm-dai-mi2s {
 		compatible = "qcom,msm-dai-mi2s";
 		dai_mi2s3: qcom,msm-dai-q6-mi2s-quat {

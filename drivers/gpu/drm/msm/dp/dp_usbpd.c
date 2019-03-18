@@ -485,6 +485,20 @@ error:
 	return rc;
 }
 
+static enum plug_orientation dp_usbpd_get_orientation(struct dp_usbpd *dp_usbpd)
+{
+	struct dp_usbpd_private *pd;
+
+	if (!dp_usbpd) {
+		pr_err("invalid dp_usbpd\n");
+		return ORIENTATION_NONE;
+	}
+
+	pd = container_of(dp_usbpd, struct dp_usbpd_private, dp_usbpd);
+
+	return usbpd_get_plug_orientation(pd->pd);
+}
+
 struct dp_usbpd *dp_usbpd_get(struct device *dev, struct dp_usbpd_cb *cb)
 {
 	int rc = 0;
@@ -535,6 +549,7 @@ struct dp_usbpd *dp_usbpd_get(struct device *dev, struct dp_usbpd_cb *cb)
 	dp_usbpd = &usbpd->dp_usbpd;
 	dp_usbpd->simulate_connect = dp_usbpd_simulate_connect;
 	dp_usbpd->simulate_attention = dp_usbpd_simulate_attention;
+	dp_usbpd->get_orientation = dp_usbpd_get_orientation;
 
 	return dp_usbpd;
 error:

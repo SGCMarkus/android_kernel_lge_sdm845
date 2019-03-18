@@ -1391,6 +1391,23 @@ msm_get_hw_subrev(struct device *dev,
 	return snprintf(buf, PAGE_SIZE, "%-.32s\n",
 			lge_get_board_subrevision());
 }
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+static ssize_t
+msm_get_sku_carrier(struct device *dev,
+			struct device_attribute *attr,
+			char *buf)
+{
+	enum lge_sku_carrier_type  sku_carrierid = lge_get_sku_carrier();
+
+	pr_err("sku_carrier called\n");
+	pr_err("sku_carrier id:%d\n", sku_carrierid);
+	pr_err("sku_carrier : %s",lge_get_sku_carrier_str());
+
+	return snprintf(buf, PAGE_SIZE, "%-.32s\n",
+			lge_get_sku_carrier_str());
+}
+#endif
 #endif
 
 static struct device_attribute msm_soc_attr_raw_version =
@@ -1508,6 +1525,10 @@ static struct device_attribute msm_soc_attr_hw_rev =
 	__ATTR(hw_rev, S_IRUGO, msm_get_hw_rev, NULL);
 static struct device_attribute msm_soc_attr_hw_subrev =
 	__ATTR(hw_subrev, S_IRUGO, msm_get_hw_subrev, NULL);
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+static struct device_attribute msm_soc_attr_sku_carrier =
+	__ATTR(sku_carrier, S_IRUGO, msm_get_sku_carrier, NULL);
+#endif
 #endif
 
 static void * __init setup_dummy_socinfo(void)
@@ -1753,6 +1774,10 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 					&msm_soc_attr_hw_rev);
 		device_create_file(msm_soc_device,
 					&msm_soc_attr_hw_subrev);
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+		device_create_file(msm_soc_device,
+					&msm_soc_attr_sku_carrier);
+#endif
 #endif
 		break;
 	default:

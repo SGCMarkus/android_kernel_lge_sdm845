@@ -523,8 +523,6 @@ struct tfa_speaker_file {
 	uint8_t data[]; //payload TFA98XX_SPEAKERPARAMETER_LENGTH
 };
 
-#if ( defined( TFA9888 ) || defined( TFA98XX_FULL ))
-
 #define NXPTFA_VP3_VERSION    '3'
 #define NXPTFA_VP3_SUBVERSION "00"
 
@@ -569,7 +567,6 @@ struct tfa_speaker_file_max2  {
 	uint8_t ohm_secondary;
 	struct tfa_fw_msg fw_msg; //payload including FW ver and Cmd ID
 };
-#endif
 
 /*
  * parameter container file

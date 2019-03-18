@@ -147,6 +147,7 @@ fw-shipped-$(CONFIG_VIDEO_CPIA2) += cpia2/stv0672_vp4.bin
 fw-shipped-$(CONFIG_YAM) += yam/1200.bin yam/9600.bin
 
 fw-shipped-$(CONFIG_SAR_ATMF04) += atmf04/atmf04_2CH_V0.41.fw
+fw-shipped-$(CONFIG_SAR_ATMF04_12QFN) += atmf04/atmf04_2CH_V0.37.fw
 fw-shipped-all := $(fw-shipped-y) $(fw-shipped-m) $(fw-shipped-)
 
 quiet_cmd_ihex  = IHEX    $@

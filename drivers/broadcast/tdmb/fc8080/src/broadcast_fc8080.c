@@ -43,7 +43,7 @@ static int tdmb_pinctrl_init(void);
 static int tdmb_set_gpio_config(void);
 static int tdmb_free_gpio_config(void);
 
-#define LGE_FC8080_DRV_VER  "1.00.22"
+#define LGE_FC8080_DRV_VER  "1.00.22_FIX_SPI_KERNEL_PANIC"
 
 /************************************************************************/
 /* LINUX Driver Setting                                                 */

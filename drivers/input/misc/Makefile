@@ -88,3 +88,4 @@ obj-$(CONFIG_STMVL53L0X)	+= vl53l0x/
 obj-$(CONFIG_STMVL53L0)         += vl53L0/
 obj-$(CONFIG_SAR_ATMF04) += atmf04.o
 obj-$(CONFIG_SAR_ATMF04_2ND) += atmf04_2nd.o
+obj-$(CONFIG_SAR_ATMF04_12QFN) += atmf04_12qfn.o

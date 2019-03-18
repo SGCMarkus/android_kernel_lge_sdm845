@@ -4586,7 +4586,7 @@ void mmc_rescan(struct work_struct *work)
 #ifdef CONFIG_MACH_LGE
 	if (err == -EIO && !(host->caps & MMC_CAP_NONREMOVABLE))
 	{
-		printk(KERN_INFO "[LGE][MMC][%-18s( )] mmc%d: SDcard is damaged\n", __func__, host->index);
+		printk(KERN_INFO "[LGE][MMC][%-18s( )] mmc%d: SDcard is damaged or not exists\n", __func__, host->index);
 		is_damaged_sd = 1;
 	}
 #endif

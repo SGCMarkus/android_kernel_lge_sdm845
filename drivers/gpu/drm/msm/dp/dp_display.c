@@ -730,7 +730,7 @@ static int dp_display_usbpd_disconnect_cb(struct device *dev)
 end:
 	return rc;
 }
-
+#if 0
 static void dp_display_handle_maintenance_req(struct dp_display_private *dp)
 {
 	mutex_lock(&dp->audio->ops_lock);
@@ -745,7 +745,7 @@ static void dp_display_handle_maintenance_req(struct dp_display_private *dp)
 
 	mutex_unlock(&dp->audio->ops_lock);
 }
-
+#endif
 static void dp_display_attention_work(struct work_struct *work)
 {
 	struct dp_display_private *dp = container_of(work,
@@ -784,13 +784,13 @@ static void dp_display_attention_work(struct work_struct *work)
 	}
 
 	if (dp->link->sink_request & DP_LINK_STATUS_UPDATED) {
-		dp_display_handle_maintenance_req(dp);
+		 dp->ctrl->link_maintenance(dp->ctrl);
 		return;
 	}
 
 	if (dp->link->sink_request & DP_TEST_LINK_TRAINING) {
 		dp->link->send_test_response(dp->link);
-		dp_display_handle_maintenance_req(dp);
+		 dp->ctrl->link_maintenance(dp->ctrl);
 		return;
 	}
 }
@@ -924,7 +924,19 @@ static int dp_init_sub_modules(struct dp_display_private *dp)
 		goto error_aux;
 	}
 
-	dp->aux = dp_aux_get(dev, &dp->catalog->aux, dp->parser->aux_cfg);
+	cb->configure  = dp_display_usbpd_configure_cb;
+	cb->disconnect = dp_display_usbpd_disconnect_cb;
+	cb->attention  = dp_display_usbpd_attention_cb;
+
+	dp->usbpd = dp_usbpd_get(dev, cb);
+	if (IS_ERR(dp->usbpd)) {
+		rc = PTR_ERR(dp->usbpd);
+		pr_err("failed to initialize usbpd, rc = %d\n", rc);
+		dp->usbpd = NULL;
+		goto error_usbpd;
+	}
+
+	dp->aux = dp_aux_get(dev, &dp->catalog->aux, dp->parser->aux_cfg, dp->usbpd);
 	if (IS_ERR(dp->aux)) {
 		rc = PTR_ERR(dp->aux);
 		pr_err("failed to initialize aux, rc = %d\n", rc);
@@ -981,18 +993,6 @@ static int dp_init_sub_modules(struct dp_display_private *dp)
 		goto error_audio;
 	}
 
-	cb->configure  = dp_display_usbpd_configure_cb;
-	cb->disconnect = dp_display_usbpd_disconnect_cb;
-	cb->attention  = dp_display_usbpd_attention_cb;
-
-	dp->usbpd = dp_usbpd_get(dev, cb);
-	if (IS_ERR(dp->usbpd)) {
-		rc = PTR_ERR(dp->usbpd);
-		pr_err("failed to initialize usbpd, rc = %d\n", rc);
-		dp->usbpd = NULL;
-		goto error_usbpd;
-	}
-
 	dp->debug = dp_debug_get(dev, dp->panel, dp->usbpd,
 				dp->link, dp->aux, &dp->dp_display.connector,
 				dp->catalog);
@@ -1005,8 +1005,6 @@ static int dp_init_sub_modules(struct dp_display_private *dp)
 
 	return rc;
 error_debug:
-	dp_usbpd_put(dp->usbpd);
-error_usbpd:
 	dp_audio_put(dp->audio);
 error_audio:
 	dp_ctrl_put(dp->ctrl);
@@ -1017,6 +1015,8 @@ error_panel:
 error_link:
 	dp_aux_put(dp->aux);
 error_aux:
+	dp_usbpd_put(dp->usbpd);
+error_usbpd:
 	dp_power_put(dp->power);
 error_power:
 	dp_catalog_put(dp->catalog);
@@ -1167,7 +1167,7 @@ static int dp_display_post_enable(struct dp_display *dp_display)
 		cancel_delayed_work_sync(&dp->hdcp_cb_work);
 
 		dp->link->hdcp_status.hdcp_state = HDCP_STATE_AUTHENTICATING;
-		queue_delayed_work(dp->wq, &dp->hdcp_cb_work, HZ / 2);
+		queue_delayed_work(dp->wq, &dp->hdcp_cb_work, HZ * 3);
 	}
 
 	dp->panel->setup_hdr(dp->panel, NULL);

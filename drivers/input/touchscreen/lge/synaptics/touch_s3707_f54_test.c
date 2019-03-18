@@ -358,6 +358,8 @@ static short ImagepF[TRX_MAX][TRX_MAX];
 static short baseline_image0[TRX_MAX][TRX_MAX];
 static short baseline_image1[TRX_MAX][TRX_MAX];
 static short delta[TRX_MAX][TRX_MAX];
+static short noise_min[TRX_MAX][TRX_MAX];
+static short noise_max[TRX_MAX][TRX_MAX];
 static uint8_t err_array[TRX_BITMAP_LENGTH] = {0, };
 static int HybridAbsData[TRX_MAX * TRX_MAX * 4];
 static uint8_t Data[TRX_MAX * TRX_MAX * 4];
@@ -406,13 +408,15 @@ static void Reset(struct device *dev)
 	data = 0x01;
 	Write8BitRegisters(dev, F01CommandBase, &data, 1);
 
-	touch_msleep(300);
+	TOUCH_I("reset on production test\n");
+	touch_msleep(100);
 }
 
 static int prepareTest(struct device *dev, u16 data)
 {
 	int ret = 0;
 	u8 buf = 0;
+	u8 buffer[2] = {0, 0};
 
 	TOUCH_TRACE();
 
@@ -458,12 +462,7 @@ static int prepareTest(struct device *dev, u16 data)
 	}
 
 	/* Reset Read Report Index */
-	buf = 0x00;
-	ret = Write8BitRegisters(dev, F54DataBase + 1, &buf, 1);
-	if (ret < 0)
-		goto out;
-
-	ret = Write8BitRegisters(dev, F54DataBase + 2, &buf, 1);
+	ret = Write8BitRegisters(dev, F54DataBase + 1, &buffer[0], sizeof(buffer));
 	if (ret < 0)
 		goto out;
 
@@ -547,11 +546,11 @@ static int CompareImageReport(struct device *dev)
 			if ((ImagepF[i][j] < rawcap_lower[i][j])
 					|| (ImagepF[i][j] > rawcap_upper[i][j])) {
 				result = false;
-				TOUCH_I("Fail [%2d][%2d] = %5d\n", i, j, ImagepF[i][j]);
 				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"\nFail [%2d][%2d] = %5d",
 						i, j, ImagepF[i][j]);
 				if (f54len > (BUF_SIZE / 2)) {
+					print_sd_log(f54buf);
 					write_file(dev, f54buf, TIME_INFO_SKIP);
 					memset(f54buf, 0, BUF_SIZE);
 					f54len = 0;
@@ -561,14 +560,10 @@ static int CompareImageReport(struct device *dev)
 	}
 
 	if (result == false) {
-		TOUCH_I("%sFull Raw Capacitance Test failed.\n",
-				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n\n%sFull Raw Capacitance Image Test failed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	} else {
-		TOUCH_I("%sFull Raw Capacitance Test passed.\n",
-				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n%sFull Raw Capacitance Image Test passed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
@@ -593,11 +588,11 @@ static int CompareHighResistance(struct device *dev)
 			if (ImagepF[i][j] < high_resistance_lower
 					|| ImagepF[i][j] > high_resistance_upper) {
 				result = false;
-				TOUCH_I("Fail [%2d][%2d] = %5d\n", i, j, ImagepF[i][j]);
 				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"\nFail [%2d][%2d] = %5d",
 						i, j, ImagepF[i][j]);
 				if (f54len > (BUF_SIZE / 2)) {
+					print_sd_log(f54buf);
 					write_file(dev, f54buf, TIME_INFO_SKIP);
 					memset(f54buf, 0, BUF_SIZE);
 					f54len = 0;
@@ -607,11 +602,9 @@ static int CompareHighResistance(struct device *dev)
 	}
 
 	if (result == false) {
-		TOUCH_I("HighResistance Test failed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n\nHighResistance Test failed.\n\n");
 	} else {
-		TOUCH_I("HighResistance Test passed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\nHighResistance Test passed.\n\n");
 	}
@@ -631,10 +624,10 @@ static int CompareHybridAbsRawReport(struct device *dev)
 		if (HybridAbsData[k] > hybrid_abs_rx_upper[i]
 					|| HybridAbsData[k] < hybrid_abs_rx_lower[i]) {
 			result = false;
-			TOUCH_I("Fail [%2d] = %6d\n", i, HybridAbsData[k]);
 			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\nFail [%2d] = %6d", i, HybridAbsData[k]);
 			if (f54len > (BUF_SIZE / 2)) {
+				print_sd_log(f54buf);
 				write_file(dev, f54buf, TIME_INFO_SKIP);
 				memset(f54buf, 0, BUF_SIZE);
 				f54len = 0;
@@ -647,10 +640,10 @@ static int CompareHybridAbsRawReport(struct device *dev)
 		if (HybridAbsData[k] > hybrid_abs_tx_upper[i]
 				|| HybridAbsData[k] < hybrid_abs_tx_lower[i]) {
 			result = false;
-			TOUCH_I("Fail [%2d] = %6d\n", i, HybridAbsData[k]);
 			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\nFail [%2d] = %6d", i, HybridAbsData[k]);
 			if (f54len > (BUF_SIZE / 2)) {
+				print_sd_log(f54buf);
 				write_file(dev, f54buf, TIME_INFO_SKIP);
 				memset(f54buf, 0, BUF_SIZE);
 				f54len = 0;
@@ -660,11 +653,9 @@ static int CompareHybridAbsRawReport(struct device *dev)
 	}
 
 	if (result == false) {
-		TOUCH_I("Hybrid Abs Rawdata Test Failed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\n\nHybrid Abs Test Failed.\n\n");
 	} else {
-		TOUCH_I("Hybrid Abs Rawdata Test Passed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\nHybrid Abs Test Passed.\n\n");
 	}
@@ -728,10 +719,10 @@ static int CompareTRexShortTestReport(struct device *dev)
 			result = false;
 			err_array[i] = Data[i] ^ trx_short_limit[i];
 
-			TOUCH_E("Fail [%d] = %#x\n", i, Data[i]);
 			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Fail [%d] = %#x\n", i, Data[i]);
 			if (f54len > (BUF_SIZE / 2)) {
+				print_sd_log(f54buf);
 				write_file(dev, f54buf, TIME_INFO_SKIP);
 				memset(f54buf, 0, BUF_SIZE);
 				f54len = 0;
@@ -743,10 +734,10 @@ static int CompareTRexShortTestReport(struct device *dev)
 		for (j = 0; j < 8; j++) {
 			if (err_array[i] & (0x01 << j)) {
 				result = false;
-				TOUCH_E("Fail, TRX[%d]\n", ((i * 8) + j));
 				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Fail, TRX[%d]\n", ((i * 8) + j));
 				if (f54len > (BUF_SIZE / 2)) {
+					print_sd_log(f54buf);
 					write_file(dev, f54buf, TIME_INFO_SKIP);
 					memset(f54buf, 0, BUF_SIZE);
 					f54len = 0;
@@ -756,11 +747,9 @@ static int CompareTRexShortTestReport(struct device *dev)
 	}
 
 	if (result == false) {
-		TOUCH_I("TRex-TRex Short Test failed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n\nTRex-TRex Short Test failed.\n\n");
 	} else {
-		TOUCH_I("TRex-TRex Short Test passed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\nTRex-TRex Short Test passed.\n\n");
 	}
@@ -770,6 +759,34 @@ static int CompareTRexShortTestReport(struct device *dev)
 	return (result) ? 1 : 0;
 }
 
+static void print_noise_report(struct device *dev, short (*data)[TRX_MAX])
+{
+	int i, j = 0;
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "     ");
+
+	for (i = 0; i < (int)RxChannelCount; i++)
+		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				" [%2d] ", i);
+
+	for (i = 0; i < (int)TxChannelCount; i++) {
+		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				"\n[%2d] ", i);
+		for (j = 0; j < (int)RxChannelCount; j++) {
+			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+					"%5d ", data[i][j]);
+		}
+	}
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+
+	print_sd_log(f54buf);
+	write_file(dev, f54buf, TIME_INFO_SKIP);
+	memset(f54buf, 0, BUF_SIZE);
+	f54len = 0;
+
+}
+
 /* Compare Report type #2 data against test limits */
 static int CompareNoiseReport(struct device *dev)
 {
@@ -777,19 +794,49 @@ static int CompareNoiseReport(struct device *dev)
 
 	bool result = true;
 	int i, j = 0;
+	int min = 9999;
+	int max = 0;
+	int max_tx = 0;
+	int max_rx = 0;
+	int min_tx = 0;
+	int min_rx = 0;
 
 	TOUCH_TRACE();
 
-	for (i = 0; i < TxChannelCount; i++) {
-		for (j = 0; j < RxChannelCount; j++) {
-			if (ImagepF[i][j] < jitter_lower
-					|| ImagepF[i][j] > jitter_upper) {
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "===== %sNoise Test =====",
+			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			"\n[%sNoise Min]\n", (d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
+	print_noise_report(dev, noise_min);
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			"\n[%sNoise Max]\n", (d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
+	print_noise_report(dev, noise_max);
+
+	for (i = 0; i < (int)TxChannelCount; i++) {
+		for (j = 0; j < (int)RxChannelCount; j++) {
+			if (noise_min[i][j] < min) {
+				min = noise_min[i][j];
+				min_tx = i;
+				min_rx = j;
+			}
+
+			if (noise_max[i][j] > max) {
+				max = noise_max[i][j];
+				max_tx = i;
+				max_rx = j;
+			}
+
+			if (noise_min[i][j] < jitter_lower
+					|| noise_max[i][j] > jitter_upper) {
 				result = false;
-				TOUCH_I("Fail [%2d][%2d] = %5d\n", i, j, ImagepF[i][j]);
 				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-						"\nFail [%2d][%2d] = %5d",
-						i, j, ImagepF[i][j]);
+						"\nFail [%2d][%2d] : Min[%5d], Max[%5d]",
+						i, j, noise_min[i][j], noise_max[i][j]);
+
 				if (f54len > (BUF_SIZE / 2)) {
+					print_sd_log(f54buf);
 					write_file(dev, f54buf, TIME_INFO_SKIP);
 					memset(f54buf, 0, BUF_SIZE);
 					f54len = 0;
@@ -799,18 +846,26 @@ static int CompareNoiseReport(struct device *dev)
 	}
 
 	if (result == false) {
-		TOUCH_I("%sNoise Test failed.\n",
-				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
+		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+	}
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				"\n%sNoise min[%2d][%2d] : %d, max[%2d][%2d] : %d\n",
+				((d->lcd_mode != LCD_MODE_U3) ? "LPWG " : ""),
+				min_tx, min_rx, min, max_tx, max_rx, max);
+
+	if (result == false) {
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-				"\n\n%sNoise Test failed.\n\n",
+				"\n%sNoise Test failed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	} else {
-		TOUCH_I("%sNoise Test passed.\n",
-				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n%sNoise Test passed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	}
+
+	print_sd_log(f54buf);
+	write_file(dev, f54buf, TIME_INFO_SKIP);
 
 	return (result) ? 1 : 0;
 }
@@ -833,17 +888,19 @@ static int ReadImageReport(struct device *dev)
 		return -EAGAIN;
 	}
 
-	TOUCH_I("%sFull Raw Capacitance Test\n",
-			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-			"[%sFull Raw Capacitance Test]\n",
+			"===== %sFull Raw Capacitance Test =====\n",
 			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "   : ");
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			"[%sFull Raw Capacitance]\n",
+			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "     ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
@@ -872,12 +929,36 @@ static int ReadImageReport(struct device *dev)
 
 	ret = CompareImageReport(dev);
 
+	print_sd_log(f54buf);
 	write_file(dev, f54buf, TIME_INFO_SKIP);
 
-	touch_msleep(30);
-
-	/* Reset Device */
 	Reset(dev);
+
+	return ret;
+}
+
+/* Get Rawdata for ExtendedTRXShortTest */
+static int GetExtendedTRexImageReport(struct device *dev)
+{
+	int ret = 0;
+	int i, j, k = 0;
+
+	TOUCH_TRACE();
+
+	ret = Read8BitRegisters(dev, (F54DataBase + REPORT_DATA_OFFEST), &Data[0], MaxArrayLength);
+	if (ret < 0) {
+		TOUCH_E("failed to read (F54DataBase + REPORT_DATA_OFFEST) - ret:%d\n", ret);
+		return -EAGAIN;
+	}
+
+	for (i = 0; i < (int)TxChannelCount; i++) {
+		for (j = 0; j < (int)RxChannelCount; j++) {
+			Image1[i][j] = ((short)Data[k]
+					| (short)Data[k + 1] << 8);
+			ImagepF[i][j] = Image1[i][j];
+			k = k + 2;
+		}
+	}
 
 	return ret;
 }
@@ -896,7 +977,8 @@ static int GetImageReport(struct device *dev, int input, char *buf)
 		return -EAGAIN;
 	}
 
-	*buf = 0;
+	ret = strlen(buf);
+
 	ret += snprintf(buf + ret, PAGE_SIZE - ret, "Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
@@ -918,7 +1000,6 @@ static int GetImageReport(struct device *dev, int input, char *buf)
 		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	}
 
-	/* Reset Device */
 	if (input == eRT_FullRawCapacitance)
 		Reset(dev);
 
@@ -928,14 +1009,18 @@ static int GetImageReport(struct device *dev, int input, char *buf)
 /* Construct data with Report Type #2 data */
 static int ReadNoiseReport(struct device *dev)
 {
-	struct s3707_data *d = to_s3707_data(dev);
-
+	u8 buf[2] = {0, 0};
 	int ret = 0;
 	int i, j, k = 0;
-	int min = 9999;
-	int max = 0;
 
 	TOUCH_TRACE();
+
+	/* Reset Read Report Index */
+	ret = Write8BitRegisters(dev, F54DataBase + 1, &buf[0], sizeof(buf));
+	if (ret < 0) {
+		TOUCH_E("failed to write reset index - ret:%d\n", ret);
+		return -EAGAIN;
+	}
 
 	ret = Read8BitRegisters(dev, (F54DataBase + REPORT_DATA_OFFEST), &Data[0], MaxArrayLength);
 	if (ret < 0) {
@@ -943,50 +1028,20 @@ static int ReadNoiseReport(struct device *dev)
 		return -EAGAIN;
 	}
 
-	TOUCH_I("%sNoise Test\n", (d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "[%sNoise Test]\n",
-			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
-
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-			"Tx = %d, Rx = %d\n",
-			(int)TxChannelCount, (int)RxChannelCount);
-
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "   : ");
-
-	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-				" [%2d] ", i);
-
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-				"\n[%2d] ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
-			Image1[i][j] = (short)Data[k]
-				| ((short)Data[k + 1] << 8);
+			Image1[i][j] = (short)Data[k] | ((short)Data[k + 1] << 8);
 			ImagepF[i][j] = Image1[i][j];
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-						"%5d ", ImagepF[i][j]);
+
+			if (ImagepF[i][j] < noise_min[i][j])
+				noise_min[i][j] = ImagepF[i][j];
+
+			if (ImagepF[i][j] > noise_max[i][j])
+				noise_max[i][j] = ImagepF[i][j];
+
 			k = k + 2;
-
-			if (ImagepF[i][j] < min)
-				min = ImagepF[i][j];
-
-			if (ImagepF[i][j] > max)
-				max = ImagepF[i][j];
 		}
 	}
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
-
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-				"\n%sNoise min : %d, max : %d\n",
-				((d->lcd_mode != LCD_MODE_U3) ? "LPWG " : ""), min, max);
-
-	ret = CompareNoiseReport(dev);
-	write_file(dev, f54buf, TIME_INFO_SKIP);
-	touch_msleep(30);
-
-	/* Reset Device */
-	Reset(dev);
 
 	return ret;
 }
@@ -1009,10 +1064,6 @@ static int ReadHighResistanceReport(struct device *dev)
 		return -EAGAIN;
 	}
 
-	TOUCH_I("High Resistance Test\n");
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-				"[High Resistance Test]\n");
-
 	for (i = 0; i < (int)RxChannelCount; i++)
 		k = k + 2;
 
@@ -1020,10 +1071,16 @@ static int ReadHighResistanceReport(struct device *dev)
 		k = k + 2;
 
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				"===== High Resistance Test =====\n");
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "   : ");
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				"[High Resistance]\n");
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
@@ -1035,13 +1092,17 @@ static int ReadHighResistanceReport(struct device *dev)
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			Image1[i][j] = ((short)Data[k] | (short)Data[k + 1] << 8);
 			ImagepF[i][j] = Image1[i][j];
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-							"%5d ", ImagepF[i][j]);
+
 			k = k + 2;
 
+			//ignore a value where notch
 			if (j == 0 && (i == 6 || i == 7 || i == 8 || i == 9 || i == 10)) {
-				continue;
+				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+							"%5d ", 0);
 			} else {
+				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+							"%5d ", ImagepF[i][j]);
+
 				if (ImagepF[i][j] < min)
 					min = ImagepF[i][j];
 
@@ -1050,16 +1111,27 @@ static int ReadHighResistanceReport(struct device *dev)
 			}
 		}
 	}
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n\n");
+
+	//print a value where notch
+	for (i = 0; i < (int)TxChannelCount; i++) {
+		for (j = 0; j < (int)RxChannelCount; j++) {
+			if (j == 0 && (i == 6 || i == 7 || i == 8 || i == 9 || i == 10)) {
+				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+							"High Resistance Notch[%d][%d] = %5d\n", i, j, ImagepF[i][j]);
+			}
+		}
+	}
 
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\nHigh Resistance min : %d, max : %d\n", min, max);
 
 	ret = CompareHighResistance(dev);
-	write_file(dev, f54buf, TIME_INFO_SKIP);
-	touch_msleep(30);
 
-	/* Reset Device */
+	print_sd_log(f54buf);
+	write_file(dev, f54buf, TIME_INFO_SKIP);
+
 	Reset(dev);
 
 	return ret;
@@ -1083,14 +1155,16 @@ static int ReadHybridAbsRawReport(struct device *dev)
 
 	p32data = (int *)&Data[0];
 
-	TOUCH_I("Hybrid Abs Test\n");
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-				"[Hybrid Abs Test]\n");
+				"===== Hybrid Abs Test =====\n");
 
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Rx = %d\n", (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "   : ");
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				"[Hybrid Abs Test for Rx]\n");
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
@@ -1110,7 +1184,10 @@ static int ReadHybridAbsRawReport(struct device *dev)
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Tx = %d\n", (int)TxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "   : ");
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				"[Hybrid Abs Test for Tx]\n");
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
 
 	for (i = 0; i < (int)TxChannelCount; i++)
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
@@ -1128,10 +1205,10 @@ static int ReadHybridAbsRawReport(struct device *dev)
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
 
 	ret = CompareHybridAbsRawReport(dev);
-	write_file(dev, f54buf, TIME_INFO_SKIP);
-	touch_msleep(30);
 
-	/* Reset Device */
+	print_sd_log(f54buf);
+	write_file(dev, f54buf, TIME_INFO_SKIP);
+
 	Reset(dev);
 
 	return ret;
@@ -1157,7 +1234,9 @@ static int ReadTRexShortReport(struct device *dev)
 		return -EAGAIN;
 	}
 
-	TOUCH_I("TRex-TRex Short Test\n");
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			"===== Extend TRx Short Test =====\n");
+
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"[TRex Short Test]\n");
 
@@ -1172,10 +1251,10 @@ static int ReadTRexShortReport(struct device *dev)
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
 
 	ret = CompareTRexShortTestReport(dev);
-	write_file(dev, f54buf, TIME_INFO_SKIP);
-	touch_msleep(30);
 
-	/* Reset Device */
+	print_sd_log(f54buf);
+	write_file(dev, f54buf, TIME_INFO_SKIP);
+
 	Reset(dev);
 
 	return ret;
@@ -1223,10 +1302,13 @@ static int ReadReport(struct device *dev, u16 input, int mode, char *buf)
 	switch (input) {
 	case eRT_RawImageRT100:
 	case eRT_FullRawCapacitance:
-		if (mode == 1)
+		if (mode == 2) {
+			ret = GetExtendedTRexImageReport(dev);
+		} else if (mode == 1) {
 			ret = GetImageReport(dev, input, buf);
-		else
+		} else {
 			ret = ReadImageReport(dev);
+		}
 		break;
 	case eRT_TRexShort:
 		ret = ReadTRexShortReport(dev);
@@ -2450,7 +2532,7 @@ static void RunQueries(struct device *dev)
 }
 
 /*
- * The following funtion illustrates the steps in getting
+ * The following function illustrates the steps in getting
  * a full raw image report (report #20) by Function $54.
  */
 static int ImageTest(struct device *dev, u16 input, int mode, char *buf)
@@ -2508,24 +2590,33 @@ error:
 
 static int NoiseTest(struct device *dev, int mode, char *buf)
 {
-	uint8_t data = 0;
-	u16 report_type = 0;
 	int ret = 0;
+	int count = 0;
 
 	TOUCH_TRACE();
 
-	/* Assign report type for Full Raw Image */
-	data = eRT_Normalized16BitImageReport;	/* Delta mode */
-	ret = prepareTest(dev, data);
-	if (ret < 0) {
-		TOUCH_E("failed to write F54DataBase for report type(%d) - ret:%d\n", data, ret);
-		goto error;
+	memset(noise_min, 0x00, sizeof(short) * (TRX_MAX) * (TRX_MAX));
+	memset(noise_max, 0x00, sizeof(short) * (TRX_MAX) * (TRX_MAX));
+
+	for (count = 0; count < NOISE_TEST_COUNT; count++) {
+		ret = prepareTest(dev, eRT_Normalized16BitImageReport);
+		if (ret < 0) {
+			TOUCH_E("failed to write F54DataBase for report type(%d) - ret:%d\n", eRT_Normalized16BitImageReport, ret);
+			goto error;
+		}
+
+		ret = ReadReport(dev, eRT_Normalized16BitImageReport, mode, buf);
+		if (ret < 0) {
+			TOUCH_E("%s, ReadReport Failed\n", __func__);
+			goto error;
+		}
 	}
 
-	report_type = eRT_Normalized16BitImageReport;
-	ret = ReadReport(dev, report_type, mode, buf);
+	ret = CompareNoiseReport(dev);
 
 error:
+	Reset(dev);
+
 	return ret;
 }
 
@@ -2594,8 +2685,12 @@ static void getExtShortDelta(struct device *dev, int trx,  uint8_t logical_pin)
 
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"Logical Rx[%d] = Extend pin[%d]\n", logical_pin, trx);
+
 	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
-			"Tx = %d, Rx = %d\n    ", (int)TxChannelCount, (int)RxChannelCount);
+			"Tx = %d, Rx = %d\n", (int)TxChannelCount, (int)RxChannelCount);
+
+	f54len += snprintf(f54buf + f54len, sizeof(f54buf),
+			"[Extend TRx Short Test (%d, %d)]\n    ", logical_pin, trx);
 
 	for (i = 0; i < (int)RxChannelCount; i++)
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "  [%2d]", i);
@@ -2676,7 +2771,6 @@ static int ExtendedTRXShortRT100Test(struct device *dev, int mode, char *buf)
 	f54len = 0;
 	memset(f54buf, 0, BUF_SIZE);
 
-	f54len = snprintf(f54buf, sizeof(f54buf), "[Extend TRx Short Test]\n");
 	/* Assign report type for RawImageRT100 Test*/
 	data = eRT_RawImageRT100;	/* RawImageRT100 */
 	ret = prepareTest(dev, data);
@@ -2738,6 +2832,7 @@ static int ExtendedTRXShortRT100Test(struct device *dev, int mode, char *buf)
 		getExtShortDelta(dev, i, logical_pin);
 		GetMaxRx(delta, maxRX, logical_pin);
 
+		print_sd_log(f54buf);
 		write_file(dev, f54buf, TIME_INFO_SKIP);
 
 		f54len = 0;
@@ -2780,20 +2875,17 @@ static int ExtendedTRXShortRT100Test(struct device *dev, int mode, char *buf)
 	}
 
 	if (ext_short_ret) {
-		TOUCH_I("Extend TRx Short Test Passed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"Extend TRx Short Test passed.\n\n");
 	} else {
-		TOUCH_I("Extend TRx Short Test Failed.\n");
 		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"Extend TRx Short Test failed.\n\n");
 	}
 	result = short_ret & ext_short_ret;
 
+	print_sd_log(f54buf);
 	write_file(dev, f54buf, TIME_INFO_SKIP);
-	touch_msleep(30);
 
-	/* Reset Device */
 	Reset(dev);
 
 	return (result) ? 1 : 0;
@@ -2802,7 +2894,7 @@ error:
 	return -EAGAIN;
 }
 
-/* This test is to retreive the high resistance report, report type #4. */
+/* This test is to retrieve the high resistance report, report type #4. */
 static int HighResistanceTest(struct device *dev, int mode, char *buf)
 {
 	uint8_t data = 0;
@@ -2878,10 +2970,11 @@ retry:
 		ret = HybridAbsRaw(dev, mode, buf);
 		break;
 	case eRT_Normalized16BitImageReport:
-		if (mode == 1)
+		if (mode == 1) {
 			ret = DeltaTest(dev, mode, buf);
-		else
+		} else {
 			ret = NoiseTest(dev, mode, buf);
+		}
 		break;
 	default:
 		return -EINVAL;
@@ -2892,7 +2985,6 @@ retry:
 
 	if (switchPage(dev, DEFAULT) != true) {
 		TOUCH_I("switchPage failed\n");
-		/*Reset Device*/
 		Reset(dev);
 	}
 

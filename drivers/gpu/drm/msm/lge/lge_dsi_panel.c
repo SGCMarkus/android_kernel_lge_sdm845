@@ -149,7 +149,7 @@ int dsi_panel_full_power_seq(struct dsi_panel *panel)
 	return ret;
 }
 
-static const char *LPNAME[] = { "NOLP", "LP1", "LP2", "OFF" };
+static const char *LPNAME[] = { "NOLP", "LP1", "LP2", "OFF", "MAX"};
 static bool dsi_panel_need_mask(struct dsi_panel *panel)
 {
 	if (panel->lge.partial_area_vertical_changed)
@@ -162,23 +162,47 @@ static bool dsi_panel_need_mask(struct dsi_panel *panel)
 	return false;
 }
 
-static int set_lp(struct dsi_panel *panel, enum lge_panel_lp_state lp_state, enum dsi_cmd_set_type cmd_set_type)
+static void set_aod_area(struct dsi_panel *panel)
 {
 	int rc = 0;
 
 	if (!panel) {
 		pr_err("invalid params\n");
-		return -EINVAL;
+		return;
+	}
+
+	if (panel->lge.ddic_ops && panel->lge.ddic_ops->prepare_aod_area) {
+		panel->lge.ddic_ops->prepare_aod_area(panel,
+				panel->lge.lge_cmd_sets[LGE_DDIC_DSI_AOD_AREA].cmds,
+				panel->lge.lge_cmd_sets[LGE_DDIC_DSI_AOD_AREA].count);
+	}
+
+	rc = lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_AOD_AREA);
+	if (rc) {
+		pr_err("[%s] failed to send cmd, rc=%d\n",
+				panel->name, rc);
+	}
+
+	return;
+}
+
+static void set_lp(struct dsi_panel *panel, enum lge_panel_lp_state lp_state, enum dsi_cmd_set_type cmd_set_type)
+{
+	int rc = 0;
+
+	if (!panel) {
+		pr_err("invalid params\n");
+		return;
 	}
 
 	if (panel->lge.panel_state == lp_state) {
 		pr_debug("already %s state\n", LPNAME[lp_state]);
-		goto exit;
+		return;
 	}
 
 	if (!cmd_set_exists(panel, cmd_set_type)) {
 		pr_err("No %s cmd\n", LPNAME[lp_state]);
-		return -EINVAL;
+		return;
 	}
 
 	rc = lge_ddic_dsi_panel_tx_cmd_set(panel, cmd_set_type);
@@ -189,8 +213,8 @@ static int set_lp(struct dsi_panel *panel, enum lge_panel_lp_state lp_state, enu
 		panel->lge.panel_state = lp_state;
 		pr_info("sent %s cmd\n", LPNAME[lp_state]);
 	}
-exit:
-	return rc;
+
+	return;
 }
 
 static int dsi_panel_get_current_power_mode(struct dsi_panel *panel)
@@ -359,7 +383,7 @@ exit:
 static int dsi_panel_send_lp_cmds(struct dsi_panel *panel,
 				enum lge_ddic_dsi_cmd_set_type cmd_type)
 {
-	int rc;
+	int rc = 0;
 	bool need_mask = true;
 	bool need_prepare = true;
 	char *bist_name;
@@ -382,12 +406,19 @@ static int dsi_panel_send_lp_cmds(struct dsi_panel *panel,
 		panel_state = LGE_PANEL_NOLP;
 		need_prepare = false;
 		break;
+	case LGE_DDIC_DSI_AOD_AREA:
+		bist_name ="aod_area";
+		break;
 	default:
 		bist_name = "none";
 		break;
 	};
 
 	mutex_lock(&panel->lge.pa_changed_lock);
+
+	if (cmd_type == LGE_DDIC_DSI_CMD_SET_MAX)
+		goto exit;
+
 	need_mask = dsi_panel_need_mask(panel);
 
 	/* 1. masking */
@@ -406,15 +437,21 @@ static int dsi_panel_send_lp_cmds(struct dsi_panel *panel,
 	if (panel->lge.use_ddic_reg_lock)
 		lge_ddic_dsi_panel_tx_cmd_set(panel, LGE_DDIC_DSI_REGISTER_UNLOCK);
 
-	if (panel && panel->cur_mode && need_prepare) {
-		if (panel->lge.ddic_ops && panel->lge.ddic_ops->prepare_aod_cmds) {
-			panel->lge.ddic_ops->prepare_aod_cmds(panel,
-					panel->lge.lge_cmd_sets[cmd_type].cmds,
-					panel->lge.lge_cmd_sets[cmd_type].count);
+
+	if (panel->cur_mode && need_prepare) {
+		set_aod_area(panel);
+
+		if (cmd_type != LGE_DDIC_DSI_AOD_AREA) {
+			if (panel->lge.ddic_ops && panel->lge.ddic_ops->prepare_aod_cmds) {
+				panel->lge.ddic_ops->prepare_aod_cmds(panel,
+						panel->lge.lge_cmd_sets[cmd_type].cmds,
+						panel->lge.lge_cmd_sets[cmd_type].count);
+			}
 		}
 	}
 
-	rc = set_lp(panel, panel_state, cmd_type);
+	if(cmd_type != LGE_DDIC_DSI_AOD_AREA)
+		set_lp(panel, panel_state, cmd_type);
 
 	/* LOCK REGISTER */
 	if (panel->lge.use_ddic_reg_lock)
@@ -454,6 +491,7 @@ static int dsi_panel_send_lp_cmds(struct dsi_panel *panel,
 
 	panel->lge.partial_area_vertical_changed = false;
 	panel->lge.partial_area_height_changed = false;
+exit:
 	mutex_unlock(&panel->lge.pa_changed_lock);
 
 	return rc;
@@ -479,15 +517,14 @@ int dsi_panel_set_lp2(struct dsi_panel *panel)
 
 	cmd_type = dsi_panel_select_cmd_type(panel);
 
-	if (cmd_type == LGE_DDIC_DSI_CMD_SET_MAX)
-		goto exit;
-
 	rc = dsi_panel_send_lp_cmds(panel, cmd_type);
 	if (rc < 0) {
 		pr_err("fail to send lp command\n");
 	}
-exit:
-	if (cmd_type == LGE_DDIC_DSI_CMD_SET_MAX) panel->lge.panel_state = LGE_PANEL_LP2;
+
+	if ((cmd_type == LGE_DDIC_DSI_CMD_SET_MAX) || (cmd_type == LGE_DDIC_DSI_AOD_AREA))
+		panel->lge.panel_state = LGE_PANEL_LP2;
+
 	rc = dsi_panel_update_lp_state(panel, LGE_PANEL_LP2);
 	if (rc < 0) {
 		pr_err("fail to update lp state\n");
@@ -513,16 +550,14 @@ int dsi_panel_set_lp1(struct dsi_panel *panel)
 
 	cmd_type = dsi_panel_select_cmd_type(panel);
 
-	if (cmd_type == LGE_DDIC_DSI_CMD_SET_MAX)
-		goto exit;
-
 	rc = dsi_panel_send_lp_cmds(panel, cmd_type);
 	if (rc < 0) {
 		pr_err("fail to send lp command\n");
 	}
 
-exit:
-	if (cmd_type == LGE_DDIC_DSI_CMD_SET_MAX) panel->lge.panel_state = LGE_PANEL_LP1;
+	if ((cmd_type == LGE_DDIC_DSI_CMD_SET_MAX) || (cmd_type == LGE_DDIC_DSI_AOD_AREA))
+		panel->lge.panel_state = LGE_PANEL_LP1;
+
 	rc = dsi_panel_update_lp_state(panel, LGE_PANEL_LP1);
 	if (rc < 0) {
 		pr_err("update lp state\n");
@@ -530,7 +565,6 @@ exit:
 		lge_panel_notifier_call_chain(LGE_PANEL_EVENT_BLANK,
 				0, LGE_PANEL_STATE_LP1); /* U2_BLANK; DOZE_SUSPEND */
 	}
-
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_DIMMING_BOOT_SUPPORT)
 	lge_set_blank_called();
 #endif
@@ -1020,7 +1054,7 @@ error:
 	return rc;
 }
 
-static int lge_dsi_panel_mode_set(struct dsi_panel *panel)
+int lge_dsi_panel_mode_set(struct dsi_panel *panel)
 {
 	bool reg_backup_cond = false;
 
@@ -1094,8 +1128,6 @@ error:
 
 	if (panel->lge.lp_state == LGE_PANEL_NOLP)
 		lge_panel_notifier_call_chain(LGE_PANEL_EVENT_BLANK, 0, LGE_PANEL_STATE_UNBLANK); // U3, UNBLANK
-
-	lge_dsi_panel_mode_set(panel);
 
 	return rc;
 }
@@ -1686,6 +1718,9 @@ static int lge_dsi_panel_parse_dt(struct dsi_panel *panel, struct device_node *o
 
 	panel->lge.use_ddic_reg_backup = of_property_read_bool(of_node, "lge,ddic-register-backup");
 	pr_info("use register backup=%d\n", panel->lge.use_ddic_reg_backup);
+
+	panel->lge.bc_dim_en = of_property_read_bool(of_node, "lge,use-bc-dim");
+	pr_info("use bc dim =%d\n", panel->lge.bc_dim_en);
 
 	panel->lge.use_mplus = of_property_read_bool(of_node, "lge,use-mplus");
 	pr_info("use mplus=%d\n", panel->lge.use_mplus);

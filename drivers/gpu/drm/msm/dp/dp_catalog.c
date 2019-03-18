@@ -53,6 +53,22 @@
 	parser->get_io_buf(parser, #x); \
 }
 
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_JUDYPN
+static u8 const vm_pre_emphasis[4][4] = {
+	{0x06, 0x0B, 0x14, 0xFF},       /* pe0, 1.3 db */
+	{0x06, 0x0B, 0x12, 0xFF},       /* pe1, 3.5 db */
+	{0x06, 0x0B, 0xFF, 0xFF},       /* pe2, 6.0 db */
+	{0xFF, 0xFF, 0xFF, 0xFF}        /* pe3, 9.5 db */
+};
+
+/* voltage swing, 0.2v and 1.0v are not support */
+static u8 const vm_voltage_swing[4][4] = {
+	{0x09, 0x0F, 0x16, 0xFF}, /* sw0, 0.4v  */
+	{0x11, 0x1E, 0x1F, 0xFF}, /* sw1, 0.6 v */
+	{0x19, 0x1F, 0xFF, 0xFF}, /* sw1, 0.8 v */
+	{0xFF, 0xFF, 0xFF, 0xFF}  /* sw1, 1.2 v, optional */
+};
+#else
 static u8 const vm_pre_emphasis[4][4] = {
 	{0x00, 0x0B, 0x14, 0xFF},       /* pe0, 0 db */
 	{0x00, 0x0B, 0x12, 0xFF},       /* pe1, 3.5 db */
@@ -67,6 +83,7 @@ static u8 const vm_voltage_swing[4][4] = {
 	{0x19, 0x1F, 0xFF, 0xFF}, /* sw1, 0.8 v */
 	{0xFF, 0xFF, 0xFF, 0xFF}  /* sw1, 1.2 v, optional */
 };
+#endif
 
 struct dp_catalog_io {
 	struct dp_io_data *dp_ahb;
