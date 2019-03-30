@@ -6868,7 +6868,7 @@ int afe_set_lpass_clock_v2(u16 port_id, struct afe_clk_set *cfg)
 	if (ret) {
 		pr_err("%s: afe_set_lpass_clk_cfg_v2 failed %d\n",
 			__func__, ret);
-                panic("[Audio_BSP] DSP returned error for AFE_SVC_CMD_SET_PARAM. Add panic for debugging");
+                pr_err("%s: [Audio_BSP] DSP returned error for AFE_SVC_CMD_SET_PARAM. Add panic for debugging", __func__);
         }
 
 	return ret;
