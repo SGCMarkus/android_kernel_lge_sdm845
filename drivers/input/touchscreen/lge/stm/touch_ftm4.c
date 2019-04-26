@@ -85,7 +85,7 @@ int ftm4_reg_read(struct device *dev, u8 *reg, int cnum, u8 *buf, int num)
 	struct ftm4_data *d = to_ftm4_data(dev);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct touch_core_data *ts = to_touch_core(dev);
-	struct i2c_msg xfer_msg[2];
+	struct i2c_msg xfer_msg[2] = {{0}, };
 	int ret = 0;
 
 #if defined(CONFIG_SECURE_TOUCH)
@@ -126,7 +126,7 @@ int ftm4_reg_write(struct device *dev, u8 *reg, u16 num_com)
 	struct ftm4_data *d = to_ftm4_data(dev);
 	struct i2c_client *client = to_i2c_client(dev);
 	struct touch_core_data *ts = to_touch_core(dev);
-	struct i2c_msg xfer_msg[2];
+	struct i2c_msg xfer_msg[2] = {{0}, };
 	int ret = 0;
 
 #if defined(CONFIG_SECURE_TOUCH)
@@ -1858,11 +1858,11 @@ static void ftm4_print_ic_info(struct device *dev)
 
 	TOUCH_TRACE();
 
-	str_ret = snprintf(str, sizeof(str),
+	str_ret = touch_snprintf(str, sizeof(str),
 			"v%d.%02d", d->ic_fw_ver.major, d->ic_fw_ver.minor);
 
 	if (d->ic_fw_ver.build) {
-		str_ret += snprintf(str + str_ret, sizeof(str) - str_ret,
+		str_ret += touch_snprintf(str + str_ret, sizeof(str) - str_ret,
 				".%d", d->ic_fw_ver.build);
 	}
 
@@ -1948,11 +1948,11 @@ int ftm4_ic_info(struct device *dev)
 		goto error;
 	}
 
-	str_ret += snprintf(str + str_ret, sizeof(str) - str_ret,
+	str_ret += touch_snprintf(str + str_ret, sizeof(str) - str_ret,
 			"v%d.%02d", d->ic_fw_ver.major, d->ic_fw_ver.minor);
 
 	if (d->ic_fw_ver.build) {
-		str_ret += snprintf(str + str_ret, sizeof(str) - str_ret,
+		str_ret += touch_snprintf(str + str_ret, sizeof(str) - str_ret,
 				".%d", d->ic_fw_ver.build);
 	}
 
@@ -3251,7 +3251,7 @@ static int ftm4_fw_upgrade(struct device *dev, const struct firmware *fw)
 	struct ftm4_data *d = to_ftm4_data(dev);
 	struct touch_core_data *ts = to_touch_core(dev);
 	u8 *fw_data = (u8 *)fw->data;
-	struct fw_ftb_header fw_header;
+	struct fw_ftb_header fw_header = {0, };
 	enum binfile_type fw_type = BIN_INVALID;
 	int ret = 0;
 
@@ -3649,34 +3649,34 @@ static int ftm4_status_event_handler(struct device *dev, u8 *data)
 	TOUCH_TRACE();
 
 	if (status == STATUS_EVENT_MUTUAL_AUTOTUNE_DONE) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_MUTUAL_AUTOTUNE_DONE");
 	} else if (status == STATUS_EVENT_SELF_AUTOTUNE_DONE) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_SELF_AUTOTUNE_DONE");
 	} else if (status == STATUS_EVENT_FLASH_WRITE_CONFIG) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_FLASH_WRITE_CONFIG");
 	} else if (status == STATUS_EVENT_FLASH_WRITE_CXTUNE_VALUE) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_FLASH_WRITE_CXTUNE_VALUE");
 	} else if (status == STATUS_EVENT_TRIGGER_FORCE_CALIBRATION) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_TRIGGER_FORCE_CALIBRATION");
 	} else if (status == STATUS_EVENT_FINISH_FORCE_CALIBRATION) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_FINISH_FORCE_CALIBRATION");
 	} else if (status == STATUS_EVENT_RESERVED) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_RESERVED");
 	} else if (status == STATUS_EVENT_LOCKDOWN_FOR_LGD) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_LOCKDOWN_FOR_LGD");
 	} else if (status == STATUS_EVENT_FRAME_DROP) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_FRAME_DROP");
 	} else if (status == STATUS_EVENT_WATER_MODE) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_WATER_MODE[%s]",
 				(data[2] == 0) ? "OFF" : "ON");
 	} else if (status == STATUS_EVENT_NOISE_MODE) {
@@ -3684,50 +3684,50 @@ static int ftm4_status_event_handler(struct device *dev, u8 *data)
 		char val[10] = {0};
 
 		if (data[2] == 0x01)
-			snprintf(src, sizeof(src), "MUTUAL");
+			touch_snprintf(src, sizeof(src), "MUTUAL");
 		else if (data[2] == 0x02)
-			snprintf(src, sizeof(src), "SELF");
+			touch_snprintf(src, sizeof(src), "SELF");
 		else
-			snprintf(src, sizeof(src), "UNKNOWN");
+			touch_snprintf(src, sizeof(src), "UNKNOWN");
 
 		if (data[3] == 0x00)
-			snprintf(val, sizeof(val), "OFF");
+			touch_snprintf(val, sizeof(val), "OFF");
 		else if (data[3] == 0x01)
-			snprintf(val, sizeof(val), "ON");
+			touch_snprintf(val, sizeof(val), "ON");
 		else
-			snprintf(val, sizeof(val), "UNKNOWN");
+			touch_snprintf(val, sizeof(val), "UNKNOWN");
 
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_NOISE_MODE[%s][%s]", src, val);
 	} else if (status == STATUS_EVENT_PURE_AUTOTUNE_SET) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_PURE_AUTOTUNE_SET");
 	} else if (status == STATUS_EVENT_PURE_AUTOTUNE_CLEARED) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_PURE_AUTOTUNE_CLEARED");
 	} else if (status == STATUS_EVENT_BASIC_AUTOTUNE_PROTECTION) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_BASIC_AUTOTUNE_PROTECTION");
 	} else if (status == STATUS_EVENT_FLASH_WRITE_AUTOTUNE_VALUE) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_FLASH_WRITE_AUTOTUNE_VALUE");
 	} else if (status == STATUS_EVENT_F_CAL_AFTER_AUTOTUNE_PROTECTION) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_F_CAL_AFTER_AUTOTUNE_PROTECTION");
 	} else if (status == STATUS_EVENT_CHARGER_CONNECTED) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_CHARGER_CONNECTED");
 	} else if (status == STATUS_EVENT_CHARGER_DISCONNECTED) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_CHARGER_DISCONNECTED");
 	} else if (status == STATUS_EVENT_WIRELESS_CHARGER_ON) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_WIRELESS_CHARGER_ON");
 	} else if (status == STATUS_EVENT_WIRELESS_CHARGER_OFF) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_WIRELESS_CHARGER_OFF");
 	} else if (status == STATUS_EVENT_DETECT_ESD_PATTERN) {
-		snprintf(str, sizeof(str),
+		touch_snprintf(str, sizeof(str),
 				"STATUS_EVENT_DETECT_ESD_PATTERN");
 		ret = -ERESTART;
 	} else {
@@ -3751,25 +3751,25 @@ static int ftm4_error_event_handler(struct device *dev, u8 *data)
 	TOUCH_TRACE();
 
 	if (error_type == EVENTID_ERROR_M3) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_M3");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_M3");
 		ret = -ERESTART;
 	} else if (error_type == EVENTID_ERROR_AFE) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_AFE");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_AFE");
 		ret = -ERESTART;
 	} else if (error_type == EVENTID_ERROR_FLASH_CORRUPTION) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_FLASH_CORRUPTION");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_FLASH_CORRUPTION");
 	} else if (error_type == EVENTID_ERROR_ITO) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_ITO");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_ITO");
 	} else if (error_type == EVENTID_ERROR_OSC_TRIM) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_OSC_TRIM");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_OSC_TRIM");
 	} else if (error_type == EVENTID_ERROR_RTOS) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_RTOS");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_RTOS");
 	} else if (error_type == EVENTID_ERROR_CX_TUNE) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_CX_TUNE");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_CX_TUNE");
 	} else if (error_type == EVENTID_ERROR_LIB) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_LIB");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_LIB");
 	} else if (error_type == EVENTID_ERROR_INT_FIFO_CLEAR) {
-		snprintf(str, sizeof(str), "EVENTID_ERROR_INT_FIFO_CLEAR");
+		touch_snprintf(str, sizeof(str), "EVENTID_ERROR_INT_FIFO_CLEAR");
 		touch_report_all_event(ts);
 		ts->tcount = 0;
 		if (d->palm == PALM_PRESSED) {
@@ -3977,15 +3977,15 @@ static int ftm4_swipe_event_handler(struct device *dev, u8 *data)
 
 	switch (gesture_type) {
 	case LPWG_SWIPE_UP_EVENT:
-		snprintf(str, sizeof(str), "UP");
+		touch_snprintf(str, sizeof(str), "UP");
 		ts->intr_status = TOUCH_IRQ_SWIPE_UP;
 		break;
 	case LPWG_SWIPE_DOWN_EVENT:
-		snprintf(str, sizeof(str), "DOWN");
+		touch_snprintf(str, sizeof(str), "DOWN");
 		ts->intr_status = TOUCH_IRQ_SWIPE_DOWN;
 		break;
 	case LPWG_SWIPE_RIGHT_EVENT:
-		snprintf(str, sizeof(str), "RIGHT");
+		touch_snprintf(str, sizeof(str), "RIGHT");
 		ts->intr_status = TOUCH_IRQ_SWIPE_RIGHT;
 		if (d->lpwg_abs.enable) {
 			TOUCH_I("%s: lpwg_abs is enabled - skip SWIPE_R gesture\n",
@@ -3995,7 +3995,7 @@ static int ftm4_swipe_event_handler(struct device *dev, u8 *data)
 		}
 		break;
 	case LPWG_SWIPE_LEFT_EVENT:
-		snprintf(str, sizeof(str), "LEFT");
+		touch_snprintf(str, sizeof(str), "LEFT");
 		ts->intr_status = TOUCH_IRQ_SWIPE_LEFT;
 		if (d->lpwg_abs.enable) {
 			TOUCH_I("%s: lpwg_abs is enabled - skip SWIPE_L gesture\n",
@@ -4331,7 +4331,7 @@ static ssize_t show_gpio_pin(struct device *dev, char *buf)
 	int_pin = gpio_get_value(ts->int_pin);
 	ta_detect_pin = gpio_get_value(d->ta_detect_pin);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"reset_pin = %d , int_pin = %d , ta_detect_pin = %d\n",
 			reset_pin, int_pin, ta_detect_pin);
 	TOUCH_I("%s: reset_pin = %d , int_pin = %d , ta_detect_pin = %d\n",
@@ -4350,7 +4350,7 @@ static ssize_t show_ta_detect_pin(struct device *dev, char *buf)
 
 	value = gpio_get_value(d->ta_detect_pin);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"ta_detect_pin = %d\n", value);
 	TOUCH_I("%s: ta_detect_pin = %d\n", __func__, value);
 
@@ -4389,7 +4389,7 @@ static ssize_t show_vr_status(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", d->vr_status);
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", d->vr_status);
 	TOUCH_I("%s: vr_status = %d\n", __func__, d->vr_status);
 
 	return ret;
@@ -4434,7 +4434,7 @@ static ssize_t show_swipe_enable(struct device *dev, char *buf)
 	if ((d->swipe.mode & mask) == mask)
 		value = 1;
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
 	TOUCH_I("%s: value = %d\n", __func__, value);
 
 	ftm4_print_swipe_info(dev);
@@ -4481,7 +4481,7 @@ static ssize_t show_swipe_tool(struct device *dev, char *buf)
 	if ((d->swipe.mode & mask) == mask)
 		value = 1;
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
 	TOUCH_I("%s: value = %d\n", __func__, value);
 
 	ftm4_print_swipe_info(dev);
@@ -4565,7 +4565,7 @@ static ssize_t show_lpwg_abs(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", d->lpwg_abs.enable);
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", d->lpwg_abs.enable);
 	TOUCH_I("%s: lpwg_abs.enable = %d\n", __func__, d->lpwg_abs.enable);
 
 	ftm4_print_lpwg_abs_info(dev);
@@ -4629,7 +4629,7 @@ static ssize_t show_voice_button(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n",
 			d->voice_button.enable);
 	TOUCH_I("%s: voice_button.enable = %d\n",
 			__func__, d->voice_button.enable);
@@ -4698,32 +4698,32 @@ static ssize_t show_lpwg_debug_enable(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "tci1_debug_enable = %d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "tci1_debug_enable = %d\n",
 			d->tci1_debug_enable);
 	TOUCH_I("%s: tci1_debug_enable = %d\n", __func__,
 			d->tci1_debug_enable);
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "tci2_debug_enable = %d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "tci2_debug_enable = %d\n",
 			d->tci2_debug_enable);
 	TOUCH_I("%s: tci2_debug_enable = %d\n", __func__,
 			d->tci2_debug_enable);
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "swipeup_debug_enable = %d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "swipeup_debug_enable = %d\n",
 			d->swipe.info[SWIPE_U].debug_enable);
 	TOUCH_I("%s: swipeup_debug_enable = %d\n", __func__,
 			d->swipe.info[SWIPE_U].debug_enable);
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "swipedown_debug_enable = %d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "swipedown_debug_enable = %d\n",
 			d->swipe.info[SWIPE_D].debug_enable);
 	TOUCH_I("%s: swipedown_debug_enable = %d\n", __func__,
 			d->swipe.info[SWIPE_D].debug_enable);
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "swiperight_debug_enable = %d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "swiperight_debug_enable = %d\n",
 			d->swipe.info[SWIPE_R].debug_enable);
 	TOUCH_I("%s: swiperight_debug_enable = %d\n", __func__,
 			d->swipe.info[SWIPE_R].debug_enable);
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "swipeleft_debug_enable = %d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "swipeleft_debug_enable = %d\n",
 			d->swipe.info[SWIPE_L].debug_enable);
 	TOUCH_I("%s: swipeleft_debug_enable = %d\n", __func__,
 			d->swipe.info[SWIPE_L].debug_enable);
@@ -4855,13 +4855,13 @@ static ssize_t show_autotune(struct device *dev, char *buf)
 	mutex_unlock(&ts->lock);
 
 	if (pure_autotune_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE,
 				"error (pure_autotune_ret = %d)\n",
 				pure_autotune_ret);
 		TOUCH_I("%s: error (pure_autotune_ret = %d)\n",
 				__func__, pure_autotune_ret);
 	} else {
-		ret += snprintf(buf + ret, PAGE_SIZE,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE,
 				"pure_autotune : %s\n", d->pure_autotune
 				? ((d->pure_autotune_info == 1) ? "1 (E)" : "0 (D)")
 				: "0");
@@ -4919,7 +4919,7 @@ static ssize_t show_pure_autotune(struct device *dev, char *buf)
 
 	if (atomic_read(&ts->state.fb) != FB_RESUME) {
 		TOUCH_I("%s: state.fb is not FB_RESUME\n", __func__);
-		ret = snprintf(buf, PAGE_SIZE, "Check Display is turned on.\n");
+		ret = touch_snprintf(buf, PAGE_SIZE, "Check Display is turned on.\n");
 		goto exit;
 	}
 
@@ -4961,7 +4961,7 @@ static ssize_t show_grip_suppression(struct device *dev, char *buf)
 	if (ret < 0)
 		TOUCH_E("%s: failed to ftm4_reg_read\n", __func__);
 
-	ret = snprintf(buf, PAGE_SIZE, "%d\n", data[1]);
+	ret = touch_snprintf(buf, PAGE_SIZE, "%d\n", data[1]);
 	TOUCH_I("%s: grip_suppression %s\n", __func__, (data[1] ? "enable" : "disable"));
 
 	mutex_unlock(&ts->lock);
@@ -5022,7 +5022,7 @@ static ssize_t show_q_sensitivity(struct device *dev, char *buf)
 	if (ret < 0)
 		TOUCH_E("%s: failed to ftm4_reg_read\n", __func__);
 
-	ret = snprintf(buf, PAGE_SIZE, "%d\n", data[1]);
+	ret = touch_snprintf(buf, PAGE_SIZE, "%d\n", data[1]);
 	TOUCH_I("%s: q_sensitivity %s\n", __func__, (data[1] ? "enable" : "disable"));
 
 	mutex_unlock(&ts->lock);
@@ -5127,45 +5127,45 @@ static int ftm4_get_cmd_version(struct device *dev, char *buf)
 	ret = ftm4_ic_info(dev);
 
 	if (ret < 0) {
-		offset += snprintf(buf + offset, PAGE_SIZE, "-1\n");
-		offset += snprintf(buf + offset, PAGE_SIZE - offset,
+		offset += touch_snprintf(buf + offset, PAGE_SIZE, "-1\n");
+		offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 			"Read Fail Touch IC Info\n");
 		return offset;
 	}
 
-	str_ret += snprintf(str + str_ret, sizeof(str) - str_ret,
+	str_ret += touch_snprintf(str + str_ret, sizeof(str) - str_ret,
 			"v%d.%02d", d->ic_fw_ver.major, d->ic_fw_ver.minor);
 
 	if (d->ic_fw_ver.build) {
-		str_ret += snprintf(str + str_ret, sizeof(str) - str_ret,
+		str_ret += touch_snprintf(str + str_ret, sizeof(str) - str_ret,
 				".%d", d->ic_fw_ver.build);
 	}
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 			 "IC firmware version [%s], afe_ver [0x%02X]\n",
 			 str, d->afe.ver);
 
 	/* print version info  */
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 		"product id : [%02x %02x %02x]\n",
 			d->prd_info.product_id[0],
 			d->prd_info.product_id[1],
 			d->prd_info.product_id[2]);
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 		"chip_rev : %d, fpc_rev : %d, panel_rev : %d\n",
 		d->prd_info.chip_rev, d->prd_info.fpc_rev,
 		d->prd_info.panel_rev);
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 		"inspector_ch : %d\n", d->prd_info.inspector_ch);
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 				"date : %02d.%02d.%02d %02d:%02d:%02d\n",
 		d->prd_info.date[0], d->prd_info.date[1], d->prd_info.date[2],
 		d->prd_info.date[3], d->prd_info.date[4], d->prd_info.date[5]);
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 			"pure_autotune : %s\n", d->pure_autotune
 			? ((d->pure_autotune_info == 1) ? "1 (E)" : "0 (D)")
 			: "0");
@@ -5186,21 +5186,21 @@ static int ftm4_get_cmd_atcmd_version(struct device *dev, char *buf)
 	ret = ftm4_ic_info(dev);
 
 	if (ret < 0) {
-		offset += snprintf(buf + offset, PAGE_SIZE, "-1\n");
-		offset += snprintf(buf + offset, PAGE_SIZE - offset,
+		offset += touch_snprintf(buf + offset, PAGE_SIZE, "-1\n");
+		offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 			"Read Fail Touch IC Info\n");
 		return offset;
 	}
 
-	str_ret += snprintf(str + str_ret, sizeof(str) - str_ret,
+	str_ret += touch_snprintf(str + str_ret, sizeof(str) - str_ret,
 			"v%d.%02d", d->ic_fw_ver.major, d->ic_fw_ver.minor);
 
 	if (d->ic_fw_ver.build) {
-		str_ret += snprintf(str + str_ret, sizeof(str) - str_ret,
+		str_ret += touch_snprintf(str + str_ret, sizeof(str) - str_ret,
 				".%d", d->ic_fw_ver.build);
 	}
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset, "%s\n", str);
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset, "%s\n", str);
 
 	return offset;
 }

@@ -488,6 +488,8 @@ int __init lge_ntcode_op_init(char *s)
 		lge_ntcode_op = OP_OPEN_US;
 	else if (!strcmp(s, "OPEN_CA"))
 		lge_ntcode_op = OP_OPEN_CA;
+	else if (!strcmp(s, "SPR"))
+		lge_ntcode_op = OP_SPR_US;
 	else
 		lge_ntcode_op = OP_GLOBAL;
 

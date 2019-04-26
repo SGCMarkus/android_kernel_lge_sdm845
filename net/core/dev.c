@@ -6528,8 +6528,14 @@ void __dev_set_rx_mode(struct net_device *dev)
 		}
 	}
 
-	if (ops->ndo_set_rx_mode)
+	if (ops->ndo_set_rx_mode) {
+//LGE_WIFI_S, protocol-wifi@lge.com, 20190124, Add debug msg for mdns
+		if (dev->flags&IFF_MULTICAST && !(dev->flags&IFF_ALLMULTI)) {
+			printk("ndo_set_rx_mode(multicast) Process %s (pid: %d)\n", current->comm, current->pid);			
+		}
+//LGE_WIFI_E, protocol-wifi@lge.com, 20190124, Add debug msg for mdns
 		ops->ndo_set_rx_mode(dev);
+	}
 }
 
 void dev_set_rx_mode(struct net_device *dev)

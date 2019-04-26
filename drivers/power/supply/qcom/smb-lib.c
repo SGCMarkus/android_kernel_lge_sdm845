@@ -4454,6 +4454,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	rc = smblib_set_prop_typec_power_role(chg, &val);
 	if (rc < 0)
 		smblib_err(chg, "Couldn't enable DRP rc=%d\n", rc);
+#endif
 
 	/* HW controlled CC_OUT */
 	rc = smblib_masked_write(chg, TAPER_TIMER_SEL_CFG_REG,
@@ -4461,6 +4462,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	if (rc < 0)
 		smblib_err(chg, "Couldn't enable HW cc_out rc=%d\n", rc);
 
+#ifndef CONFIG_LGE_USB
 	/* restore crude sensor if PM660/PMI8998 */
 	if (chg->wa_flags & TYPEC_PBS_WA_BIT) {
 		rc = smblib_write(chg, TM_IO_DTEST4_SEL, 0xA5);

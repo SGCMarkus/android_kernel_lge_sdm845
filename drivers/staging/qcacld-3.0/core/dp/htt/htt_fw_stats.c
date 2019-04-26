@@ -55,7 +55,7 @@ static char *bw_str_arr[] = {"20MHz", "40MHz", "80MHz", "160MHz"};
 		qdf_debug("TX Rate Info:");			 \
 		\
 		/* MCS */					 \
-		qdf_print("%s: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d",\
+		qdf_err("%s: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d",\
 				"[TX] MCS counts (0..9)",		 \
 				_tx_rate_info->mcs[0],		 \
 				_tx_rate_info->mcs[1],		 \
@@ -83,23 +83,22 @@ static char *bw_str_arr[] = {"20MHz", "40MHz", "80MHz", "160MHz"};
 				_tx_rate_info->sgi[9]);		 \
 		\
 		/* NSS */					 \
-		qdf_print("[TX] NSS counts: 1x1 %d, 2x2 %d", \
+		qdf_err("[TX] NSS counts: 1x1 %d, 2x2 %d", \
 				_tx_rate_info->nss[0],		 \
 				_tx_rate_info->nss[1]);\
 		\
 		/* BW */					 \
 		if (ARRAY_SIZE(_tx_rate_info->bw) == 3) \
-			qdf_print("[TX] BW counts: %s %d, %s %d, %s %d", \
+			qdf_err("[TX] BW counts: %s %d, %s %d, %s %d", \
 				bw_str_arr[0], _tx_rate_info->bw[0],	 \
 				bw_str_arr[1], _tx_rate_info->bw[1],	 \
 				bw_str_arr[2], _tx_rate_info->bw[2]);	 \
 		else if (ARRAY_SIZE(_tx_rate_info->bw) == 4) \
-			qdf_print("[TX] BW counts: %s %d, %s %d, %s %d, %s %d", \
+			qdf_err("[TX] BW counts: %s %d, %s %d, %s %d, %s %d", \
 				bw_str_arr[0], _tx_rate_info->bw[0],	 \
 				bw_str_arr[1], _tx_rate_info->bw[1],	 \
 				bw_str_arr[2], _tx_rate_info->bw[2],     \
 				bw_str_arr[3], _tx_rate_info->bw[3]);	 \
-		\
 		\
 		/* Preamble */					 \
 		qdf_debug("Preamble (O C H V) counts: %d, %d, %d, %d",\
@@ -121,7 +120,7 @@ static char *bw_str_arr[] = {"20MHz", "40MHz", "80MHz", "160MHz"};
 				_tx_rate_info->stbc[7],		 \
 				_tx_rate_info->stbc[8],		 \
 				_tx_rate_info->stbc[9]);	 \
-			\
+		\
 		/* LDPC and TxBF counts */			 \
 		qdf_debug("LDPC Counts: %d", _tx_rate_info->ldpc);\
 		qdf_debug("RTS Counts: %d", _tx_rate_info->rts_cnt);\
@@ -157,7 +156,7 @@ static void htt_t2h_stats_tx_rate_stats_print_v2(wlan_dbg_tx_rate_info_v2_t *
 		qdf_debug("RX Rate Info:");			\
 		\
 		/* MCS */					\
-		qdf_print("%s: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d",\
+		qdf_err("%s: %d, %d, %d, %d, %d, %d, %d, %d, %d, %d",\
 				"[RX] MCS counts (0..9)",		 \
 				_rx_phy_info->mcs[0],			\
 				_rx_phy_info->mcs[1],			\
@@ -195,10 +194,10 @@ static void htt_t2h_stats_tx_rate_stats_print_v2(wlan_dbg_tx_rate_info_v2_t *
 		 * if needed in the future. Hence the addition in the host code\
 		 * at this line.
 		 */							       \
-		qdf_print("[RX] NSS counts: 1x1 %d, 2x2 %d, 3x3 %d, 4x4 %d",\
+		qdf_err("[RX] NSS counts: 1x1 %d, 2x2 %d, 3x3 %d, 4x4 %d",\
 				_rx_phy_info->nss[0] + _rx_phy_info->nsts,\
-				_rx_phy_info->nss[1],			\
-				_rx_phy_info->nss[2],			\
+				_rx_phy_info->nss[1],		\
+				_rx_phy_info->nss[2],		\
 				_rx_phy_info->nss[3]);		\
 		\
 		/* NSTS */					\
@@ -206,12 +205,12 @@ static void htt_t2h_stats_tx_rate_stats_print_v2(wlan_dbg_tx_rate_info_v2_t *
 		\
 		/* BW */					\
 		if (ARRAY_SIZE(_rx_phy_info->bw) == 3) \
-			qdf_print("[RX] BW counts: %s %d, %s %d, %s %d",	\
+			qdf_err("[RX] BW counts: %s %d, %s %d, %s %d",	\
 				bw_str_arr[0], _rx_phy_info->bw[0],	\
 				bw_str_arr[1], _rx_phy_info->bw[1],	\
 				bw_str_arr[2], _rx_phy_info->bw[2]);	\
 		else if (ARRAY_SIZE(_rx_phy_info->bw) == 4) \
-			qdf_print("[RX] BW counts: %s %d, %s %d, %s %d, %s %d", \
+			qdf_err("[RX] BW counts: %s %d, %s %d, %s %d, %s %d", \
 				bw_str_arr[0], _rx_phy_info->bw[0],	\
 				bw_str_arr[1], _rx_phy_info->bw[1],	\
 				bw_str_arr[2], _rx_phy_info->bw[2],    \

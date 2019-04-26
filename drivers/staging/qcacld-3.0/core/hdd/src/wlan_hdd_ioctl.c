@@ -6915,6 +6915,41 @@ static int drv_cmd_set_scansuppress(hdd_adapter_t *adapter,
 	wlan_hdd_set_scan_suppress(on_off);
 	return 0;
 }
+static int drv_cmd_get_dbsmode(hdd_adapter_t *adapter,
+			 hdd_context_t *hdd_ctx,
+			 uint8_t *command,
+			 uint8_t command_len,
+			 hdd_priv_data_t *priv_data)
+{
+	char extra[32] = {'\0',};
+	int ret = -1;
+	uint8_t len = 0;
+	int ant_no = 0;
+	int rsdb_mode = 0;
+	hdd_adapter_t *pAdapter = adapter;
+	tSmeConfigParams smeConfig ;
+	tHalHandle hHal;
+	hHal= WLAN_HDD_GET_HAL_CTX(pAdapter);
+	hdd_ctx = WLAN_HDD_GET_CTX(pAdapter);
+	ret = wlan_hdd_validate_context(hdd_ctx);
+
+	if (0 != ret) {
+	    hdd_err("[LGE_COMMAND]%s>Error in getting context", __func__);
+		return -EINVAL;
+	}
+	sme_get_config_param(hHal, &smeConfig);
+	ant_no = (smeConfig.csrConfig.enable2x2 == 0) ? 1 : 2;
+	if ((ant_no == 2) && wma_is_current_hwmode_dbs()) {
+	    hdd_err("[LGE_COMMAND]wma_is_current_hwmode_dbs is true");
+		rsdb_mode = 1;
+	}
+	len = scnprintf(extra, sizeof(extra), "%s %d", command, rsdb_mode);
+	if (copy_to_user(priv_data->buf, &extra, len)) {
+		hdd_err("Failed to copy data to user buffer");
+		return -EFAULT;
+	}
+    return 0;
+}
 /*LGE_CHNAGE_E, DRIVER scan_suppress command, 2017-06-12, moon-wifi@lge.com*/
 #endif
 
@@ -7600,9 +7635,10 @@ static const struct hdd_drv_cmd hdd_drv_cmds[] = {
 	{"BTCOEXSCAN-START",          drv_cmd_dummy, false},
 	{"BTCOEXSCAN-STOP",           drv_cmd_dummy, false},
 #ifdef FEATURE_SUPPORT_LGE
-/*LGE_CHNAGE_S, DRIVER scan_suppress command, 2017-06-12, moon-wifi@lge.com*/
+/*LGE_CHNAGE_S, DRIVER scan_suppress command,DRIVER GET_RSDBMODE 2019-01-17, protocol-wifi@lge.com*/
 	{"SET_SCANSUPPRESS",          drv_cmd_set_scansuppress, true}, //true or false??
-/*LGE_CHNAGE_E, DRIVER scan_suppress command, 2017-06-12, moon-wifi@lge.com*/
+	{"GET_RSDBMODE",              drv_cmd_get_dbsmode, false}, //fasle
+/*LGE_CHNAGE_S, DRIVER scan_suppress command,DRIVER GET_RSDBMODE 2019-01-17, protocol-wifi@lge.com*/
 #endif
 };
 

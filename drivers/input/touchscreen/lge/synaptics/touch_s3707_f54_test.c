@@ -546,7 +546,7 @@ static int CompareImageReport(struct device *dev)
 			if ((ImagepF[i][j] < rawcap_lower[i][j])
 					|| (ImagepF[i][j] > rawcap_upper[i][j])) {
 				result = false;
-				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"\nFail [%2d][%2d] = %5d",
 						i, j, ImagepF[i][j]);
 				if (f54len > (BUF_SIZE / 2)) {
@@ -560,11 +560,11 @@ static int CompareImageReport(struct device *dev)
 	}
 
 	if (result == false) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n\n%sFull Raw Capacitance Image Test failed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	} else {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n%sFull Raw Capacitance Image Test passed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	}
@@ -588,7 +588,7 @@ static int CompareHighResistance(struct device *dev)
 			if (ImagepF[i][j] < high_resistance_lower
 					|| ImagepF[i][j] > high_resistance_upper) {
 				result = false;
-				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"\nFail [%2d][%2d] = %5d",
 						i, j, ImagepF[i][j]);
 				if (f54len > (BUF_SIZE / 2)) {
@@ -602,10 +602,10 @@ static int CompareHighResistance(struct device *dev)
 	}
 
 	if (result == false) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n\nHighResistance Test failed.\n\n");
 	} else {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\nHighResistance Test passed.\n\n");
 	}
 
@@ -624,7 +624,7 @@ static int CompareHybridAbsRawReport(struct device *dev)
 		if (HybridAbsData[k] > hybrid_abs_rx_upper[i]
 					|| HybridAbsData[k] < hybrid_abs_rx_lower[i]) {
 			result = false;
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\nFail [%2d] = %6d", i, HybridAbsData[k]);
 			if (f54len > (BUF_SIZE / 2)) {
 				print_sd_log(f54buf);
@@ -640,7 +640,7 @@ static int CompareHybridAbsRawReport(struct device *dev)
 		if (HybridAbsData[k] > hybrid_abs_tx_upper[i]
 				|| HybridAbsData[k] < hybrid_abs_tx_lower[i]) {
 			result = false;
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\nFail [%2d] = %6d", i, HybridAbsData[k]);
 			if (f54len > (BUF_SIZE / 2)) {
 				print_sd_log(f54buf);
@@ -653,10 +653,10 @@ static int CompareHybridAbsRawReport(struct device *dev)
 	}
 
 	if (result == false) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\n\nHybrid Abs Test Failed.\n\n");
 	} else {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"\nHybrid Abs Test Passed.\n\n");
 	}
 
@@ -719,7 +719,7 @@ static int CompareTRexShortTestReport(struct device *dev)
 			result = false;
 			err_array[i] = Data[i] ^ trx_short_limit[i];
 
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Fail [%d] = %#x\n", i, Data[i]);
 			if (f54len > (BUF_SIZE / 2)) {
 				print_sd_log(f54buf);
@@ -734,7 +734,7 @@ static int CompareTRexShortTestReport(struct device *dev)
 		for (j = 0; j < 8; j++) {
 			if (err_array[i] & (0x01 << j)) {
 				result = false;
-				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Fail, TRX[%d]\n", ((i * 8) + j));
 				if (f54len > (BUF_SIZE / 2)) {
 					print_sd_log(f54buf);
@@ -747,10 +747,10 @@ static int CompareTRexShortTestReport(struct device *dev)
 	}
 
 	if (result == false) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n\nTRex-TRex Short Test failed.\n\n");
 	} else {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\nTRex-TRex Short Test passed.\n\n");
 	}
 
@@ -763,22 +763,22 @@ static void print_noise_report(struct device *dev, short (*data)[TRX_MAX])
 {
 	int i, j = 0;
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "     ");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "     ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				" [%2d] ", i);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n[%2d] ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"%5d ", data[i][j]);
 		}
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
 
 	print_sd_log(f54buf);
 	write_file(dev, f54buf, TIME_INFO_SKIP);
@@ -803,14 +803,14 @@ static int CompareNoiseReport(struct device *dev)
 
 	TOUCH_TRACE();
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "===== %sNoise Test =====",
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "===== %sNoise Test =====",
 			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"\n[%sNoise Min]\n", (d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	print_noise_report(dev, noise_min);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"\n[%sNoise Max]\n", (d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	print_noise_report(dev, noise_max);
 
@@ -831,7 +831,7 @@ static int CompareNoiseReport(struct device *dev)
 			if (noise_min[i][j] < jitter_lower
 					|| noise_max[i][j] > jitter_upper) {
 				result = false;
-				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"\nFail [%2d][%2d] : Min[%5d], Max[%5d]",
 						i, j, noise_min[i][j], noise_max[i][j]);
 
@@ -846,20 +846,20 @@ static int CompareNoiseReport(struct device *dev)
 	}
 
 	if (result == false) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n%sNoise min[%2d][%2d] : %d, max[%2d][%2d] : %d\n",
 				((d->lcd_mode != LCD_MODE_U3) ? "LPWG " : ""),
 				min_tx, min_rx, min, max_tx, max_rx, max);
 
 	if (result == false) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n%sNoise Test failed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	} else {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n%sNoise Test passed.\n\n",
 				(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 	}
@@ -888,31 +888,31 @@ static int ReadImageReport(struct device *dev)
 		return -EAGAIN;
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"===== %sFull Raw Capacitance Test =====\n",
 			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"[%sFull Raw Capacitance]\n",
 			(d->lcd_mode != LCD_MODE_U3) ? "LPWG " : "");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "     ");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "     ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				" [%2d] ", i);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n[%2d] ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			Image1[i][j] = ((short)Data[k] | (short)Data[k + 1] << 8);
 			ImagepF[i][j] = Image1[i][j];
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 								"%5d ", ImagepF[i][j]);
 			k = k + 2;
 			if (ImagepF[i][j] != 0 && ImagepF[i][j] < min)
@@ -922,9 +922,9 @@ static int ReadImageReport(struct device *dev)
 				max = ImagepF[i][j];
 		}
 	}
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\nRawdata min : %d, max : %d\n", min, max);
 
 	ret = CompareImageReport(dev);
@@ -979,7 +979,7 @@ static int GetImageReport(struct device *dev, int input, char *buf)
 
 	ret = strlen(buf);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "Tx = %d, Rx = %d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
@@ -992,12 +992,12 @@ static int GetImageReport(struct device *dev, int input, char *buf)
 	}
 
 	for (i = 0; i < (int)RxChannelCount; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d] ", i);
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d] ", i);
 		for (j = 0; j < (int)TxChannelCount; j++) {
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 					"%5d ", ImagepF[j][i]);
 		}
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	}
 
 	if (input == eRT_FullRawCapacitance)
@@ -1070,24 +1070,24 @@ static int ReadHighResistanceReport(struct device *dev)
 	for (i = 0; i < (int)TxChannelCount; i++)
 		k = k + 2;
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"===== High Resistance Test =====\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"[High Resistance]\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				" [%2d] ", i);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\n[%2d] ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			Image1[i][j] = ((short)Data[k] | (short)Data[k + 1] << 8);
@@ -1097,10 +1097,10 @@ static int ReadHighResistanceReport(struct device *dev)
 
 			//ignore a value where notch
 			if (j == 0 && (i == 6 || i == 7 || i == 8 || i == 9 || i == 10)) {
-				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 							"%5d ", 0);
 			} else {
-				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 							"%5d ", ImagepF[i][j]);
 
 				if (ImagepF[i][j] < min)
@@ -1112,19 +1112,19 @@ static int ReadHighResistanceReport(struct device *dev)
 		}
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n\n");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n\n");
 
 	//print a value where notch
 	for (i = 0; i < (int)TxChannelCount; i++) {
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			if (j == 0 && (i == 6 || i == 7 || i == 8 || i == 9 || i == 10)) {
-				f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+				f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 							"High Resistance Notch[%d][%d] = %5d\n", i, j, ImagepF[i][j]);
 			}
 		}
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"\nHigh Resistance min : %d, max : %d\n", min, max);
 
 	ret = CompareHighResistance(dev);
@@ -1155,54 +1155,54 @@ static int ReadHybridAbsRawReport(struct device *dev)
 
 	p32data = (int *)&Data[0];
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"===== Hybrid Abs Test =====\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Rx = %d\n", (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"[Hybrid Abs Test for Rx]\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"  [%2d] ", i);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n[%2d] ", 0);
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n[%2d] ", 0);
 
 	for (i = 0; i < (int)RxChannelCount; i++) {
 		HybridAbsData[k] = (int)*p32data;
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				" %6d", HybridAbsData[k]);
 		k++;
 		p32data++;
 	}
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n\n");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 						"Tx = %d\n", (int)TxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"[Hybrid Abs Test for Tx]\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "      ");
 
 	for (i = 0; i < (int)TxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"  [%2d] ", i);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n[%2d] ", 0);
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n[%2d] ", 0);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
 		HybridAbsData[k] = (int)*p32data;
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				" %6d", HybridAbsData[k]);
 		k++;
 		p32data++;
 	}
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
 
 	ret = CompareHybridAbsRawReport(dev);
 
@@ -1234,21 +1234,21 @@ static int ReadTRexShortReport(struct device *dev)
 		return -EAGAIN;
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"===== Extend TRx Short Test =====\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"[TRex Short Test]\n");
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"TRex-TRex Short Test Data = ");
 
 	for (i = 0; i < TRX_BITMAP_LENGTH; i++)	{
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 				"%#x ", Data[i]);
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n");
 
 	ret = CompareTRexShortTestReport(dev);
 
@@ -2683,28 +2683,28 @@ static void getExtShortDelta(struct device *dev, int trx,  uint8_t logical_pin)
 {
 	int i, j = 0;
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"Logical Rx[%d] = Extend pin[%d]\n", logical_pin, trx);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 			"Tx = %d, Rx = %d\n", (int)TxChannelCount, (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf),
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf),
 			"[Extend TRx Short Test (%d, %d)]\n    ", logical_pin, trx);
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "  [%2d]", i);
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "  [%2d]", i);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n[%2d] ", i);
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n[%2d] ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			delta[i][j] = abs(baseline_image0[i][j] - baseline_image1[i][j]);
-			f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+			f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"%5d ", delta[i][j]);
 		}
 	}
 
-	f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n\n");
+	f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len, "\n\n");
 }
 
 static int ExtendedTRXShortRT100Test(struct device *dev, int mode, char *buf)
@@ -2875,10 +2875,10 @@ static int ExtendedTRXShortRT100Test(struct device *dev, int mode, char *buf)
 	}
 
 	if (ext_short_ret) {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"Extend TRx Short Test passed.\n\n");
 	} else {
-		f54len += snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
+		f54len += touch_snprintf(f54buf + f54len, sizeof(f54buf) - f54len,
 					"Extend TRx Short Test failed.\n\n");
 	}
 	result = short_ret & ext_short_ret;

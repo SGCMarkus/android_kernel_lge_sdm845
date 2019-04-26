@@ -37,6 +37,7 @@ struct unified_nodes {
 	bool				fake_hvdcp;
 	void*				battery_age;
 	void*				battery_condition;
+	void*				battery_cycle;
 	bool				battery_valid;
 	char				charger_name [64];
 	bool				charger_highspeed;
@@ -667,6 +668,30 @@ static ssize_t battery_condition_show(struct device* dev, struct device_attribut
 	return snprintf(buf, PAGE_SIZE, "%d", ret);
 }
 
+static ssize_t battery_cycle_show(struct device* dev, struct device_attribute* attr, char* buf)
+{
+	int ret = -1;
+	if (dev && dev->platform_data) {
+		struct unified_nodes* ref = (struct unified_nodes*)dev->platform_data;
+		const char* psy = NULL;
+
+		if (!of_property_read_string(ref->devnode_battage, "battage-psy", &psy)) {
+			struct power_supply* battage_psy = power_supply_get_by_name(psy);
+			union power_supply_propval cycle_count = { .intval = 0, };
+
+			if (battage_psy
+				&& !power_supply_get_property(battage_psy,
+					POWER_SUPPLY_PROP_CYCLE_COUNT, &cycle_count))
+				ret = cycle_count.intval;
+
+			if (battage_psy)
+				power_supply_put(battage_psy);
+		}
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
+}
+
 static ssize_t battery_valid_store(struct device* dev, struct device_attribute* attr, const char* buf, size_t size) {
 	pr_uninode("Storing %s\n", buf);
 
@@ -850,6 +875,7 @@ static struct device_attribute unified_nodes_dattrs [] = {
 	__ATTR(fake_hvdcp,		0664, fake_hvdcp_show, 			fake_hvdcp_store),
 	__ATTR(battery_age,		0444, battery_age_show,			NULL),
 	__ATTR(battery_condition,	0444, battery_condition_show,		NULL),
+	__ATTR(battery_cycle,		0444, battery_cycle_show,		NULL),
 	__ATTR(battery_valid,		0664, battery_valid_show,		battery_valid_store),
 	__ATTR(charger_name,		0664, charger_name_show,		charger_name_store),
 	__ATTR(charger_highspeed,	0664, charger_highspeed_show,		charger_highspeed_store),

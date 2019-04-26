@@ -1259,32 +1259,32 @@ static int msm_ssphy_qmp_probe(struct platform_device *pdev)
         if (ret)
                 phy->tx_b_pre_emphasis = 0;
 
-        ret = of_property_read_u32(dev->of_node, "qcom,tx_a_swing",
+        ret = of_property_read_u32(dev->of_node, "qcom,tx-a-swing",
                                                 &phy->tx_a_swing);
         if (ret)
                 phy->tx_a_swing = 0;
 
-        ret = of_property_read_u32(dev->of_node, "qcom,tx_b_swing",
+        ret = of_property_read_u32(dev->of_node, "qcom,tx-b-swing",
                                                 &phy->tx_b_swing);
         if (ret)
                 phy->tx_b_swing = 0;
 
-        ret = of_property_read_u32(dev->of_node, "qcom,rx_a_equ_gain1",
+        ret = of_property_read_u32(dev->of_node, "qcom,rx-a-equ_gain1",
                                                 &phy->rx_a_equ_gain1);
         if (ret)
                 phy->rx_a_equ_gain1 = 0;
 
-        ret = of_property_read_u32(dev->of_node, "qcom,rx_b_equ_gain1",
+        ret = of_property_read_u32(dev->of_node, "qcom,rx-b-equ_gain1",
                                                 &phy->rx_b_equ_gain1);
         if (ret)
                 phy->rx_b_equ_gain1 = 0;
 
-        ret = of_property_read_u32(dev->of_node, "qcom,rx_a_equ_gain2",
+        ret = of_property_read_u32(dev->of_node, "qcom,rx-a-equ_gain2",
                                                 &phy->rx_a_equ_gain2);
         if (ret)
                 phy->rx_a_equ_gain2 = 0;
 
-        ret = of_property_read_u32(dev->of_node, "qcom,rx_b_equ_gain2",
+        ret = of_property_read_u32(dev->of_node, "qcom,rx-b-equ_gain2",
                                                 &phy->rx_b_equ_gain2);
         if (ret)
                 phy->rx_b_equ_gain2 = 0;

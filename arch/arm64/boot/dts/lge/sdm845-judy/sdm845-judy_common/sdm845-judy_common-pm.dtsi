@@ -771,7 +771,7 @@
 			"battery",        "condition", "/sys/devices/platform/lge-unified-nodes/battery_condition",
 			"battery",      "battery_age", "/sys/devices/platform/lge-unified-nodes/battery_age",
 			"battery","battery_age_level", "/sys/devices/platform/lge-unified-nodes/battery_age",
-			"battery",            "cycle", "/sys/class/power_supply/bms/cycle_count",
+			"battery",            "cycle", "/sys/devices/platform/lge-unified-nodes/battery_cycle",
 			"battery",     "battery_type", "/sys/class/power_supply/bms/battery_type",
 			"battery",      "charge_full", "/sys/class/power_supply/bms/charge_full",
 			"battery",   "charge_now_raw", "/sys/class/power_supply/bms/charge_now_raw",

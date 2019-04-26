@@ -102,7 +102,7 @@ static void ftm4_log_file_size_check(struct device *dev)
 {
 	int boot_mode = 0;
 	char *fname = NULL;
-	struct file *file;
+	struct file *file = NULL;
 	loff_t file_size = 0;
 	int i = 0;
 	char buf1[FILE_STR_LEN] = {0};
@@ -160,10 +160,10 @@ static void ftm4_log_file_size_check(struct device *dev)
 
 		for (i = MAX_LOG_FILE_COUNT - 1; i >= 0; i--) {
 			if (i == 0) {
-				snprintf(buf1, sizeof(buf1),
+				touch_snprintf(buf1, sizeof(buf1),
 						"%s", fname);
 			} else {
-				snprintf(buf1, sizeof(buf1),
+				touch_snprintf(buf1, sizeof(buf1),
 						"%s.%d", fname, i);
 			}
 
@@ -183,7 +183,7 @@ static void ftm4_log_file_size_check(struct device *dev)
 					TOUCH_I("%s : remove file [%s]\n",
 							__func__, buf1);
 				} else {
-					snprintf(buf2, sizeof(buf2), "%s.%d",
+					touch_snprintf(buf2, sizeof(buf2), "%s.%d",
 							fname, (i + 1));
 
 					if (sys_rename(buf1, buf2) < 0) {
@@ -212,8 +212,8 @@ static void ftm4_write_file(struct device *dev, char *data, int write_time)
 	char *fname = NULL;
 	int fd = 0;
 	mm_segment_t old_fs = get_fs();
-	struct timespec my_time;
-	struct tm my_date;
+	struct timespec my_time = {0, };
+	struct tm my_date = {0, };
 	char time_string[TIME_STR_LEN] = {0};
 
 	TOUCH_TRACE();
@@ -254,7 +254,7 @@ static void ftm4_write_file(struct device *dev, char *data, int write_time)
 			time_to_tm(my_time.tv_sec,
 					sys_tz.tz_minuteswest * 60 * (-1),
 					&my_date);
-			snprintf(time_string, TIME_STR_LEN,
+			touch_snprintf(time_string, TIME_STR_LEN,
 				"\n[%02d-%02d %02d:%02d:%02d.%03lu]\n",
 				my_date.tm_mon + 1,
 				my_date.tm_mday, my_date.tm_hour,
@@ -460,7 +460,7 @@ static int ftm4_compare_self_rawdata(
 		if ((self_force_rawdata[i] < self_force_lower[i]) ||
 				(self_force_rawdata[i] > self_force_upper[i])) {
 			result = 1;
-			ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+			ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 					"F self_force_rawdata[%d] = %d\n",
 					i, self_force_rawdata[i]);
 			TOUCH_I("F self_force_rawdata[%d] = %d\n",
@@ -474,7 +474,7 @@ static int ftm4_compare_self_rawdata(
 			self_force_max = self_force_rawdata[i];
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"\n%sself_force_rawdata: min = %d , max = %d\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "",
 			self_force_min, self_force_max);
@@ -486,7 +486,7 @@ static int ftm4_compare_self_rawdata(
 		if ((self_sense_rawdata[i] < self_sense_lower[i]) ||
 				(self_sense_rawdata[i] > self_sense_upper[i])) {
 			result = 1;
-			ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+			ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 					"F self_sense_rawdata[%d] = %d\n",
 					i, self_sense_rawdata[i]);
 			TOUCH_I("F self_sense_rawdata[%d] = %d\n",
@@ -500,7 +500,7 @@ static int ftm4_compare_self_rawdata(
 			self_sense_max = self_sense_rawdata[i];
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"\n%sself_sense_rawdata: min = %d , max = %d\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "",
 			self_sense_min, self_sense_max);
@@ -550,7 +550,7 @@ static int ftm4_compare_mutual_rawdata(
 			if ((rawdata[i][j] < lower[i][j]) ||
 					(rawdata[i][j] > upper[i][j])) {
 				result = 1;
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"F [%d][%d] = %d\n",
 						i, j, rawdata[i][j]);
 				if (ret > (BUF_SIZE / 2)) {
@@ -576,7 +576,7 @@ static int ftm4_compare_mutual_rawdata(
 	if (diff > diff_limit)
 		result = 1;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"\nmin = %d , max = %d , (max - min) = %d (diff_limit = %d)\n",
 			min, max, diff, diff_limit);
 	TOUCH_I("%s: min = %d , max = %d , (max - min) = %d (diff_limit = %d)\n",
@@ -626,25 +626,25 @@ static int ftm4_compare_ix_data(struct device *dev)
 
 	memset(w_buf, 0, BUF_SIZE);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"\nmin_ix_tx_limit = %d , max_ix_tx_limit = %d\n",
 			min_ix_tx_limit, max_ix_tx_limit);
 	TOUCH_I("%s: min_ix_tx_limit = %d , max_ix_tx_limit = %d\n", __func__,
 			min_ix_tx_limit, max_ix_tx_limit);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"min_ix_tx = %d , max_ix_tx = %d\n",
 			min_ix_tx, max_ix_tx);
 	TOUCH_I("%s: min_ix_tx = %d , max_ix_tx = %d\n", __func__,
 			min_ix_tx, max_ix_tx);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"\nmin_ix_rx_limit = %d , max_ix_rx_limit = %d\n",
 			min_ix_rx_limit, max_ix_rx_limit);
 	TOUCH_I("%s: min_ix_rx_limit = %d , max_ix_rx_limit = %d\n", __func__,
 			min_ix_rx_limit, max_ix_rx_limit);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"min_ix_rx = %d , max_ix_rx = %d\n",
 			min_ix_rx, max_ix_rx);
 	TOUCH_I("%s: min_ix_rx = %d , max_ix_rx = %d\n", __func__,
@@ -706,13 +706,13 @@ static int ftm4_compare_cx_data(struct device *dev)
 
 	memset(w_buf, 0, BUF_SIZE);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"\nmin_cx_limit = %d , max_cx_limit = %d\n",
 			min_cx_limit, max_cx_limit);
 	TOUCH_I("%s: min_cx_limit = %d , max_cx_limit = %d\n",
 			__func__, min_cx_limit, max_cx_limit);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 			"min_cx = %d , max_cx = %d\n", min_cx, max_cx);
 	TOUCH_I("%s: min_cx = %d , max_cx = %d\n", __func__, min_cx, max_cx);
 
@@ -763,7 +763,7 @@ static int ftm4_compare_cx_data(struct device *dev)
 
 			if ((d < l) || (d > u)) {
 				result = 1;
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"F tx_diff[%d][%d] = %d\n",
 						i, j, d);
 				if (ret > (BUF_SIZE / 2)) {
@@ -780,30 +780,30 @@ static int ftm4_compare_cx_data(struct device *dev)
 		}
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\nCX_TX_DIFF_LINE_SUM\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\nCX_TX_DIFF_LINE_SUM\n");
 	TOUCH_I("%s: CX_TX_DIFF_LINE_SUM\n", __func__);
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
-	log_ret += snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret, " ");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	log_ret += touch_snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret, " ");
 	for (i = 0; i < (FORCE_CH_SIZE - 1); i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 	i = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
 	for (i = 0; i < (FORCE_CH_SIZE - 1); i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
 				cx_tx_diff_line_sum[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				cx_tx_diff_line_sum[i]);
 	}
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
@@ -813,7 +813,7 @@ static int ftm4_compare_cx_data(struct device *dev)
 				|| (cx_tx_diff_line_sum[i]
 					> cx_tx_diff_line_sum_upper[i])) {
 			/*result = 1;*/
-			ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+			ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 					"F cx_tx_diff_line_sum[%d] = %d\n",
 					i, cx_tx_diff_line_sum[i]);
 			TOUCH_I("F cx_tx_diff_line_sum[%d] = %d\n",
@@ -871,7 +871,7 @@ static int ftm4_compare_cx_data(struct device *dev)
 
 			if ((d < l) || (d > u)) {
 				result = 1;
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"F rx_diff[%d][%d] = %d\n",
 						i, j, d);
 				if (ret > (BUF_SIZE / 2)) {
@@ -888,31 +888,31 @@ static int ftm4_compare_cx_data(struct device *dev)
 		}
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\nCX_RX_DIFF_LINE_SUM\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\nCX_RX_DIFF_LINE_SUM\n");
 	TOUCH_I("%s: CX_RX_DIFF_LINE_SUM\n", __func__);
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
-	log_ret += snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret, " ");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	log_ret += touch_snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret, " ");
 	for (i = 0; i < (SENSE_CH_SIZE - 1); i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 	i = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
 	for (i = 0; i < (SENSE_CH_SIZE - 1); i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
 				cx_rx_diff_line_sum[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				cx_rx_diff_line_sum[i]);
 
 	}
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
@@ -922,7 +922,7 @@ static int ftm4_compare_cx_data(struct device *dev)
 				|| (cx_rx_diff_line_sum[i]
 					> cx_rx_diff_line_sum_upper[i])) {
 			/*result = 1;*/
-			ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+			ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 					"F cx_rx_diff_line_sum[%d] = %d\n",
 					i, cx_rx_diff_line_sum[i]);
 			TOUCH_I("F cx_rx_diff_line_sum[%d] = %d\n",
@@ -999,7 +999,7 @@ static int ftm4_compare_hf_cx_data(struct device *dev)
 
 			if ((d < l) || (d > u)) {
 				result = 1;
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"F tx_diff[%d][%d] = %d\n",
 						i, j, d);
 				if (ret > (BUF_SIZE / 2)) {
@@ -1057,7 +1057,7 @@ static int ftm4_compare_hf_cx_data(struct device *dev)
 
 			if ((d < l) || (d > u)) {
 				result = 1;
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"F rx_diff[%d][%d] = %d\n",
 						i, j, d);
 				if (ret > (BUF_SIZE / 2)) {
@@ -1091,7 +1091,7 @@ static int ftm4_compare_hf_cx_data(struct device *dev)
 
 			if ((d < cx_diff_lower_2) || (d > cx_diff_upper_2)) {
 				/*result = 1;*/
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"F tx_diff_2[%d][%d] = %d\n",
 						i, j, d);
 				if (ret > (BUF_SIZE / 2)) {
@@ -1118,7 +1118,7 @@ static int ftm4_compare_hf_cx_data(struct device *dev)
 				if ((j == half_col_pos) || (j == end_col_pos))
 					continue;
 				/*result = 1;*/
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"F rx_diff_2[%d][%d] = %d\n",
 						i, j, d);
 				if (ret > (BUF_SIZE / 2)) {
@@ -1154,74 +1154,74 @@ static void ftm4_print_self_rawdata(
 
 	memset(w_buf, 0, BUF_SIZE);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%sself_force_rawdata\n",
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%sself_force_rawdata\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
 	TOUCH_I("%sself_force_rawdata\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
-	log_ret += snprintf(log_buf + log_ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	log_ret += touch_snprintf(log_buf + log_ret,
 			LOG_BUF_SIZE - log_ret, " ");
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 	i = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
 				self_force_rawdata[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				self_force_rawdata[i]);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%sself_sense_rawdata\n",
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%sself_sense_rawdata\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
 	TOUCH_I("%sself_sense_rawdata\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
-	log_ret += snprintf(log_buf + log_ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	log_ret += touch_snprintf(log_buf + log_ret,
 			LOG_BUF_SIZE - log_ret, " ");
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 	i = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
 				self_sense_rawdata[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				self_sense_rawdata[i]);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
@@ -1243,32 +1243,32 @@ static void ftm4_print_mutual_rawdata(struct device *dev)
 	if (one_line_print == true) {
 		for (i = 0; i < FORCE_CH_SIZE; i++) {
 			for (j = 0; j < SENSE_CH_SIZE; j++) {
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"%5d ", rawdata[i][j]);
 			}
 		}
 
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
 
 	for (i = 0; i < SENSE_CH_SIZE; i++)
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
 		char log_buf[LOG_BUF_SIZE] = {0};
 		int log_ret = 0;
 
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret,  "\n[%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,  "\n[%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 
 		for (j = 0; j < SENSE_CH_SIZE; j++) {
-			ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+			ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 					"%5d ", rawdata[i][j]);
 
-			log_ret += snprintf(log_buf + log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret,
 					LOG_BUF_SIZE - log_ret, "%5d ",
 					rawdata[i][j]);
 		}
@@ -1276,7 +1276,7 @@ static void ftm4_print_mutual_rawdata(struct device *dev)
 		TOUCH_I("%s\n", log_buf);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
 
 	ftm4_write_file(dev, w_buf, TIME_INFO_SKIP);
 }
@@ -1292,70 +1292,70 @@ static void ftm4_print_ix_data(struct device *dev)
 
 	memset(w_buf, 0, BUF_SIZE);
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "force_ix_data\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "force_ix_data\n");
 	TOUCH_I("force_ix_data\n");
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
-	log_ret += snprintf(log_buf + log_ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	log_ret += touch_snprintf(log_buf + log_ret,
 			LOG_BUF_SIZE - log_ret, " ");
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 	i = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
 				force_ix_data[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				force_ix_data[i]);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "sense_ix_data\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "sense_ix_data\n");
 	TOUCH_I("sense_ix_data\n");
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
-	log_ret += snprintf(log_buf + log_ret,
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	log_ret += touch_snprintf(log_buf + log_ret,
 			LOG_BUF_SIZE - log_ret, " ");
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 	i = 0;
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "[%2d] ", i);
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "%5d ",
 				sense_ix_data[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				sense_ix_data[i]);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
@@ -1377,32 +1377,32 @@ static void ftm4_print_cx_data(struct device *dev)
 	if (one_line_print == true) {
 		for (i = 0; i < FORCE_CH_SIZE; i++) {
 			for (j = 0; j < SENSE_CH_SIZE; j++) {
-				ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+				ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 						"%5d ", cx_data[i][j]);
 			}
 		}
 
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n\n");
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "     ");
 
 	for (i = 0; i < SENSE_CH_SIZE; i++)
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, " [%2d] ", i);
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
 		char log_buf[LOG_BUF_SIZE] = {0};
 		int log_ret = 0;
 
-		ret += snprintf(w_buf + ret, BUF_SIZE - ret,  "\n[%2d] ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,  "\n[%2d] ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 
 		for (j = 0; j < SENSE_CH_SIZE; j++) {
-			ret += snprintf(w_buf + ret, BUF_SIZE - ret,
+			ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret,
 					"%5d ", cx_data[i][j]);
 
-			log_ret += snprintf(log_buf + log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret,
 					LOG_BUF_SIZE - log_ret, "%5d ",
 					cx_data[i][j]);
 		}
@@ -1410,7 +1410,7 @@ static void ftm4_print_cx_data(struct device *dev)
 		TOUCH_I("%s\n", log_buf);
 	}
 
-	ret += snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
+	ret += touch_snprintf(w_buf + ret, BUF_SIZE - ret, "\n");
 
 	ftm4_write_file(dev, w_buf, TIME_INFO_SKIP);
 }
@@ -2098,7 +2098,7 @@ static int ftm4_panel_ito_test(struct device *dev)
 				TOUCH_I("%s: ITO open/short test NO_ERROR\n",
 						__func__);
 
-				snprintf(file_buf, sizeof(file_buf),
+				touch_snprintf(file_buf, sizeof(file_buf),
 						"ITO open/short test NO_ERROR\n");
 				ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
@@ -2108,7 +2108,7 @@ static int ftm4_panel_ito_test(struct device *dev)
 					TOUCH_I("%s: ITO open/short test PASS!!\n",
 							__func__);
 
-					snprintf(file_buf, sizeof(file_buf),
+					touch_snprintf(file_buf, sizeof(file_buf),
 							"ITO open/short test PASS!!\n");
 					ftm4_write_file(dev, file_buf,
 							TIME_INFO_SKIP);
@@ -2126,7 +2126,7 @@ static int ftm4_panel_ito_test(struct device *dev)
 						__func__,
 						errortypes[data[2]], data[3]);
 
-				snprintf(file_buf, sizeof(file_buf),
+				touch_snprintf(file_buf, sizeof(file_buf),
 						"ITO open test FAIL!! Error Type:%s, Channel:%d\n",
 						errortypes[data[2]], data[3]);
 				ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2143,7 +2143,7 @@ static int ftm4_panel_ito_test(struct device *dev)
 						__func__,
 						errortypes[data[2]], data[3]);
 
-				snprintf(file_buf, sizeof(file_buf),
+				touch_snprintf(file_buf, sizeof(file_buf),
 						"ITO short test FAIL!! Error Type:%s, Channel:%d\n",
 						errortypes[data[2]], data[3]);
 				ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2155,7 +2155,7 @@ static int ftm4_panel_ito_test(struct device *dev)
 						__func__,
 						errortypes[data[2]], data[3]);
 
-				snprintf(file_buf, sizeof(file_buf),
+				touch_snprintf(file_buf, sizeof(file_buf),
 						"ITO open/short test FAIL!! Error Type:%s, Channel:%d\n",
 						errortypes[data[2]], data[3]);
 				ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2170,7 +2170,7 @@ static int ftm4_panel_ito_test(struct device *dev)
 				TOUCH_E("ITO open/short test FAIL!! Error Type:unknown(%d), Channel:%d\n",
 						data[2], data[3]);
 
-				snprintf(file_buf, sizeof(file_buf),
+				touch_snprintf(file_buf, sizeof(file_buf),
 						"ITO open/short test FAIL!! Error Type:unknown(%d), Channel:%d\n",
 						data[2], data[3]);
 				ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2211,7 +2211,7 @@ static int ftm4_self_rawdata_test(struct device *dev, enum sd_test_type sd_type)
 
 	TOUCH_I("=== Self_Rawdata Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[%sSELF_RAWDATA_TEST]\n\n",
+	touch_snprintf(file_buf, sizeof(file_buf), "[%sSELF_RAWDATA_TEST]\n\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
@@ -2227,7 +2227,7 @@ static int ftm4_self_rawdata_test(struct device *dev, enum sd_test_type sd_type)
 	result = ftm4_compare_self_rawdata(dev, sd_type);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf),
+	touch_snprintf(file_buf, sizeof(file_buf),
 			"\n%sSELF_RAWDATA_TEST Result : %s\n\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "",
 			(result == 0) ? "Pass" : "Fail");
@@ -2253,7 +2253,7 @@ static int ftm4_mutual_rawdata_test(
 
 	TOUCH_I("=== Mutual_Rawdata Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[%sMUTUAL_RAWDATA_TEST]\n\n",
+	touch_snprintf(file_buf, sizeof(file_buf), "[%sMUTUAL_RAWDATA_TEST]\n\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
@@ -2269,7 +2269,7 @@ static int ftm4_mutual_rawdata_test(
 	result = ftm4_compare_mutual_rawdata(dev, sd_type);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf),
+	touch_snprintf(file_buf, sizeof(file_buf),
 			"\n%sMUTUAL_RAWDATA_TEST Result : %s\n\n",
 			(sd_type == LPWG_SD_TEST) ? lpwg_str : "",
 			(result == 0) ? "Pass" : "Fail");
@@ -2319,7 +2319,7 @@ static int ftm4_self_jitter_test(struct device *dev)
 
 	TOUCH_I("=== Self_Jitter Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[SELF_JITTER_TEST]\n\n");
+	touch_snprintf(file_buf, sizeof(file_buf), "[SELF_JITTER_TEST]\n\n");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	ftm4_get_limit(dev, "SELF_JITTER_TOTAL_FRAME_CNT",
@@ -2374,7 +2374,7 @@ static int ftm4_self_jitter_test(struct device *dev)
 			self_jitter_rx[frame_cnt][i] = self_sense_rawdata[i];
 
 		memset(file_buf, 0, sizeof(file_buf));
-		snprintf(file_buf, FILE_BUF_SIZE, "frame_cnt = %d/%d\n",
+		touch_snprintf(file_buf, FILE_BUF_SIZE, "frame_cnt = %d/%d\n",
 				frame_cnt + 1, total_frame_cnt);
 		ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 		TOUCH_I("%s: frame_cnt = %d/%d\n", __func__,
@@ -2385,7 +2385,7 @@ static int ftm4_self_jitter_test(struct device *dev)
 
 	for (frame_cnt = 0; frame_cnt < total_frame_cnt; frame_cnt++) {
 		for (i = 0; i < FORCE_CH_SIZE; i++) {
-			log_ret += snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret,
 					"%4d  ", self_jitter_tx[frame_cnt][i]);
 
 			if (self_jitter_tx[frame_cnt][i] < self_jitter_min)
@@ -2395,7 +2395,7 @@ static int ftm4_self_jitter_test(struct device *dev)
 				self_jitter_max = self_jitter_tx[frame_cnt][i];
 		}
 
-		snprintf(file_buf, FILE_BUF_SIZE,
+		touch_snprintf(file_buf, FILE_BUF_SIZE,
 				"self_jitter_tx[%2d] = %s\n",
 				frame_cnt, log_buf);
 		ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2406,7 +2406,7 @@ static int ftm4_self_jitter_test(struct device *dev)
 
 	for (frame_cnt = 0; frame_cnt < total_frame_cnt; frame_cnt++) {
 		for (i = 0; i < SENSE_CH_SIZE; i++) {
-			log_ret += snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret, LOG_BUF_SIZE - log_ret,
 					"%4d  ", self_jitter_rx[frame_cnt][i]);
 
 			if (self_jitter_rx[frame_cnt][i] < self_jitter_min)
@@ -2416,7 +2416,7 @@ static int ftm4_self_jitter_test(struct device *dev)
 				self_jitter_max = self_jitter_rx[frame_cnt][i];
 		}
 
-		snprintf(file_buf, FILE_BUF_SIZE,
+		touch_snprintf(file_buf, FILE_BUF_SIZE,
 				"self_jitter_rx[%2d] = %s\n",
 				frame_cnt, log_buf);
 		ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2470,12 +2470,12 @@ static int ftm4_self_jitter_test(struct device *dev)
 
 	memset(file_buf, 0, sizeof(file_buf));
 
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"self_jitter_min_limit = %d , self_jitter_max_limit = %d\n",
 			self_jitter_min_limit, self_jitter_max_limit);
 	TOUCH_I("%s: self_jitter_min_limit = %d , self_jitter_max_limit = %d\n",
 			__func__, self_jitter_min_limit, self_jitter_max_limit);
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"self_jitter_p2p_limit = %d , self_jitter_var_limit = %d (self_jitter_std_limit = %d)\n",
 			self_jitter_p2p_limit, self_jitter_var_limit,
 			self_jitter_std_limit);
@@ -2483,12 +2483,12 @@ static int ftm4_self_jitter_test(struct device *dev)
 			__func__, self_jitter_p2p_limit, self_jitter_var_limit,
 			self_jitter_std_limit);
 
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"self_jitter_min = %d , self_jitter_max = %d\n",
 			self_jitter_min, self_jitter_max);
 	TOUCH_I("%s: self_jitter_min = %d , self_jitter_max = %d\n",
 			__func__, self_jitter_min, self_jitter_max);
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"self_jitter_p2p = %d , self_jitter_var = %d\n",
 			self_jitter_p2p, self_jitter_var);
 	TOUCH_I("%s: self_jitter_p2p = %d , self_jitter_var = %d\n",
@@ -2496,7 +2496,7 @@ static int ftm4_self_jitter_test(struct device *dev)
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf), "\nSELF_JITTER_TEST Result : %s\n\n",
+	touch_snprintf(file_buf, sizeof(file_buf), "\nSELF_JITTER_TEST Result : %s\n\n",
 			(result == 0) ? "Pass" : "Fail");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
@@ -2533,7 +2533,7 @@ static int ftm4_mutual_jitter_test(struct device *dev)
 
 	TOUCH_I("=== Mutual_Jitter Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[MUTUAL_JITTER_TEST]\n\n");
+	touch_snprintf(file_buf, sizeof(file_buf), "[MUTUAL_JITTER_TEST]\n\n");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	ftm4_get_limit(dev, "MUTUAL_JITTER_TOTAL_FRAME_CNT", &total_frame_cnt, 1, 1);
@@ -2552,7 +2552,7 @@ static int ftm4_mutual_jitter_test(struct device *dev)
 		}
 
 		memset(file_buf, 0, sizeof(file_buf));
-		snprintf(file_buf, FILE_BUF_SIZE, "frame_cnt = %d/%d\n",
+		touch_snprintf(file_buf, FILE_BUF_SIZE, "frame_cnt = %d/%d\n",
 				frame_cnt + 1, total_frame_cnt);
 		ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 		TOUCH_I("%s: frame_cnt = %d/%d\n", __func__,
@@ -2564,7 +2564,7 @@ static int ftm4_mutual_jitter_test(struct device *dev)
 					(rawdata[i][j] > mutual_jitter_max_limit)) {
 					result = 1;
 					memset(file_buf, 0, sizeof(file_buf));
-					snprintf(file_buf, FILE_BUF_SIZE,
+					touch_snprintf(file_buf, FILE_BUF_SIZE,
 							"F [%d][%d] = %d\n",
 							i, j, rawdata[i][j]);
 					ftm4_write_file(dev, file_buf,
@@ -2590,12 +2590,12 @@ static int ftm4_mutual_jitter_test(struct device *dev)
 
 	memset(file_buf, 0, sizeof(file_buf));
 
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"mutual_jitter_min_limit = %d , mutual_jitter_max_limit = %d\n",
 			mutual_jitter_min_limit, mutual_jitter_max_limit);
 	TOUCH_I("%s: mutual_jitter_min_limit = %d , mutual_jitter_max_limit = %d\n",
 			__func__, mutual_jitter_min_limit, mutual_jitter_max_limit);
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"mutual_jitter_min = %d [%d][%d] , mutual_jitter_max = %d [%d][%d]\n",
 			mutual_jitter_min, mutual_jitter_min_index[0], mutual_jitter_min_index[1],
 			mutual_jitter_max, mutual_jitter_max_index[0], mutual_jitter_max_index[1]);
@@ -2607,7 +2607,7 @@ static int ftm4_mutual_jitter_test(struct device *dev)
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf), "\nMUTUAL_JITTER_TEST Result : %s\n\n",
+	touch_snprintf(file_buf, sizeof(file_buf), "\nMUTUAL_JITTER_TEST Result : %s\n\n",
 			(result == 0) ? "Pass" : "Fail");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
@@ -2627,7 +2627,7 @@ static int ftm4_ix_data_test(struct device *dev)
 
 	TOUCH_I("=== IX_Data Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[IX_DATA_TEST]\n\n");
+	touch_snprintf(file_buf, sizeof(file_buf), "[IX_DATA_TEST]\n\n");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	result = ftm4_read_ix_data(dev);
@@ -2642,7 +2642,7 @@ static int ftm4_ix_data_test(struct device *dev)
 	result = ftm4_compare_ix_data(dev);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf),
+	touch_snprintf(file_buf, sizeof(file_buf),
 			"\nIX_DATA_TEST Result : %s\n\n",
 			(result == 0) ? "Pass" : "Fail");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2663,7 +2663,7 @@ static int ftm4_cx_data_test(struct device *dev)
 
 	TOUCH_I("=== CX_Data Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[CX_DATA_TEST]\n\n");
+	touch_snprintf(file_buf, sizeof(file_buf), "[CX_DATA_TEST]\n\n");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	result = ftm4_read_cx_data(dev);
@@ -2678,7 +2678,7 @@ static int ftm4_cx_data_test(struct device *dev)
 	result = ftm4_compare_cx_data(dev);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf),
+	touch_snprintf(file_buf, sizeof(file_buf),
 			"\nCX_DATA_TEST Result : %s\n\n",
 			(result == 0) ? "Pass" : "Fail");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2701,7 +2701,7 @@ static int ftm4_hf_cx_data_test(struct device *dev)
 
 	TOUCH_I("=== HF_CX_Data Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[HF_CX_DATA_TEST]\n\n");
+	touch_snprintf(file_buf, sizeof(file_buf), "[HF_CX_DATA_TEST]\n\n");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	ftm4_get_limit(dev, "HF_CX_TOTAL_RETRY_CNT", &total_retry_cnt, 1, 1);
@@ -2716,7 +2716,7 @@ static int ftm4_hf_cx_data_test(struct device *dev)
 		}
 
 		memset(file_buf, 0, sizeof(file_buf));
-		snprintf(file_buf, sizeof(file_buf),
+		touch_snprintf(file_buf, sizeof(file_buf),
 				"retry_cnt = %d/%d\n",
 				retry_cnt + 1, total_retry_cnt);
 		ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2729,7 +2729,7 @@ static int ftm4_hf_cx_data_test(struct device *dev)
 	}
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf),
+	touch_snprintf(file_buf, sizeof(file_buf),
 			"\nHF_CX_DATA_TEST Result : %s\n\n",
 			(result == 0) ? "Pass" : "Fail");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2750,19 +2750,19 @@ static int ftm4_open_short_test(struct device *dev)
 
 	TOUCH_I("=== Open Short Test Start ===\n");
 
-	snprintf(file_buf, sizeof(file_buf), "[OPEN_SHORT_ALL_TEST]\n\n");
+	touch_snprintf(file_buf, sizeof(file_buf), "[OPEN_SHORT_ALL_TEST]\n\n");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	result = ftm4_panel_ito_test(dev);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf),
+	touch_snprintf(file_buf, sizeof(file_buf),
 			"\nOPEN_TEST Result : %s\n",
 			(result & OPEN_TEST_FLAG) ? "Fail" : "Pass");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
 
 	memset(file_buf, 0, sizeof(file_buf));
-	snprintf(file_buf, sizeof(file_buf),
+	touch_snprintf(file_buf, sizeof(file_buf),
 			"SHORT_TEST Result : %s\n\n",
 			(result & SHORT_TEST_FLAG) ? "Fail" : "Pass");
 	ftm4_write_file(dev, file_buf, TIME_INFO_SKIP);
@@ -2800,38 +2800,38 @@ static int ftm4_print_firmware_version(struct device *dev)
 		}
 	}
 
-	ret = snprintf(file_buf, FILE_BUF_SIZE,
+	ret = touch_snprintf(file_buf, FILE_BUF_SIZE,
 			"======== Firmware Info ========\n");
 
 	if (d->ic_fw_ver.build) {
-		ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+		ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 				"version : v%d.%02d.%d, afe_ver : 0x%02X\n",
 				d->ic_fw_ver.major, d->ic_fw_ver.minor,
 				d->ic_fw_ver.build, d->afe.ver);
 	} else {
-		ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+		ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 				"version : v%d.%02d, afe_ver : 0x%02X\n",
 				d->ic_fw_ver.major, d->ic_fw_ver.minor,
 				d->afe.ver);
 	}
 
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"\n===== Production Info =====\n");
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"product id : [%02x %02x %02x]\n",
 			d->prd_info.product_id[0],
 			d->prd_info.product_id[1],
 			d->prd_info.product_id[2]);
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 		"chip_rev : %d, fpc_rev : %d, panel_rev : %d\ninspector_ch : %d\n",
 		d->prd_info.chip_rev, d->prd_info.fpc_rev,
 		d->prd_info.panel_rev, d->prd_info.inspector_ch);
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"date : %02d.%02d.%02d %02d:%02d:%02d\n",
 			d->prd_info.date[0], d->prd_info.date[1],
 			d->prd_info.date[2], d->prd_info.date[3],
 			d->prd_info.date[4], d->prd_info.date[5]);
-	ret += snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
+	ret += touch_snprintf(file_buf + ret, FILE_BUF_SIZE - ret,
 			"pure_autotune : %s\n\n", d->pure_autotune
 			? ((d->pure_autotune_info == 1) ? "1 (E)" : "0 (D)")
 			: "0");
@@ -2959,13 +2959,13 @@ static ssize_t show_sd(struct device *dev, char *buf)
 
 	print_fw_ver_ret = ftm4_print_firmware_version(dev);
 	if (print_fw_ver_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Check connector)\n");
 		TOUCH_I("Raw Data : Fail (Check connector)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Check connector)\n");
 		TOUCH_I("Channel Status : Fail (Check connector)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -2974,13 +2974,13 @@ static ssize_t show_sd(struct device *dev, char *buf)
 
 	product_id_ret = ftm4_check_product_id(dev);
 	if (product_id_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Invalid Product ID)\n");
 		TOUCH_I("Raw Data : Fail (Invalid Product ID)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Invalid Product ID)\n");
 		TOUCH_I("Channel Status : Fail (Invalid Product ID)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -3047,7 +3047,7 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	TOUCH_I("OPEN_SHORT TEST\n");
 	openshort_ret = ftm4_open_short_test(dev);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"\n========RESULT=======\n");
 	TOUCH_I("========RESULT=======\n");
 	if ((self_rawdata_ret == 0) &&
@@ -3056,11 +3056,11 @@ static ssize_t show_sd(struct device *dev, char *buf)
 			(ix_data_ret == 0) &&
 			(cx_data_ret == 0) &&
 			(hf_cx_data_ret == 0)) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Pass\n");
 		TOUCH_I("Raw Data : Pass\n");
 	} else {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (%d/%d/%d/%d/%d/%d)\n",
 				self_rawdata_ret ? 0 : 1,
 				mutual_rawdata_ret ? 0 : 1,
@@ -3078,11 +3078,11 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	}
 
 	if (openshort_ret == 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Pass\n");
 		TOUCH_I("Channel Status : Pass\n");
 	} else {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"Channel Status : Fail (%d/%d)\n",
 			((openshort_ret & OPEN_TEST_FLAG) == OPEN_TEST_FLAG)
 			? 0 : 1,
@@ -3132,7 +3132,7 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 
 	/* Deep sleep check */
 	if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
-		ret = snprintf(buf + ret, PAGE_SIZE - ret,
+		ret = touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG Not Test. IC state is Deep Sleep.\n");
 		TOUCH_I("LPWG Not Test. IC state is Deep Sleep.\n");
 		return ret;
@@ -3146,10 +3146,10 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 
 	print_fw_ver_ret = ftm4_print_firmware_version(dev);
 	if (print_fw_ver_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Fail (Check connector)\n");
 		TOUCH_I("LPWG RawData : Fail (Check connector)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -3158,13 +3158,13 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 
 	product_id_ret = ftm4_check_product_id(dev);
 	if (product_id_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Invalid Product ID)\n");
 		TOUCH_I("Raw Data : Fail (Invalid Product ID)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Invalid Product ID)\n");
 		TOUCH_I("Channel Status : Fail (Invalid Product ID)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -3211,16 +3211,16 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 	TOUCH_I("LPWG_RAWDATA_TEST\n");
 	lpwg_self_rawdata_ret = ftm4_self_rawdata_test(dev, LPWG_SD_TEST);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"========RESULT=======\n");
 	TOUCH_I("========RESULT=======\n");
 
 	if (lpwg_self_rawdata_ret == 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Pass\n");
 		TOUCH_I("LPWG RawData : Pass\n");
 	} else {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Fail\n");
 		TOUCH_I("LPWG RawData : Fail\n");
 	}
@@ -3275,13 +3275,13 @@ static ssize_t show_aft_sd(struct device *dev, char *buf)
 
 	print_fw_ver_ret = ftm4_print_firmware_version(dev);
 	if (print_fw_ver_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Check connector)\n");
 		TOUCH_I("Raw Data : Fail (Check connector)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Check connector)\n");
 		TOUCH_I("Channel Status : Fail (Check connector)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -3290,13 +3290,13 @@ static ssize_t show_aft_sd(struct device *dev, char *buf)
 
 	product_id_ret = ftm4_check_product_id(dev);
 	if (product_id_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Invalid Product ID)\n");
 		TOUCH_I("Raw Data : Fail (Invalid Product ID)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Invalid Product ID)\n");
 		TOUCH_I("Channel Status : Fail (Invalid Product ID)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -3343,7 +3343,7 @@ static ssize_t show_aft_sd(struct device *dev, char *buf)
 	TOUCH_I("OPEN_SHORT TEST\n");
 	openshort_ret = ftm4_open_short_test(dev);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"\n========RESULT=======\n");
 	TOUCH_I("========RESULT=======\n");
 
@@ -3353,11 +3353,11 @@ static ssize_t show_aft_sd(struct device *dev, char *buf)
 			(ix_data_ret == 0) &&
 			(cx_data_ret == 0) &&
 			(hf_cx_data_ret == 0)) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Pass\n");
 		TOUCH_I("Raw Data : Pass\n");
 	} else {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (%d/%d/%d/%d/%d/%d)\n",
 				self_rawdata_ret ? 0 : 1,
 				mutual_rawdata_ret ? 0 : 1,
@@ -3376,11 +3376,11 @@ static ssize_t show_aft_sd(struct device *dev, char *buf)
 
 	if (openshort_ret == 0 &&
 			(d->pure_autotune == 1 && d->pure_autotune_info == 1)) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Pass\n");
 		TOUCH_I("Channel Status : Pass\n");
 	} else {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"Channel Status : Fail (%d/%d/%d)\n",
 			((openshort_ret & OPEN_TEST_FLAG) == OPEN_TEST_FLAG)
 			? 0 : 1,
@@ -3441,10 +3441,10 @@ static ssize_t show_aft_lpwg_sd(struct device *dev, char *buf)
 
 	print_fw_ver_ret = ftm4_print_firmware_version(dev);
 	if (print_fw_ver_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Fail (Check connector)\n");
 		TOUCH_I("LPWG RawData : Fail (Check connector)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -3453,13 +3453,13 @@ static ssize_t show_aft_lpwg_sd(struct device *dev, char *buf)
 
 	product_id_ret = ftm4_check_product_id(dev);
 	if (product_id_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Invalid Product ID)\n");
 		TOUCH_I("Raw Data : Fail (Invalid Product ID)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Invalid Product ID)\n");
 		TOUCH_I("Channel Status : Fail (Invalid Product ID)\n");
 		ftm4_write_file(dev, buf, TIME_INFO_SKIP);
@@ -3486,16 +3486,16 @@ static ssize_t show_aft_lpwg_sd(struct device *dev, char *buf)
 	TOUCH_I("LPWG_RAWDATA_TEST\n");
 	lpwg_self_rawdata_ret = ftm4_self_rawdata_test(dev, LPWG_SD_TEST);
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"========RESULT=======\n");
 	TOUCH_I("========RESULT=======\n");
 
 	if (lpwg_self_rawdata_ret == 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Pass\n");
 		TOUCH_I("LPWG RawData : Pass\n");
 	} else {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Fail\n");
 		TOUCH_I("LPWG RawData : Fail\n");
 	}
@@ -3547,30 +3547,30 @@ static ssize_t show_rawdata(struct device *dev, char *buf)
 	mutex_unlock(&ts->lock);
 
 	if (mutual_result < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"failed to read mutual rawdata\n");
 		TOUCH_E("failed to read mutual rawdata\n");
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"=========== mutual rawdata ===========\n");
 	TOUCH_I("=========== mutual rawdata ===========\n");
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,
 				"[%2d]  ", i);
 
 		for (j = 0; j < SENSE_CH_SIZE; j++) {
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"%5d ", rawdata[i][j]);
-			log_ret += snprintf(log_buf + log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,
 				"%5d ", rawdata[i][j]);
 		}
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 		TOUCH_I("%s\n", log_buf);
 		memset(log_buf, 0, sizeof(log_buf));
 		log_ret = 0;
@@ -3603,92 +3603,92 @@ static ssize_t show_rawdata_v2(struct device *dev, char *buf)
 	mutex_unlock(&ts->lock);
 
 	if (self_result < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"failed to read self rawdata\n");
 		TOUCH_E("failed to read self rawdata\n");
 	}
 
 	if (mutual_result < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"failed to read mutual rawdata\n");
 		TOUCH_E("failed to read mutual rawdata\n");
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"========= self force rawdata =========\n");
 	TOUCH_I("========= self force rawdata =========\n");
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
 				self_force_rawdata[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				self_force_rawdata[i]);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"========= self sense rawdata =========\n");
 	TOUCH_I("========= self sense rawdata =========\n");
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
 				self_sense_rawdata[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				self_sense_rawdata[i]);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"=========== mutual rawdata ===========\n");
 	TOUCH_I("=========== mutual rawdata ===========\n");
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,
 				"[%2d]  ", i);
 
 		for (j = 0; j < SENSE_CH_SIZE; j++) {
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"%5d ", rawdata[i][j]);
-			log_ret += snprintf(log_buf + log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,
 				"%5d ", rawdata[i][j]);
 		}
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 		TOUCH_I("%s\n", log_buf);
 		memset(log_buf, 0, sizeof(log_buf));
 		log_ret = 0;
@@ -3720,32 +3720,32 @@ static ssize_t show_delta(struct device *dev, char *buf)
 
 	if (result < 0) {
 		TOUCH_E("failed to read delta\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"failed to read delta\n");
 	}
 
-	ret = snprintf(buf, PAGE_SIZE, "======== Delta ========\n");
+	ret = touch_snprintf(buf, PAGE_SIZE, "======== Delta ========\n");
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,
 				"[%2d]  ", i);
 
 		for (j = 0; j < SENSE_CH_SIZE; j++) {
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"%5d ", rawdata[i][j]);
-			log_ret += snprintf(log_buf + log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,
 				"%5d ", rawdata[i][j]);
 		}
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 		TOUCH_I("%s\n", log_buf);
 		memset(log_buf, 0, sizeof(log_buf));
 		log_ret = 0;
@@ -3778,104 +3778,104 @@ static ssize_t show_delta_v2(struct device *dev, char *buf)
 	mutex_unlock(&ts->lock);
 
 	if (self_result < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"failed to read self delta\n");
 		TOUCH_E("failed to read self delta\n");
 	}
 
 	if (mutual_result < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"failed to read mutual delta\n");
 		TOUCH_E("failed to read mutual delta\n");
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"========= self force delta =========\n");
 	TOUCH_I("========= self force delta =========\n");
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
 	for (i = 0; i < FORCE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
 				self_force_rawdata[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				self_force_rawdata[i]);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"========= self sense delta =========\n");
 	TOUCH_I("========= self sense delta =========\n");
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,  "[%2d]  ", i);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
 	for (i = 0; i < SENSE_CH_SIZE; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
 				self_sense_rawdata[i]);
-		log_ret += snprintf(log_buf + log_ret,
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "%5d ",
 				self_sense_rawdata[i]);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"======== mutual delta ========\n");
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "       ");
-	log_ret += snprintf(log_buf + log_ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "       ");
+	log_ret += touch_snprintf(log_buf + log_ret,
 			LOG_BUF_SIZE - log_ret, "       ");
 
 	for (i = FORCE_CH_SIZE - 1; i >= 0; i--) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d]  ", i);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "[%2d]  ", i);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	TOUCH_I("%s\n", log_buf);
 	memset(log_buf, 0, sizeof(log_buf));
 	log_ret = 0;
 
 	for (j = SENSE_CH_SIZE - 1; j >= 0; j--) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d] ", j);
-		log_ret += snprintf(log_buf + log_ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d] ", j);
+		log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret, "[%2d]  ", j);
 
 		for (i = FORCE_CH_SIZE - 1; i >= 0; i--) {
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 					"%5d ", rawdata[i][j]);
-			log_ret += snprintf(log_buf + log_ret,
+			log_ret += touch_snprintf(log_buf + log_ret,
 				LOG_BUF_SIZE - log_ret,
 				"%5d ", rawdata[i][j]);
 		}
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 		TOUCH_I("%s\n", log_buf);
 		memset(log_buf, 0, sizeof(log_buf));
 		log_ret = 0;

@@ -182,7 +182,7 @@ int sw49410_reg_read(struct device *dev, u16 addr, void *data, int size)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct sw49410_data *d = to_sw49410_data(dev);
-	struct touch_bus_msg msg;
+	struct touch_bus_msg msg = {0, };
 	int buf_cnt = 0;
 	int w_header_size = 2;	/* default for i2c */
 	int r_header_size = 0;	/* default for i2c */
@@ -231,7 +231,7 @@ int sw49410_reg_write(struct device *dev, u16 addr, void *data, int size)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	struct sw49410_data *d = to_sw49410_data(dev);
-	struct touch_bus_msg msg;
+	struct touch_bus_msg msg = {0, };
 	int w_header_size = 2;	/* default for i2c & spi */
 	int ret = 0;
 
@@ -989,9 +989,9 @@ static int sw49410_swipe_enable(struct device *dev, bool enable)
 		u8 init_rat_chk_dist[4];
 		u8 init_rat_thres[4];
 	} __packed;
-	struct swipe_buf buf;
-	struct sw49410_active_area area[4];
-	struct sw49410_active_area start[4];
+	struct swipe_buf buf = {{0}, };
+	struct sw49410_active_area area[4] = {{0}, };
+	struct sw49410_active_area start[4] = {{0}, };
 	int i = 0;
 	int ret = 0;
 
@@ -1110,8 +1110,8 @@ static int sw49410_lpwg_abs_enable(struct device *dev, bool enable)
 		u16 end_x;
 		u16 end_y;
 	} __packed;
-	struct lpwg_abs_buf buf;
-	struct sw49410_active_area area;
+	struct lpwg_abs_buf buf = {0, };
+	struct sw49410_active_area area = {0, };
 	int ret = 0;
 
 	TOUCH_TRACE();
@@ -2698,7 +2698,7 @@ static ssize_t show_swipe_enable(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret = snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
+	ret = touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
 	TOUCH_I("%s: value = %d\n", __func__, value);
 
 	sw49410_print_swipe_info(dev);
@@ -2737,7 +2737,7 @@ static ssize_t show_swipe_tool(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
 	TOUCH_I("%s: value = %d\n", __func__, value);
 
 	sw49410_print_swipe_info(dev);
@@ -2820,7 +2820,7 @@ static ssize_t show_lpwg_abs(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
 	TOUCH_I("%s: lpwg_abs.enable = %d\n", __func__, value);
 
 	sw49410_print_lpwg_abs_info(dev);
@@ -2884,7 +2884,7 @@ static ssize_t show_voice_button(struct device *dev, char *buf)
 
 	TOUCH_TRACE();
 
-	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n",
 			d->voice_button.enable);
 	TOUCH_I("%s: voice_button.enable = %d\n",
 			__func__, d->voice_button.enable);
@@ -2986,9 +2986,9 @@ static ssize_t show_tci_debug(struct device *dev, char *buf)
 		return ret;
 	}
 
-	ret = snprintf(buf + ret, PAGE_SIZE, "Read TCI Debug Reason type[IC] = %s\n",
+	ret = touch_snprintf(buf + ret, PAGE_SIZE, "Read TCI Debug Reason type[IC] = %s\n",
 			debug_type[(rdata & 0x1) ? 1 : 0]);
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read TCI Debug Reason type[Driver] = %s\n",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read TCI Debug Reason type[Driver] = %s\n",
 			debug_type[d->tci_debug_type]);
 	TOUCH_I("Read TCI Debug Reason type[IC] = %s\n", debug_type[(rdata & 0x1) ? 1 : 0]);
 	TOUCH_I("Read TCI Debug Reason type[Driver] = %s\n", debug_type[d->tci_debug_type]);
@@ -3052,7 +3052,7 @@ static ssize_t show_grip_suppression(struct device *dev, char *buf)
 	}
 	mutex_unlock(&ts->lock);
 
-	ret = snprintf(buf, PAGE_SIZE, "%d\n", grip_touch_ctrl[0]);
+	ret = touch_snprintf(buf, PAGE_SIZE, "%d\n", grip_touch_ctrl[0]);
 	TOUCH_I("%s : grip_status[%s](%d), grip_noti[%s](%d)\n", __func__,
 		grip_touch_ctrl[0]? "En" : "Dis", grip_touch_ctrl[0],
 		grip_touch_ctrl[2]? "En" : "Dis", grip_touch_ctrl[2]);
@@ -3123,7 +3123,7 @@ static ssize_t show_pinstate(struct device *dev, char *buf)
 	int ret = 0;
 	struct touch_core_data *ts = to_touch_core(dev);
 
-	ret = snprintf(buf, PAGE_SIZE, "RST:%d, INT:%d\n",
+	ret = touch_snprintf(buf, PAGE_SIZE, "RST:%d, INT:%d\n",
 			gpio_get_value(ts->reset_pin), gpio_get_value(ts->int_pin));
 	TOUCH_I("%s() buf:%s",__func__, buf);
 	return ret;
@@ -3194,18 +3194,18 @@ static int sw49410_get_cmd_version(struct device *dev, char *buf)
 	struct sw49410_data *d = to_sw49410_data(dev);
 	int offset = 0;
 
-	offset = snprintf(buf + offset, PAGE_SIZE - offset, "version : v%d.%02d\n",
+	offset = touch_snprintf(buf + offset, PAGE_SIZE - offset, "version : v%d.%02d\n",
 			d->fw.version[0], d->fw.version[1]);
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 		"chip_rev : %x, fpc : %d, lcm : %d, lot : %d\n",
 			d->fw.revision, d->fw.fpc, d->fw.lcm, d->fw.lot);
-	offset += snprintf(buf + offset, PAGE_SIZE - offset,
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset,
 			"product id : [%s]\n\n", d->fw.product_id);
 
-	offset += snprintf(buf + offset, PAGE_SIZE - offset, "date : 0x%X 0x%X\n",
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset, "date : 0x%X 0x%X\n",
 			d->fw.date_site[0], d->fw.date_site[1]);
-	offset += snprintf(buf + offset, PAGE_SIZE - offset, "date : %04d.%02d.%02d " \
+	offset += touch_snprintf(buf + offset, PAGE_SIZE - offset, "date : %04d.%02d.%02d " \
 			"%02d:%02d:%02d Site%d\n",
 			d->fw.date_site[0] & 0xFFFF, (d->fw.date_site[0] >> 16 & 0xFF),
 			(d->fw.date_site[0] >> 24 & 0xFF), d->fw.date_site[1] & 0xFF,
@@ -3220,7 +3220,7 @@ static int sw49410_get_cmd_atcmd_version(struct device *dev, char *buf)
 	struct sw49410_data *d = to_sw49410_data(dev);
 	int offset = 0;
 
-	offset = snprintf(buf, PAGE_SIZE, "v%d.%02d\n", d->fw.version[0], d->fw.version[1]);
+	offset = touch_snprintf(buf, PAGE_SIZE, "v%d.%02d\n", d->fw.version[0], d->fw.version[1]);
 
 	return offset;
 }

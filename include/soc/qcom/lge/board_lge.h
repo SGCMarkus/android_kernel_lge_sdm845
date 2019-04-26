@@ -159,7 +159,9 @@ enum lge_laop_operator_type {
   OP_COMCAST_US,
   OP_OPEN_US,
   OP_OPEN_CA, // Canada
+  OP_SPR_US,
   OP_GLOBAL,  // Global, SCA, Asia, CIS, MEA...
+  OP_OPEN_RU,
   OP_INVALID, // Invalid NT Code
   OP_MAX
 };

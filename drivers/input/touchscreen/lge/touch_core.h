@@ -33,6 +33,7 @@
 #include <linux/atomic.h>
 #include <linux/input.h>
 #include <linux/input/mt.h>
+#include <touch_common.h>
 #include <touch_hwif.h>
 #include <linux/input/lge_touch_notify.h>
 #include <linux/lge_panel_notify.h>
@@ -633,11 +634,9 @@ int touch_lpwg(struct touch_core_data *ts, u32 code, int *value);
 
 extern irqreturn_t touch_irq_handler(int irq, void *dev_id);
 extern irqreturn_t touch_irq_thread(int irq, void *dev_id);
-extern void touch_msleep(unsigned int msecs);
 extern int touch_get_dts(struct touch_core_data *ts);
 extern int touch_get_platform_data(struct touch_core_data *ts);
 extern int touch_init_sysfs(struct touch_core_data *ts);
-extern void touch_interrupt_control(struct device *dev, int on_off);
 extern void touch_report_all_event(struct touch_core_data *ts);
 extern void touch_suspend(struct device *dev);
 extern void touch_resume(struct device *dev);

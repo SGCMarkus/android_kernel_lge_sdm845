@@ -1173,6 +1173,8 @@ void hif_fake_apps_resume_work(struct work_struct *work)
 		container_of(work, struct fake_apps_context, resume_work);
 
 	QDF_BUG(ctx->resume_callback);
+	if (!ctx->resume_callback)
+		return;
 	ctx->resume_callback(0);
 	ctx->resume_callback = NULL;
 }

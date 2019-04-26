@@ -907,12 +907,14 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 								POLL_IN);
 					}
 #endif
+					enable_irq_wake(gf_dev->irq);
+					gf_dbg("[info] goodix_fb_state_chg_callback enable_irq_wake.\n");
 				}
-				enable_irq_wake(gf_dev->irq);
 				break;
 			case LGE_PANEL_STATE_UNBLANK: // U3, UNBLANK
 
 				if (gf_dev->device_available == GF_DEVICE_AVAILABLE) {
+					if (gf_dev->fb_black == 0) { break; }
 					gf_dev->fb_black = 0;
 #if defined(GF_NETLINK_ENABLE)
 					temp = GF_NET_EVENT_FB_UNBLACK;
@@ -923,8 +925,9 @@ static int goodix_fb_state_chg_callback(struct notifier_block *nb,
 								POLL_IN);
 					}
 #endif
+					disable_irq_wake(gf_dev->irq);
+					gf_dbg("[info] goodix_fb_state_chg_callback disable_irq_wake.\n");
 				}
-				disable_irq_wake(gf_dev->irq);
 				break;
 			default:
 				gf_dbg("%s defalut\n", __func__);
