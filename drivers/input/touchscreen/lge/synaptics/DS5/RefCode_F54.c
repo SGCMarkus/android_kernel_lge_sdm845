@@ -439,7 +439,7 @@ int CompareImageReport(void)
 							row_crack_count,
 							ImagepF[i][j]);
 				} else {
-					f54len += snprintf(f54buf + f54len,
+					f54len += touch_snprintf(f54buf + f54len,
 							sizeof(f54buf) - f54len,
 							"FAIL, Tx[%d] Rx[%d] = %d\n",
 							i, j, ImagepF[i][j]);
@@ -451,12 +451,12 @@ int CompareImageReport(void)
 
 	if (result) {
 		TOUCH_I("Full Raw Capacitance Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\nFull Raw Capacitance Image Test passed.\n\n");
 	} else {
 		TOUCH_I("Full Raw Capacitance Test failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\nFull Raw Capacitance Image Test failed.\n\n");
 	}
@@ -472,7 +472,7 @@ int CompareHighResistance(void)
 	for (i = 0 ; i < (int)RxChannelCount ; i++) {
 		if (RXROE[i] > HighResistanceUpperLimit[0]
 			|| RXROE[i] < HighResistanceLowerLimit[0]) {
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"Fail, RxROE[%d] = %d\n",
 					i, RXROE[i]);
@@ -483,7 +483,7 @@ int CompareHighResistance(void)
 	for (i = 0 ; i < (int)TxChannelCount ; i++) {
 		if (TXROE[i] > HighResistanceUpperLimit[1]
 			|| TXROE[i] < HighResistanceLowerLimit[1]) {
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"Fail, TxROE[%d] = %d\n",
 					i, TXROE[i]);
@@ -495,7 +495,7 @@ int CompareHighResistance(void)
 		for (j = 0 ; j < (int)RxChannelCount ; j++) {
 			if (ImagepF[i][j] > HighResistanceUpperLimit[2]
 				|| ImagepF[i][j] < HighResistanceLowerLimit[2]) {
-				f54len += snprintf(f54buf + f54len,
+				f54len += touch_snprintf(f54buf + f54len,
 						sizeof(f54buf) - f54len,
 						"Fail, Tx[%d] Rx[%d] = %d\n",
 						i, j, ImagepF[i][j]);
@@ -506,12 +506,12 @@ int CompareHighResistance(void)
 
 	if (result == false) {
 		TOUCH_I("HighResistance Test failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\nHighResistance Test failed.\n\n");
 	} else {
 		TOUCH_I("HighResistance Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\nHighResistance Test passed.\n\n");
 	}
@@ -536,7 +536,7 @@ int CompareSensorSpeedReport(void)
 					SensorSpeedLowerImageLimit[i][j],
 					SensorSpeedUpperImageLimit[i][j],
 					ImagepF[i][j]);
-				wlen += snprintf(wbuf + wlen,
+				wlen += touch_snprintf(wbuf + wlen,
 						sizeof(wbuf) - wlen,
 					"Failed : Tx[%2d] Rx[%2d] = %3d\n",
 					i, j, ImagepF[i][j]);
@@ -547,12 +547,12 @@ int CompareSensorSpeedReport(void)
 
 	if (result) {
 		TOUCH_I("Sensor Speed Test passed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nSensor Speed Test passed.\n\n");
 	} else {
 		TOUCH_I("Sensor Speed Test failed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nSensor Speed Test failed.\n\n");
 	}
@@ -574,7 +574,7 @@ int CompareADCReport(void)
 					i, j, ADCLowerImageLimit[i][j],
 					ADCUpperImageLimit[i][j],
 					Image1[i][j]);
-				wlen += snprintf(wbuf + wlen,
+				wlen += touch_snprintf(wbuf + wlen,
 						sizeof(wbuf) - wlen,
 					"Failed : Tx[%2d] Rx[%2d] = %3u\n",
 					i, j, Image1[i][j]);
@@ -585,12 +585,12 @@ int CompareADCReport(void)
 	}
 	if (result) {
 		TOUCH_I("ADC Range Test passed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nADC Range Test passed.\n\n");
 	} else {
 		TOUCH_I("ADC Range Test failed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nADC Range Test failed.\n\n");
 	}
@@ -670,12 +670,12 @@ int CompareAbsOpen(void)
 
 	if (result) {
 		TOUCH_I("Abs Sensing Open Test Passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"Abs Sensing Open Test passed.\n\n");
 	} else {
 		TOUCH_I("Abs Sensing Open Test Failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"Abs Sensing Open Test failed.\n\n");
 	}
@@ -712,12 +712,12 @@ int CompareAbsShort(void)
 
 	if (result) {
 		TOUCH_I("Abs Sensing Short Test Passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"Abs Sensing Short Test passed.\n\n");
 	} else {
 		TOUCH_I("Abs Sensing Short Test Failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"Abs Sensing Short Test failed.\n\n");
 	}
@@ -766,7 +766,7 @@ int CompareTRexGroundTestReport(void)
 			k = 0x01 << j;
 			if (err_array[i] & k)
 			{
-				f54len += snprintf(f54buf + f54len,
+				f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"Fail, TRx[%d]\n", ((i * 8) + j));
 				result = false;
@@ -776,12 +776,12 @@ int CompareTRexGroundTestReport(void)
 
 	if (result) {
 		TOUCH_I("TRex-TRex Gnd Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"TRex-TRex Gnd Test passed.\n\n");
 	} else {
 		TOUCH_I("TRex-TRex Gnd Test failed.\n");
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"TRex-TRex Gnd Test failed.\n\n");
 	}
@@ -808,7 +808,7 @@ int CompareTRexShortTestReport(void)
 			k = 0x01 << j;
 			if (err_array[i] & k)
 			{
-				f54len += snprintf(f54buf + f54len,
+				f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"Fail, TRx[%d]\n", ((i * 8) + j));
 				result = false;
@@ -818,12 +818,12 @@ int CompareTRexShortTestReport(void)
 
 	if (result) {
 		TOUCH_I("TRex-TRex Short Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"TRex-TRex Short Test passed.\n\n");
 	} else {
 		TOUCH_I("TRex-TRex Short Test failed.\n");
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"TRex-TRex Short Test failed.\n\n");
 	}
@@ -837,37 +837,37 @@ int CompareNoiseReport(void)
 	bool result = true;
 	int i, j = 0;
 
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"\nNoise Test Data :\n");
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"==========================================================================================================\n         :");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"%5d ", i);
 
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 	for (i = 0; i < TxChannelCount; i++) {
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"   %5d : ", i);
 		for (j = 0; j < RxChannelCount; j++) {
 			ImagepF[i][j] = NoiseDeltaMax[i][j] -
 				NoiseDeltaMin[i][j];
-			wlen += snprintf(wbuf + wlen,
+			wlen += touch_snprintf(wbuf + wlen,
 					sizeof(wbuf) - wlen,
 					"%5d ", ImagepF[i][j]);
 		}
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\n");
 	}
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"------------------------------------------------------------------------------------------------------------\n");
 
@@ -891,7 +891,7 @@ int CompareNoiseReport(void)
 				TOUCH_I(
 						"\tFailed: 2D area: Tx [%d] Rx [%d]\n",
 						i, j);
-				wlen += snprintf(wbuf + wlen,
+				wlen += touch_snprintf(wbuf + wlen,
 						sizeof(wbuf) - wlen,
 						"Failed Tx [%2d] Rx [%2d] = %3d\n",
 						i, j, ImagepF[i][j]);
@@ -902,12 +902,12 @@ int CompareNoiseReport(void)
 
 	if (result == false) {
 		TOUCH_I("Noise Test failed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nNoise Test failed.\n\n");
 	} else {
 		TOUCH_I("Noise Test passed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nNoise Test passed.\n\n");
 	}
@@ -940,7 +940,7 @@ int CompareGndReport(void)
 	if (negative_avg <= -5)
 		result = false;
 
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"negative sum : %5d, negative count: %5d, delta: %5d.%02d, Result : %s\n",
 			negative,
@@ -951,12 +951,12 @@ int CompareGndReport(void)
 
 	if (result == false) {
 		TOUCH_I("GND Test failed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nGND Test failed.\n\n");
 	} else {
 		TOUCH_I("GND Test passed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\nGND Test passed.\n\n");
 	}
@@ -994,27 +994,27 @@ int ReadImageReport(void)
 			&Data[0], MaxArrayLength);
 
 	TOUCH_I("Full Raw Capacitance Test\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len, "   : ");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len, " [%2d] ", i);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\n[%2d] ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			Image1[i][j] = ((short)Data[k]
 					| (short)Data[k + 1] << 8);
 			ImagepF[i][j] = Image1[i][j];
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ",
 					ImagepF[i][j]);
@@ -1028,10 +1028,10 @@ int ReadImageReport(void)
 		}
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len, "\n");
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\nRawdata min : %d, max : %d\n", min, max);
 
@@ -1056,21 +1056,21 @@ int GetImageReport(char *buf)
 			&Data[0], MaxArrayLength);
 
 	*buf = 0;
-	ret += snprintf(buf + ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"Tx = %d, Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "[%2d] ", i);
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "[%2d] ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			Image1[i][j] = ((short)Data[k]
 					| (short)Data[k + 1] << 8);
 			ImagepF[i][j] = Image1[i][j];
-			ret += snprintf(buf + ret, PAGE_SIZE - ret,
+			ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 					"%5d ", ImagepF[i][j]);
 			k = k + 2;
 		}
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n");
 	}
 
 	/*Reset Device*/
@@ -1102,14 +1102,14 @@ int GetDelta(char *buf)
 				ret = 0;
 			}
 
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"delta[%2d][%2d] : %5d ",
 					i, j, ImagepF[i][j]);
 
 			k = k + 2;
 		}
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len, "\n");
 		write_file(f54buf, TIME_INFO_SKIP);
 		f54len = 0;
@@ -1132,45 +1132,45 @@ int ReadGndReport(void)
 			&Data[0], MaxArrayLength);
 
 	TOUCH_I("GND Test\n");
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"\nInfo: Tx = %d Rx = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"Delta Data :\n");
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"==========================================================================================================\n         :");
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"%5d ", i);
 
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	for (i = 0; i < (int)TxChannelCount; i++) {
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"   %5d : ", i);
 		for (j = 0; j < (int)RxChannelCount; j++) {
 			Image1[i][j] = ((short)Data[k]
 					| (short)Data[k + 1] << 8);
 			ImagepF[i][j] = Image1[i][j];
-			wlen += snprintf(wbuf + wlen,
+			wlen += touch_snprintf(wbuf + wlen,
 					sizeof(wbuf) - wlen,
 					"%5d ",
 					ImagepF[i][j]);
 			k = k + 2;
 		}
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\n");
 	}
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"------------------------------------------------------------------------------------------------------------\n");
 
@@ -1234,48 +1234,48 @@ int ReadHighResistanceReport(void)
 			(2 * (3 + (((int)TxChannelCount + 1) * ((int)RxChannelCount + 1)))));
 
 	TOUCH_I("High Resistance Test\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len, "RxROE = ");
 	for (i = 0 ; i < (int)RxChannelCount ; i++) {
 		RXROE[i] = (short)Data[k] | ((short)Data[k + 1] << 8);
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"%4d ", RXROE[i]);
 		k = k + 2;
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len, "\nTxROE = ");
 	for (i = 0 ; i < (int)TxChannelCount ; i++) {
 		TXROE[i] = (short)Data[k] | ((short)Data[k + 1] << 8);
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"%4d ", TXROE[i]);
 		k = k + 2;
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len, "\n   : ");;
 
 	for (i = 0; i < (int)RxChannelCount; i++)
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len, " [%2d] ", i);
 
 	for (i = 0 ; i < (int)TxChannelCount ; i++) {
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\n[%2d] ", i);
 		for (j = 0 ; j < (int)RxChannelCount ; j++) {
 			Image1[i][j] = (short)Data[k] | ((short)Data[k + 1] << 8);
 			ImagepF[i][j] = Image1[i][j];
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len, "%5d ",
 					ImagepF[i][j]);
 			k = k + 2;
 		}
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len, "\n");
 
 	ret = CompareHighResistance();
@@ -1387,15 +1387,15 @@ void ReadAbsDeltaReport(void)
 
 	p32data = (int *)&Data[0];
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"Abs Sensing Delta Capacitance Data:\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"Rx: ");
 	for (i = 0; i < (int)RxChannelCount; i++) {
 		AbsSigned32Data[k] = (int)*p32data;
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%d ",
 				AbsSigned32Data[k]);
@@ -1403,12 +1403,12 @@ void ReadAbsDeltaReport(void)
 		p32data++;
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\nTx: ");
 	for (i = 0; i < (int)TxChannelCount; i++) {
 		AbsSigned32Data[k] = (int)*p32data;
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%d ",
 				AbsSigned32Data[k]);
@@ -1416,7 +1416,7 @@ void ReadAbsDeltaReport(void)
 		p32data++;
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n");
 	Reset();
@@ -1433,17 +1433,17 @@ void ReadAbsRawReport(void)
 	p32data = (int *)&Data[0];
 
 	TOUCH_I("Abs Sensing Raw Capacitance Data:\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"Abs Sensing Raw Capacitance Data:\n");
 	TOUCH_I("Rx: ");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"Rx: ");
 	for (i = 0; i < (int)RxChannelCount; i++) {
 		AbsSigned32Data[k] = (int)*p32data;
 		TOUCH_I("%d ", AbsSigned32Data[k]);
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%d ",
 				AbsSigned32Data[k]);
@@ -1452,13 +1452,13 @@ void ReadAbsRawReport(void)
 	}
 	TOUCH_I("\n");
 	TOUCH_I("Tx: ");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\nTx: ");
 	for (i = 0; i < (int)TxChannelCount; i++) {
 		AbsSigned32Data[k] = (int)*p32data;
 		TOUCH_I("%d ", AbsSigned32Data[k]);
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%d ",
 				AbsSigned32Data[k]);
@@ -1466,7 +1466,7 @@ void ReadAbsRawReport(void)
 		p32data++;
 	}
 	TOUCH_I("\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n");
 
@@ -1486,7 +1486,7 @@ int ReadAbsRawOpen(void)
 			&Data[0], (F12_2DRxCount + F12_2DTxCount) * 4);
 
 	TOUCH_I("Abs Sensing Open Test Data:\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"Abs Sensing Open Test Data:\n");
 
@@ -1501,20 +1501,20 @@ int ReadAbsRawOpen(void)
 		if (i < (int)F12_2DRxCount) {
 			TOUCH_I("RX[%d]: %d, ",
 					i, AbsOpen[i]);
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ", AbsOpen[i]);
 		} else {
 			TOUCH_I("TX[%d]: %d, ",
 					i - (int)F12_2DRxCount, AbsOpen[i]);
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ", AbsOpen[i]);
 		}
 
 		if (i == ((int)F12_2DRxCount - 1)) {
 			TOUCH_I("\n");
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"\n");
 		}
@@ -1537,7 +1537,7 @@ int ReadAbsRawShort(void)
 			&Data[0], (F12_2DRxCount + F12_2DTxCount) * 4);
 
 	TOUCH_I("Abs Sensing Short Test Data:\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"Abs Sensing Short Test Data:\n");
 
@@ -1553,20 +1553,20 @@ int ReadAbsRawShort(void)
 		if (i < (int)F12_2DRxCount) {
 			TOUCH_I("RX[%d]: %d, ",
 					i, AbsShort[i]);
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ", AbsShort[i]);
 		} else {
 			TOUCH_I("TX[%d]: %d, ",
 					i - (int)F12_2DRxCount, AbsShort[i]);
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ", AbsShort[i]);
 		}
 
 		if (i == ((int)F12_2DRxCount - 1)) {
 			TOUCH_I("\n");
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"\n");
 		}
@@ -1657,12 +1657,12 @@ int ReadTRexGroundReport(void)
 
 	for (i = 0; i < TRX_BITMAP_LENGTH; i++)	{
 		TRxPhysical_bit[i] = 0;
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"TRex-TRex Gnd Test Data = %#x\n", Data[i]);
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n");
 
@@ -1688,12 +1688,12 @@ int ReadTRexShortReport(void)
 
 	for (i = 0; i < TRX_BITMAP_LENGTH; i++)	{
 		TRxPhysical_bit[i] = 0;
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"TRex-TRex Short Test Data = %#x\n", Data[i]);
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n");
 
@@ -3479,42 +3479,42 @@ int RspRawDataTest(void)
 	f54len = 0;
 
 	/* Divid each pixel by 50 for average & save average raw data*/
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"RSP Full Raw Capacitance Image Data :\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\nInfo: RSP Row = %d Col = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"==========================================================================================================\n		  :");
 
 	for (r = 0; r < (int)RxChannelCount; r++)
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%5d ", r);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	for (r = 0; r < RSP_MAX_ROW; r++) {
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"	 %5d : ", r);
 		for (c = 0; c < RSP_MAX_COL; c++) {
 			RspAvgImage[r][c] /= RSP_COLLECT_FRAMES;
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ",
 					RspAvgImage[r][c]);
 		}
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\n");
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"------------------------------------------------------------------------------------------------------------\n");
 
@@ -3525,7 +3525,7 @@ int RspRawDataTest(void)
 					< LowerImageLimit[r][c]
 					|| RspAvgImage[r][c]
 					> UpperImageLimit[r][c]) {
-				f54len += snprintf(f54buf + f54len,
+				f54len += touch_snprintf(f54buf + f54len,
 						sizeof(f54buf) - f54len,
 						"Failed 2D area : Row [%2d] Col [%2d] Value : %3d\n",
 						r, c, RspAvgImage[r][c]);
@@ -3536,12 +3536,12 @@ int RspRawDataTest(void)
 
 	if (isPassed) {
 		TOUCH_I("RSP Full Raw Capacitance Image Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Full Raw Capacitance Image Test passed.\n\n\n");
 	} else {
 		TOUCH_I("RSP Full Raw Capacitance Image Test failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Full Raw Capacitance Image Test failed.\n\n\n");
 	}
@@ -3587,43 +3587,43 @@ int RspNoiseP2PTest(void)
 	/* Loops through all pixel and applies the calc. through all frames
 	     Cs_pp=Max(Cs_abs(c,r)) - Min(Cs_abs(c,r))
 	     where c=0, 1 ... 17 & r=1, 2 ... 31 */
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"\nRSP Noise P-P Test Data :\n");
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 		"==========================================================================================================\n         :");
 	for (r = 0; r < (int)RxChannelCount; r++)
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"%5d ", r);
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	for (r = 0; r < RSP_MAX_ROW; r++) {
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"   %5d : ", r);
 		for (c = 0; c < RSP_MAX_COL; c++) {
 			diff = GetP2PMax(r, c) - GetP2PMin(r, c);
 			ImagepF[r][c] = diff;
-			wlen += snprintf(wbuf + wlen,
+			wlen += touch_snprintf(wbuf + wlen,
 					sizeof(wbuf) - wlen,
 					"%5d ", ImagepF[r][c]);
 		}
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"\n");
 	}
-	wlen += snprintf(wbuf + wlen,
+	wlen += touch_snprintf(wbuf + wlen,
 			sizeof(wbuf) - wlen,
 			"------------------------------------------------------------------------------------------------------------\n");
 
 	for (r = 0; r < RSP_MAX_ROW; r++) {
 		for (c = 0; c < RSP_MAX_COL; c++) {
 			if (ImagepF[r][c] > RspNoiseP2PLimit[r][c]) {
-				wlen += snprintf(wbuf + wlen,
+				wlen += touch_snprintf(wbuf + wlen,
 						sizeof(wbuf) - wlen,
 						"Failed 2D area : Row [%2d] Col [%2d] Value : %3d\n",
 						r, c, ImagepF[r][c]);
@@ -3634,12 +3634,12 @@ int RspNoiseP2PTest(void)
 
 	if (isPassed) {
 		TOUCH_I("RSP Noise P-P Test Passed.");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"RSP Noise P-P Test Passed.\n\n\n");
 	} else {
 		TOUCH_I("RSP Noise P-P Test Failed.\n");
-		wlen += snprintf(wbuf + wlen,
+		wlen += touch_snprintf(wbuf + wlen,
 				sizeof(wbuf) - wlen,
 				"RSP Noise P-P Test Failed.\n\n\n");
 	}
@@ -3807,7 +3807,7 @@ bool ShortCheck(int page, int row, int num_of_row)
 	for (i = 0; i < num_of_row; i++)
 		for (j = 0; j < RSP_MAX_COL; j++)
 			if (RspImageStack[page][row+i][j] <= 0xF) {
-				wlen += snprintf(wbuf+wlen, sizeof(wbuf)-wlen,
+				wlen += touch_snprintf(wbuf+wlen, sizeof(wbuf)-wlen,
 						"Short area : Row [%2d] Col [%2d] Value : %3d\n",
 						row + i, j,
 						RspImageStack[page][row+i][j]);
@@ -3856,11 +3856,11 @@ int RspShortTestCheckData(void)
 
 	if (isPassed) {
 		TOUCH_I("RSP Short Test Passed\n");
-		wlen += snprintf(wbuf + wlen, sizeof(wbuf) - wlen,
+		wlen += touch_snprintf(wbuf + wlen, sizeof(wbuf) - wlen,
 				"\nRSP Short Test passed.\n\n\n");
 	} else {
 		TOUCH_I("RSP Short Test Failed\n");
-		wlen += snprintf(wbuf + wlen, sizeof(wbuf) - wlen,
+		wlen += touch_snprintf(wbuf + wlen, sizeof(wbuf) - wlen,
 				"\nRSP Short Test Failed.\n\n\n");
 	}
 	write_file(wbuf, TIME_INFO_SKIP);
@@ -3879,28 +3879,28 @@ int RspDisplayRawData(char *buf)
 		"[%s] Start Touch Raw Data Display\n", __func__);
 
 	/* Divid each pixel by 50 for average & save average raw data*/
-	ret += snprintf(buf+ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf+ret, PAGE_SIZE - ret,
 					"RSP Full Raw Capacitance Image Data :\n");
-	ret += snprintf(buf+ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf+ret, PAGE_SIZE - ret,
 					"\nInfo: RSP Row = %d Col = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
-	ret += snprintf(buf+ret, PAGE_SIZE - ret,
+	ret += touch_snprintf(buf+ret, PAGE_SIZE - ret,
 			"==========================================================================================================\n:");
 
 	for (r = 0; r < (int)RxChannelCount; r++)
-		ret += snprintf(buf+ret, PAGE_SIZE-ret, "%5d ", r);
-	ret += snprintf(buf+ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf+ret, PAGE_SIZE-ret, "%5d ", r);
+	ret += touch_snprintf(buf+ret, PAGE_SIZE - ret,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	for (r = 0; r < RSP_MAX_ROW; r++) {
 		for (c = 0; c < RSP_MAX_COL; c++) {
-			ret += snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
+			ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "%5d ",
 					RspRawImage[r][c]);
 		}
-		ret += snprintf(buf+ret, PAGE_SIZE - ret, "\n");
+		ret += touch_snprintf(buf+ret, PAGE_SIZE - ret, "\n");
 	}
 
-	ret += snprintf(buf+ret, PAGE_SIZE-ret,
+	ret += touch_snprintf(buf+ret, PAGE_SIZE-ret,
 				"------------------------------------------------------------------------------------------------------------\n");
 	memset(RspRawImage, 0, sizeof(RspRawImage));
 	return ret;
@@ -3918,25 +3918,25 @@ int RspDisplayNoiseP2P(char *buf)
 	/* Loops through all pixel and applies the calc. through all frames
 	     Cs_pp=Max(Cs_abs(c,r)) - Min(Cs_abs(c,r))
 	     where c=0, 1 ... 17 & r=1, 2 ... 31 */
-	ret  += snprintf(buf+ret, PAGE_SIZE-ret,
+	ret  += touch_snprintf(buf+ret, PAGE_SIZE-ret,
 					"\nRSP Noise P-P Test Data :\n");
-	ret  += snprintf(buf+ret, PAGE_SIZE-ret,
+	ret  += touch_snprintf(buf+ret, PAGE_SIZE-ret,
 		"==========================================================================================================\n:");
 	for (r = 0; r < (int)RxChannelCount; r++)
-		ret += snprintf(buf+ret, PAGE_SIZE-ret, "%5d ", r);
-	ret += snprintf(buf+ret, PAGE_SIZE-ret,
+		ret += touch_snprintf(buf+ret, PAGE_SIZE-ret, "%5d ", r);
+	ret += touch_snprintf(buf+ret, PAGE_SIZE-ret,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	for (r = 0; r < RSP_MAX_ROW; r++) {
 		for (c = 0; c < RSP_MAX_COL; c++) {
 			diff = GetP2PMax(r, c) - GetP2PMin(r, c);
 			ImagepF[r][c] = diff;
-			ret += snprintf(buf+ret,
+			ret += touch_snprintf(buf+ret,
 					PAGE_SIZE-ret, "%5d ", ImagepF[r][c]);
 		}
-		ret += snprintf(buf+ret, PAGE_SIZE-ret, "\n");
+		ret += touch_snprintf(buf+ret, PAGE_SIZE-ret, "\n");
 	}
-	ret += snprintf(buf+ret, PAGE_SIZE-ret,
+	ret += touch_snprintf(buf+ret, PAGE_SIZE-ret,
 			"------------------------------------------------------------------------------------------------------------\n");
 	return ret;
 }
@@ -3954,42 +3954,42 @@ int RspCalTest(char *buf)
 
 	f54len = 0;
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"RSP Coarse Calibration Data :\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\nInfo: RSP Row = %d Col = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"==========================================================================================================\n		  :");
 
 	for (r = 0; r < (int)RxChannelCount; r++)
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%5d ", r);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	for (r = 0; r < RSP_MAX_ROW; r++) {
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"	 %5d : ", r);
 		for (c = 0; c < RSP_MAX_COL; c++) {
 
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ",
 					coarse[f++]);
 		}
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\n");
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"------------------------------------------------------------------------------------------------------------\n");
 
@@ -4001,7 +4001,7 @@ int RspCalTest(char *buf)
 		for (c = 0; c < RSP_MAX_COL; c++) {
 			if (c >= 2 && c <= 15){
 				if (coarse[f] != 0) {
-					f54len += snprintf(f54buf + f54len,
+					f54len += touch_snprintf(f54buf + f54len,
 							sizeof(f54buf) - f54len,
 							"RSP Coarse Fail area : Row [%2d] Col [%2d] Value : %3d\n",
 							r, c, coarse[f]);
@@ -4014,12 +4014,12 @@ int RspCalTest(char *buf)
 
 	if (coarse_cal_result) {
 		TOUCH_I("RSP Coarse Cal Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Coarse Cal Test passed.\n\n\n");
 	} else {
 		TOUCH_I("RSP Coarse Cal Test failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Coarse Cal Test failed.\n\n\n");
 	}
@@ -4027,46 +4027,46 @@ int RspCalTest(char *buf)
 	write_file(f54buf, TIME_INFO_SKIP);
 	f54len = 0;
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"RSP Fine Calibration Data :\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\nInfo: RSP Row = %d Col = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\nInfo: fine upper limit = %d\n", fine_upper_limit);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"==========================================================================================================\n		  :");
 
 	for (r = 0; r < (int)RxChannelCount; r++)
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%5d ", r);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	f = 0;
 	for (r = 0; r < RSP_MAX_ROW; r++) {
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"	 %5d : ", r);
 		for (c = 0; c < RSP_MAX_COL; c++) {
 
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ",
 					fine[f++]);
 		}
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\n");
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"------------------------------------------------------------------------------------------------------------\n");
 
@@ -4078,7 +4078,7 @@ int RspCalTest(char *buf)
 		for (c = 0; c < RSP_MAX_COL; c++) {
 			if (c >= 2 && c <= 15){
 				if (fine[f] > fine_upper_limit) {
-					f54len += snprintf(f54buf + f54len,
+					f54len += touch_snprintf(f54buf + f54len,
 							sizeof(f54buf) - f54len,
 							"RSP Coarse Fail area : Row [%2d] Col [%2d] Value : %3d\n",
 							r, c, fine[f]);
@@ -4091,12 +4091,12 @@ int RspCalTest(char *buf)
 
 	if (fine_cal_result) {
 		TOUCH_I("RSP Fine Cal Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Fine Cal Test passed.\n\n\n");
 	} else {
 		TOUCH_I("RSP Fine Cal Test failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Fine Cal Test failed.\n\n\n");
 	}
@@ -4108,12 +4108,12 @@ int RspCalTest(char *buf)
 
 	if (isPassed) {
 		TOUCH_I("RSP Cal Test passed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Cal Test passed.\n\n\n");
 	} else {
 		TOUCH_I("RSP Cal Test failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP Cal Test failed.\n\n\n");
 	}
@@ -4222,42 +4222,42 @@ int RspLpwgRawDataTest(void)
 	f54len = 0;
 
 	/* Divid each pixel by 50 for average & save average raw data*/
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"RSP LPWG Raw Capacitance Image Data :\n");
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\nInfo: RSP LPWG Row = %d Col = %d\n",
 			(int)TxChannelCount, (int)RxChannelCount);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"==========================================================================================================\n		  :");
 
 	for (r = 0; r < (int)RxChannelCount; r++)
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"%5d ", r);
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"\n----------------------------------------------------------------------------------------------------------\n");
 
 	for (r = 0; r < RSP_MAX_ROW; r++) {
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"	 %5d : ", r);
 		for (c = 0; c < RSP_MAX_COL; c++) {
 			RspAvgImage[r][c] /= RSP_COLLECT_FRAMES;
-			f54len += snprintf(f54buf + f54len,
+			f54len += touch_snprintf(f54buf + f54len,
 					sizeof(f54buf) - f54len,
 					"%5d ",
 					RspAvgImage[r][c]);
 		}
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"\n");
 	}
 
-	f54len += snprintf(f54buf + f54len,
+	f54len += touch_snprintf(f54buf + f54len,
 			sizeof(f54buf) - f54len,
 			"------------------------------------------------------------------------------------------------------------\n");
 
@@ -4268,7 +4268,7 @@ int RspLpwgRawDataTest(void)
 					< LowerImageLimit[r][c]
 					|| RspAvgImage[r][c]
 					> UpperImageLimit[r][c]) {
-				f54len += snprintf(f54buf + f54len,
+				f54len += touch_snprintf(f54buf + f54len,
 						sizeof(f54buf) - f54len,
 						"LPWG Failed 2D area : Row [%2d] Col [%2d] Value : %3d\n",
 						r, c, RspAvgImage[r][c]);
@@ -4279,12 +4279,12 @@ int RspLpwgRawDataTest(void)
 
 	if (isPassed) {
 		TOUCH_I("RSP LPWG Raw Capacitance Image Test passed.");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP LPWG Raw Capacitance Image Test passed.\n\n\n");
 	} else {
 		TOUCH_I("RSP LPWG Raw Capacitance Image Test failed.\n");
-		f54len += snprintf(f54buf + f54len,
+		f54len += touch_snprintf(f54buf + f54len,
 				sizeof(f54buf) - f54len,
 				"RSP LPWG Raw Capacitance Image Test failed.\n\n\n");
 	}
@@ -4455,7 +4455,7 @@ void CheckCrash(char *rst, int min_caps_value)
 
 				if (5 < row_crack_count ||
 						criterion < node_crack_count) {
-					snprintf(rst, PAGE_SIZE, "%d", 1);
+					touch_snprintf(rst, PAGE_SIZE, "%d", 1);
 					return;
 				}
 			}
@@ -4463,12 +4463,12 @@ void CheckCrash(char *rst, int min_caps_value)
 		}
 		rx_crack_count = 0;
 	}
-	snprintf(rst, PAGE_SIZE, "%d", 0);
+	touch_snprintf(rst, PAGE_SIZE, "%d", 0);
 	TOUCH_I("Tx [%d] Rx [%d] node_crack_count %d, row_crack_count %d\n",
 			i, j, node_crack_count, row_crack_count);
 	return;
 error:
-	snprintf(rst, PAGE_SIZE, "%d", 0);
+	touch_snprintf(rst, PAGE_SIZE, "%d", 0);
 	TOUCH_E("window crack check fail\n");
 }
 

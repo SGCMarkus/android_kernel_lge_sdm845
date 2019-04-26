@@ -219,7 +219,7 @@ static ssize_t pn547_dev_read(struct file *filp, char __user *buf,
 
     if (isFirstPacket == false) {
 #ifdef READ_IRQ_MODIFY
-        ret = wait_event_interruptible_timeout(pn547_dev->read_wq, do_reading, msecs_to_jiffies(NFC_TIMEOUT_MS));
+        ret = wait_event_interruptible_timeout(pn547_dev->read_wq, do_reading|gpio_get_value(pn547_dev->irq_gpio), msecs_to_jiffies(NFC_TIMEOUT_MS)); // NFC-7548
 #else
         ret = wait_event_interruptible_timeout(pn547_dev->read_wq, gpio_get_value(pn547_dev->irq_gpio), msecs_to_jiffies(NFC_TIMEOUT_MS));
 #endif
@@ -239,7 +239,7 @@ static ssize_t pn547_dev_read(struct file *filp, char __user *buf,
     if (isFirstPacket == true)
     {
 #ifdef READ_IRQ_MODIFY
-        ret = wait_event_interruptible(pn547_dev->read_wq, do_reading);
+        ret = wait_event_interruptible(pn547_dev->read_wq, do_reading|gpio_get_value(pn547_dev->irq_gpio)); // NFC-7548
 #else
         ret = wait_event_interruptible(pn547_dev->read_wq, gpio_get_value(pn547_dev->irq_gpio));
 #endif

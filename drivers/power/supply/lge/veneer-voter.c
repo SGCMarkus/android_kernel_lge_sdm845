@@ -278,6 +278,24 @@ void veneer_voter_set(struct voter_entry* voter, int limit) {
 		pr_voter("Couldn't find the list of %s\n", voter->name);
 }
 
+void veneer_voter_rerun(struct voter_entry* voter) {
+	struct voter_list* list_of;
+
+	if (!voter) {
+		pr_voter("voter is NULL\n");
+		return;
+	}
+
+	list_of = voter_list_get_by_entry(voter);
+	if (list_of) {
+		mutex_lock(&list_of->lock);
+		atomic_voter_callback(list_of);
+		mutex_unlock(&list_of->lock);
+	}
+	else
+		pr_voter("Couldn't find the list of %s\n", voter->name);
+}
+
 void veneer_voter_release(struct voter_entry* voter) {
 	veneer_voter_set(voter, VOTE_TOTALLY_RELEASED);
 }

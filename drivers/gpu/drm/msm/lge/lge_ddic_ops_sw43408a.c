@@ -193,7 +193,7 @@ static void adjust_roi(struct dsi_panel *panel, int *sr, int *er)
 	if (type == num) {
 		pr_err("invalid height\n");
 		*sr = 0;
-		*er = panel->cur_mode->timing.h_active - 1;
+		*er = panel->cur_mode->timing.v_active - 1;
 		return;
 	}
 
@@ -203,7 +203,7 @@ static void adjust_roi(struct dsi_panel *panel, int *sr, int *er)
 		goto full_roi;
 	}
 
-	*sr = panel->lge.aod_area.y;
+	*sr = ((panel->lge.aod_area.y >> 2) << 2) + 1;
 	*er = *sr + panel->lge.aod_area.h - 1;
 
 	return;
@@ -926,6 +926,7 @@ static void lge_set_video_enhancement_sw43408a(struct dsi_panel *panel, int inpu
 static int set_pps_cmds_sw43408a(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_set_type type)
 {
 	struct msm_display_dsc_info *dsc;
+	int pps_height;
 
 	if (!panel) {
 		pr_err("panel is null\n");
@@ -942,11 +943,13 @@ static int set_pps_cmds_sw43408a(struct dsi_panel *panel, enum lge_ddic_dsi_cmd_
 	case LGE_DDIC_DSI_SET_LP1:
 	case LGE_DDIC_DSI_SET_LP2:
 	case LGE_DDIC_DSI_AOD_AREA:
+		pps_height = (panel->lge.aod_area.h >= panel->cur_mode->timing.v_active)?
+			panel->cur_mode->timing.v_active:panel->lge.aod_area.h;
 		pr_info("LP2: pic_height : %d -> %d\n",
 				dsc->pic_height,
-				panel->lge.aod_area.h);
+				pps_height);
 		panel->lge.pps_orig = dsc->pic_height;
-		dsc->pic_height = panel->lge.aod_area.h;
+		dsc->pic_height = pps_height;
 		break;
 	case LGE_DDIC_DSI_SET_NOLP:
 		pr_info("NOLP: pic_height : %d -> %d\n",

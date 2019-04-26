@@ -2712,6 +2712,9 @@ static int smb2_probe(struct platform_device *pdev)
 
 	device_init_wakeup(chg->dev, true);
 #ifdef CONFIG_LGE_PM
+#define HW_ICL_VOTER		"HW_ICL_VOTER"
+#define MAX_HW_ICL_UA		3000000
+	vote(chg->usb_icl_votable, HW_ICL_VOTER, true, MAX_HW_ICL_UA);
 	// Resetting with aicl-fail, which causes usbin-suspend,
 	// there would be no trigger to resume this suspended status.
 	// So such usbin-suspend should be handled on boot progress.

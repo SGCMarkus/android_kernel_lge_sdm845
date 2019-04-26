@@ -334,6 +334,7 @@ static void update_veneer_uninodes(struct veneer* veneer_me) {
 	/* Updating fast charger status here */
 	if (!unified_nodes_show("charger_highspeed", buff) || strncmp(buff, "1", 1)
 		|| type == CHARGING_SUPPLY_TYPE_NONE || type == CHARGING_SUPPLY_TYPE_UNKNOWN
+		|| type == CHARGING_SUPPLY_TYPE_FLOAT || type == CHARGING_SUPPLY_WIRELESS_5W
 		|| veneer_me->usbin_typefix) {
 
 		#define HIGHSPEED_THRESHOLD_MW_WIRED		15000

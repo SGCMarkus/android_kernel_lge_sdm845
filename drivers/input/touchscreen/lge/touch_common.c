@@ -62,3 +62,21 @@ void touch_interrupt_control(struct device *dev, int on_off)
 		}
 	}
 }
+
+int touch_snprintf(char *buf, size_t size, const char *fmt, ...)
+{
+
+	va_list args;
+	int ret = 0;
+
+	va_start(args, fmt);
+	ret = vsnprintf(buf, size, fmt, args);
+	va_end(args);
+
+	if (ret < 0) {
+		TOUCH_E("snprintf error. change ret value(%d -> 0)\n", ret);
+		ret = 0;
+	}
+
+	return ret;
+}

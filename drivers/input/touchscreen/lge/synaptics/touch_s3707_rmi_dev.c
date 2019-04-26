@@ -501,7 +501,7 @@ static ssize_t rmidev_sysfs_attn_state_show(struct device *dev,
 
 	attn_state = gpio_get_value(ts->int_pin);
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", attn_state);
+	return touch_snprintf(buf, PAGE_SIZE, "%u\n", attn_state);
 }
 
 static ssize_t rmidev_sysfs_pid_show(struct device *dev,
@@ -509,7 +509,7 @@ static ssize_t rmidev_sysfs_pid_show(struct device *dev,
 {
 	TOUCH_TRACE();
 
-	return snprintf(buf, PAGE_SIZE, "%u\n", rmidev->pid);
+	return touch_snprintf(buf, PAGE_SIZE, "%u\n", rmidev->pid);
 }
 
 static ssize_t rmidev_sysfs_pid_store(struct device *dev,
@@ -559,7 +559,7 @@ static ssize_t rmidev_sysfs_intr_mask_show(struct device *dev,
 {
 	TOUCH_TRACE();
 
-	return snprintf(buf, PAGE_SIZE, "0x%02x\n", rmidev->intr_mask);
+	return touch_snprintf(buf, PAGE_SIZE, "0x%02x\n", rmidev->intr_mask);
 }
 
 static ssize_t rmidev_sysfs_intr_mask_store(struct device *dev,
@@ -582,7 +582,7 @@ static ssize_t rmidev_sysfs_concurrent_show(struct device *dev,
 {
 	TOUCH_TRACE();
 
-	return snprintf(buf, PAGE_SIZE, "%d\n", rmidev->concurrent);
+	return touch_snprintf(buf, PAGE_SIZE, "%d\n", rmidev->concurrent);
 }
 
 static ssize_t rmidev_sysfs_concurrent_store(struct device *dev,

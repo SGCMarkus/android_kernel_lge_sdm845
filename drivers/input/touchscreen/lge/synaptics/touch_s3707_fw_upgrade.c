@@ -818,7 +818,7 @@ static int fwu_write_f34_v7_command_single_transaction(unsigned char cmd)
 {
 	int retval;
 	unsigned char data_base;
-	struct f34_v7_data_1_5 data_1_5;
+	struct f34_v7_data_1_5 data_1_5 = {.data = {0, } };
 
 	data_base = fwu->f34_fd.data_base_addr;
 
@@ -1251,8 +1251,8 @@ static int fwu_read_f34_v7_queries(void)
 	unsigned char index;
 	unsigned char offset;
 	unsigned char *ptable;
-	struct f34_v7_query_0 query_0;
-	struct f34_v7_query_1_7 query_1_7;
+	struct f34_v7_query_0 query_0 = {.data = {0, } };
+	struct f34_v7_query_1_7 query_1_7 = {.data = {0, } };
 
 	query_base = fwu->f34_fd.query_base_addr;
 
@@ -1367,7 +1367,7 @@ static int fwu_read_f34_v5v6_queries(void)
 	unsigned char base;
 	unsigned char offset;
 	unsigned char buf[10];
-	struct f34_v5v6_flash_properties_2 properties_2;
+	struct f34_v5v6_flash_properties_2 properties_2 = {.data = {0, } };
 
 	base = fwu->f34_fd.query_base_addr;
 
@@ -2032,7 +2032,7 @@ static int fwu_scan_pdt(void)
 	bool f01found = false;
 	bool f34found = false;
 	bool f35found = false;
-	struct synaptics_rmi4_fn_desc rmi_fd;
+	struct synaptics_rmi4_fn_desc rmi_fd = {.data = {0, } };
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
 	fwu->in_ub_mode = false;
@@ -2247,7 +2247,7 @@ exit:
 static int fwu_enter_flash_prog(void)
 {
 	int retval;
-	struct f01_device_control f01_device_control;
+	struct f01_device_control f01_device_control = {.data = {0, } };
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 
 	retval = fwu_read_flash_status();
@@ -3207,7 +3207,7 @@ exit:
 static int fwu_do_lockdown_v7(void)
 {
 	int retval;
-	struct f34_v7_data0 status;
+	struct f34_v7_data0 status = {.data = {0, } };
 
 	retval = fwu_enter_flash_prog();
 	if (retval < 0)
@@ -4434,7 +4434,7 @@ static ssize_t fwu_sysfs_block_size_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval =  snprintf(buf, PAGE_SIZE, "%u\n", fwu->block_size);
+	retval =  touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->block_size);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4449,7 +4449,7 @@ static ssize_t fwu_sysfs_firmware_block_count_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval = snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.ui_firmware);
+	retval = touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.ui_firmware);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4464,7 +4464,7 @@ static ssize_t fwu_sysfs_configuration_block_count_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval = snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.ui_config);
+	retval = touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.ui_config);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4479,7 +4479,7 @@ static ssize_t fwu_sysfs_disp_config_block_count_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval = snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.dp_config);
+	retval = touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.dp_config);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4494,7 +4494,7 @@ static ssize_t fwu_sysfs_perm_config_block_count_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval = snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.pm_config);
+	retval = touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.pm_config);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4509,7 +4509,7 @@ static ssize_t fwu_sysfs_bl_config_block_count_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval = snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.bl_config);
+	retval = touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.bl_config);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4524,7 +4524,7 @@ static ssize_t fwu_sysfs_utility_parameter_block_count_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval = snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.utility_param);
+	retval = touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.utility_param);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4539,7 +4539,7 @@ static ssize_t fwu_sysfs_guest_code_block_count_show(struct device *dev,
 	if (!mutex_trylock(&fwu_sysfs_mutex))
 		return -EBUSY;
 
-	retval = snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.guest_code);
+	retval = touch_snprintf(buf, PAGE_SIZE, "%u\n", fwu->blkcount.guest_code);
 
 	mutex_unlock(&fwu_sysfs_mutex);
 
@@ -4621,7 +4621,7 @@ static ssize_t fwu_sysfs_read_lockdown_code_show(struct device *dev,
 	}
 
 	for (i = 0; i < lockdown_data_size; i++) {
-		retval += snprintf(ld_val, PAGE_SIZE, "%02x",
+		retval += touch_snprintf(ld_val, PAGE_SIZE, "%02x",
 				*(lockdown_data + i));
 		strlcat(buf, ld_val, lockdown_data_size);
 	}
@@ -4693,7 +4693,7 @@ static int synaptics_rmi4_fwu_init(struct device *ts_dev)
 	struct synaptics_rmi4_data *rmi4_data;
 	int retval;
 	unsigned char attr_count;
-	struct pdt_properties pdt_props;
+	struct pdt_properties pdt_props = {.data = {0, } };
 
 	TOUCH_I("%s\n", __func__);
 

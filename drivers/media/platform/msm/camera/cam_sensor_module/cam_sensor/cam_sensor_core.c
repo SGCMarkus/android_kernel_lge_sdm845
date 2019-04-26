@@ -22,6 +22,7 @@ static void cam_sensor_update_req_mgr(
 	struct cam_packet *csl_packet)
 {
 	struct cam_req_mgr_add_request add_req;
+	memset(&add_req, 0, sizeof(add_req));
 
 	add_req.link_hdl = s_ctrl->bridge_intf.link_hdl;
 	add_req.req_id = csl_packet->header.request_id;
@@ -97,6 +98,7 @@ static int32_t cam_sensor_i2c_pkt_parse(struct cam_sensor_ctrl_t *s_ctrl,
 	struct cam_config_dev_cmd config;
 	struct i2c_data_settings *i2c_data = NULL;
 
+	memset(&config, 0, sizeof(config));
 	ioctl_ctrl = (struct cam_control *)arg;
 
 	if (ioctl_ctrl->handle_type != CAM_HANDLE_USER_POINTER) {
@@ -1084,7 +1086,12 @@ int cam_sensor_apply_settings(struct cam_sensor_ctrl_t *s_ctrl,
 			write_setting.delay = 1;
 			write_setting.reg_setting = (struct cam_sensor_i2c_reg_array *)
 				kzalloc(sizeof(struct cam_sensor_i2c_reg_array) * 1, GFP_KERNEL);
-				write_setting.reg_setting->reg_addr = 0x8F;
+
+			if (!write_setting.reg_setting) {
+				CAM_ERR(CAM_SENSOR, "kzalloc failed");
+				return -ENOMEM;
+			}
+			write_setting.reg_setting->reg_addr = 0x8F;
 			write_setting.reg_setting->delay = 0;
 			write_setting.reg_setting->data_mask = 0;
 

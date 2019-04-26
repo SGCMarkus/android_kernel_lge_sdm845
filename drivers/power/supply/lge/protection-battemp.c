@@ -391,6 +391,8 @@ static void polling_status_work(struct work_struct* work) {
 		veneer_voter_set(&battemp_me.voter_ichilly, updated_ichilly);
 		veneer_voter_set(&battemp_me.voter_icharge, updated_icharge);
 		veneer_voter_set(&battemp_me.voter_vfloat, updated_vfloat);
+		if (updated_vfloat != VOTE_TOTALLY_RELEASED)
+			veneer_voter_rerun(&battemp_me.voter_vfloat);
 
 		// update member status in 'battemp_me'
 		battemp_me.health_chilly = health_chilly;

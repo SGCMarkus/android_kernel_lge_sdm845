@@ -556,6 +556,7 @@ void diag_update_sleeping_process_atd(int data_type)
 		if (!strcmp(driver->client_map[i].name, "atd")) {
 			pr_debug("%s: process atd found\n", __func__);
 			driver->data_ready[i] |= data_type;
+			atomic_inc(&driver->data_ready_notif[i]);
 			break;
 		}
 	wake_up_interruptible(&driver->wait_q);

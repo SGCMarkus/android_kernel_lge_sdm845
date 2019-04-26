@@ -33,7 +33,6 @@
  *  Include to touch core Header File
  */
 #include <touch_core.h>
-#include <touch_common.h>
 
 u32 touch_debug_mask = BASE_INFO;
 /* Debug mask value

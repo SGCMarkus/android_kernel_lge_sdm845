@@ -27,6 +27,7 @@
 #include <linux/debugfs.h>
 #include <linux/version.h>
 #include <linux/input.h>
+#include <soc/qcom/lge/board_lge.h>
 #include "inc/config.h"
 
 #ifdef CONFIG_SND_LGE_TX_NXP_LIB
@@ -1767,6 +1768,7 @@ static int tfa98xx_get_profile(struct snd_kcontrol *kcontrol,
 	return 0;
 }
 
+#define LGE_SKIP_TO_UPDATE_MIXER -1
 static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 	struct snd_ctl_elem_value *ucontrol)
 {
@@ -1797,7 +1799,7 @@ static int tfa98xx_set_profile(struct snd_kcontrol *kcontrol,
 			__func__, profile, tfa_exception);
 		// reset tfa_exception
 		tfa_exception = TFA98XX_NO_EXCEPTION;
-		return 0;
+		return LGE_SKIP_TO_UPDATE_MIXER;
 	default:
 		if (new_profile == profile)
 			return 0;

@@ -88,7 +88,7 @@ void print_sd_log(char *buf)
 static void log_file_size_check(struct device *dev)
 {
 	char *fname = NULL;
-	struct file *file;
+	struct file *file = NULL;
 	loff_t file_size = 0;
 	int i = 0;
 	char buf1[FILE_STR_LEN] = {0};
@@ -145,9 +145,9 @@ static void log_file_size_check(struct device *dev)
 
 		for (i = MAX_LOG_FILE_COUNT - 1; i >= 0; i--) {
 			if (i == 0)
-				snprintf(buf1, sizeof(buf1), "%s", fname);
+				touch_snprintf(buf1, sizeof(buf1), "%s", fname);
 			else
-				snprintf(buf1, sizeof(buf1), "%s.%d", fname, i);
+				touch_snprintf(buf1, sizeof(buf1), "%s.%d", fname, i);
 
 			ret = sys_access(buf1, 0);
 
@@ -162,7 +162,7 @@ static void log_file_size_check(struct device *dev)
 
 					TOUCH_I("%s : remove file [%s]\n", __func__, buf1);
 				} else {
-					snprintf(buf2, sizeof(buf2), "%s.%d", fname, (i + 1));
+					touch_snprintf(buf2, sizeof(buf2), "%s.%d", fname, (i + 1));
 
 					if (sys_rename(buf1, buf2) < 0) {
 						TOUCH_E("failed to rename file [%s] -> [%s]\n",
@@ -189,8 +189,8 @@ void write_file(struct device *dev, char *data, int write_time)
 	int fd = 0;
 	char *fname = NULL;
 	char time_string[64] = {0};
-	struct timespec my_time;
-	struct tm my_date;
+	struct timespec my_time = {0, };
+	struct tm my_date = {0, };
 	mm_segment_t old_fs = get_fs();
 	int boot_mode = 0;
 
@@ -232,7 +232,7 @@ void write_file(struct device *dev, char *data, int write_time)
 			time_to_tm(my_time.tv_sec,
 					sys_tz.tz_minuteswest * 60 * (-1),
 					&my_date);
-			snprintf(time_string, 64,
+			touch_snprintf(time_string, 64,
 				"\n[%02d-%02d %02d:%02d:%02d.%03lu]\n",
 				my_date.tm_mon + 1,
 				my_date.tm_mday, my_date.tm_hour,
@@ -482,23 +482,23 @@ static int firmware_version_log(struct device *dev)
 		}
 	}
 
-	ret = snprintf(buffer, LOG_BUF_SIZE, "======== Firmware Info ========\n");
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
+	ret = touch_snprintf(buffer, LOG_BUF_SIZE, "======== Firmware Info ========\n");
+	ret += touch_snprintf(buffer + ret, LOG_BUF_SIZE - ret,
 					"version : v%d.%02d\n",
 					d->ic_info.version.major,
 					d->ic_info.version.minor);
 
-	snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
+	touch_snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
+	ret += touch_snprintf(buffer + ret, LOG_BUF_SIZE - ret,
 			"\n=========== Production Info ===========\n");
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
+	ret += touch_snprintf(buffer + ret, LOG_BUF_SIZE - ret,
 			"Product_ID : %s\n", str);
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
+	ret += touch_snprintf(buffer + ret, LOG_BUF_SIZE - ret,
 			"Chip_ver: %d, FPC_ver: %d, Sensor_ver: %d\n",
 			d->prd_info.chip_ver, d->prd_info.fpc_ver, d->prd_info.sensor_ver);
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret,
+	ret += touch_snprintf(buffer + ret, LOG_BUF_SIZE - ret,
 			"Inspector_channel : %d\n", d->prd_info.inspect_channel);
-	ret += snprintf(buffer + ret, LOG_BUF_SIZE - ret, "Time : 20%d/%d/%d - %dh %dm %ds\n\n",
+	ret += touch_snprintf(buffer + ret, LOG_BUF_SIZE - ret, "Time : 20%d/%d/%d - %dh %dm %ds\n\n",
 			d->prd_info.inspect_date[0], d->prd_info.inspect_date[1], d->prd_info.inspect_date[2],
 			d->prd_info.inspect_time[0], d->prd_info.inspect_time[1], d->prd_info.inspect_time[2]);
 
@@ -514,7 +514,7 @@ static int production_info_check(struct device *dev)
 	int ret = 0;
 	char str[7] = {0};
 
-	snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
+	touch_snprintf(str, sizeof(str), "%s", d->prd_info.product_id);
 
 	if (strncmp(d->prd_info.product_id, "PLG661", 6)) {
 		TOUCH_E("invalid product id : [%s]\n", str);
@@ -587,7 +587,7 @@ static int s3707_sd(struct device *dev, char *buf)
 		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
 				lower_limit, upper_limit);
 		TOUCH_E("[Fail] Can not check the limit\n");
-		ret = snprintf(buf + ret, PAGE_SIZE - ret,
+		ret = touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Can not check the limit\n");
 		goto exit;
 	} else {
@@ -604,28 +604,28 @@ static int s3707_sd(struct device *dev, char *buf)
 		touch_msleep(50);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n========RESULT=======\n");
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "Channel Status : %s",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n========RESULT=======\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Channel Status : %s",
 				(trx_short_ret == 1 && high_resistance_ret == 1)
 				? "Pass\n" : "Fail ");
 
 	if (trx_short_ret != 1 || high_resistance_ret != 1) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "(%s/%s)\n",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "(%s/%s)\n",
 					(trx_short_ret != 1 ? "0" : "1"),
 					(high_resistance_ret != 1 ? "0" : "1"));
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "Raw Data : %s",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Raw Data : %s",
 				(rawdata_ret == 1 && jitter_ret == 1 && hybrid_abs_ret == 1)
 				? "Pass\n" : "Fail ");
 
 	if (rawdata_ret != 1 || jitter_ret != 1 || hybrid_abs_ret != 1) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "(%s/%s/%s)\n",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "(%s/%s/%s)\n",
 					(rawdata_ret != 1 ? "0" : "1"),
 					(jitter_ret != 1 ? "0" : "1"),
 					(hybrid_abs_ret != 1 ? "0" : "1"));
 	}
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "=====================\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "=====================\n");
 
 exit:
 	atomic_set(&d->state.scan_pdt, true);
@@ -653,7 +653,7 @@ static ssize_t show_sd(struct device *dev, char *buf)
 	TOUCH_I("%s\n", __func__);
 
 	if (d->lcd_mode != LCD_MODE_U3) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"LCD off!!!. Can not sd.\n");
 		return ret;
 	}
@@ -668,13 +668,13 @@ static ssize_t show_sd(struct device *dev, char *buf)
 
 	fw_ver_ret = firmware_version_log(dev);
 	if (fw_ver_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Check connector)\n");
 		TOUCH_I("Raw Data : Fail (Check connector)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Check connector)\n");
 		TOUCH_I("Channel Status : Fail (Check connector)\n");
 		goto exit;
@@ -682,13 +682,13 @@ static ssize_t show_sd(struct device *dev, char *buf)
 
 	prd_info_ret = production_info_check(dev);
 	if (prd_info_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Raw Data : Fail (Invalid Product ID)\n");
 		TOUCH_I("Raw Data : Fail (Invalid Product ID)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Channel Status : Fail (Invalid Product ID)\n");
 		TOUCH_I("Channel Status : Fail (Invalid Product ID)\n");
 		goto exit;
@@ -698,8 +698,8 @@ static ssize_t show_sd(struct device *dev, char *buf)
 		ret = s3707_sd(dev, buf);
 	} else {
 		TOUCH_E("Show_sd Test Error!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE, "-1\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
 exit:
@@ -727,7 +727,7 @@ static ssize_t show_delta(struct device *dev, char *buf)
 	TOUCH_I("%s\n", __func__);
 
 	if (d->lcd_mode != LCD_MODE_U3) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"LCD off!!!. Can not delta test.\n");
 		return ret;
 	}
@@ -739,14 +739,14 @@ static ssize_t show_delta(struct device *dev, char *buf)
 	}
 
 	if (s3707_is_product(d, "PLG661", 6)) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "======== delta ========\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "======== delta ========\n");
 		f54_ret = F54Test(dev, eRT_Normalized16BitImageReport, 1, buf);
 		if (f54_ret > 0)
 			ret += f54_ret;
 	} else {
 		TOUCH_E("Delta Test Error!!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
 	mutex_unlock(&ts->lock);
@@ -768,7 +768,7 @@ static ssize_t show_rawdata(struct device *dev, char *buf)
 	TOUCH_I("%s\n", __func__);
 
 	if (d->lcd_mode != LCD_MODE_U3) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"LCD off!!!. Can not rawdata test.\n");
 		return ret;
 	}
@@ -782,14 +782,14 @@ static ssize_t show_rawdata(struct device *dev, char *buf)
 	touch_interrupt_control(ts->dev, INTERRUPT_DISABLE);
 
 	if (s3707_is_product(d, "PLG661", 6)) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "======== rawdata ========\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "======== rawdata ========\n");
 		f54_ret = F54Test(dev, eRT_FullRawCapacitance, 1, buf);
 		if (f54_ret > 0)
 			ret += f54_ret;
 	} else {
 		TOUCH_E("Rawdata Test Error!!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
 	retval = s3707_init(dev);
@@ -818,7 +818,7 @@ static ssize_t show_noise(struct device *dev, char *buf)
 	TOUCH_I("%s\n", __func__);
 
 	if (d->lcd_mode != LCD_MODE_U3) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"LCD off!!!. Can not noise test.\n");
 		return ret;
 	}
@@ -844,7 +844,7 @@ static ssize_t show_noise(struct device *dev, char *buf)
 		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
 				lower_limit, upper_limit);
 		TOUCH_E("[Fail] Can not check the limit\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Can not check the limit\n");
 		goto exit;
 	}
@@ -857,16 +857,16 @@ static ssize_t show_noise(struct device *dev, char *buf)
 	if (s3707_is_product(d, "PLG661", 6)) {
 		noise_ret = F54Test(dev, eRT_Normalized16BitImageReport, 0, NULL);
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "=========RESULT=========\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "=========RESULT=========\n");
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Noise Test result : %s",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Noise Test result : %s",
 					(noise_ret == 1) ? "Pass\n" : "Fail\n");
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========================\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "========================\n");
 	} else {
 		TOUCH_E("Noise Test Error!!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
 	print_sd_log(buf);
@@ -905,7 +905,7 @@ static ssize_t show_hybrid_abs(struct device *dev, char *buf)
 	TOUCH_I("%s\n", __func__);
 
 	if (d->lcd_mode != LCD_MODE_U3) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"LCD off!!!. Can not hybrid abs test.\n");
 		return ret;
 	}
@@ -937,7 +937,7 @@ static ssize_t show_hybrid_abs(struct device *dev, char *buf)
 		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
 				lower_limit, upper_limit);
 		TOUCH_E("[Fail] Can not check the limit\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Can not check the limit\n");
 		goto exit;
 	}
@@ -950,14 +950,14 @@ static ssize_t show_hybrid_abs(struct device *dev, char *buf)
 	if (s3707_is_product(d, "PLG661", 6)) {
 		hybrid_ret = F54Test(dev, eRT_HybirdRawCap, 0, NULL);
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Hybrid Abs Test result : %s",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Hybrid Abs Test result : %s",
 					(hybrid_ret == 1) ? "Pass\n" : "Fail\n");
 	} else {
 		TOUCH_E("Hybriad Abs Test Error!!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
 exit:
@@ -991,7 +991,7 @@ static ssize_t show_ext_trx_short(struct device *dev, char *buf)
 	TOUCH_I("%s\n", __func__);
 
 	if (d->lcd_mode != LCD_MODE_U3) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"LCD off!!!. Can not extended trx short test.\n");
 		return ret;
 	}
@@ -1019,7 +1019,7 @@ static ssize_t show_ext_trx_short(struct device *dev, char *buf)
 		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
 				lower_limit, upper_limit);
 		TOUCH_E("[Fail] Can not check the limit\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Can not check the limit\n");
 		goto exit;
 	}
@@ -1032,14 +1032,14 @@ static ssize_t show_ext_trx_short(struct device *dev, char *buf)
 	if (s3707_is_product(d, "PLG661", 6)) {
 		ext_short_ret = F54Test(dev, eRT_ExtendedTRexShortRT100, 2, NULL);
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "========RESULT=======\n");
 
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Extended Tx Short Test result : %s",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Extended Tx Short Test result : %s",
 					(ext_short_ret == 1) ? "Pass\n" : "Fail\n");
 	} else {
 		TOUCH_E("Extended TRx Short Test Error!!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
 exit:
@@ -1098,7 +1098,7 @@ static int s3707_lpwg_sd(struct device *dev, char *buf)
 		TOUCH_E("[Fail] lower_limit = %d, upper_limit = %d\n",
 				lower_limit, upper_limit);
 		TOUCH_E("[Fail] Can not check the limit of Raw Cap image\n");
-		ret = snprintf(buf + ret, PAGE_SIZE - ret,
+		ret = touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"Can not check the limit of Raw Cap\n");
 		goto exit;
 	} else {
@@ -1109,19 +1109,19 @@ static int s3707_lpwg_sd(struct device *dev, char *buf)
 		touch_msleep(30);
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "\n========RESULT=======\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "\n========RESULT=======\n");
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "LPWG RawData : %s",
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "LPWG RawData : %s",
 			(lpwg_rawdata_ret == 1 && lpwg_jitter_ret == 1)
 			? "Pass\n" : "Fail ");
 
 	if (lpwg_rawdata_ret != 1 || lpwg_jitter_ret != 1) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "(%s/%s)\n",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "(%s/%s)\n",
 					(lpwg_rawdata_ret != 1 ? "0" : "1"),
 					(lpwg_jitter_ret != 1 ? "0" : "1"));
 	}
 
-	ret += snprintf(buf + ret, PAGE_SIZE - ret, "=====================\n");
+	ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "=====================\n");
 
 exit:
 	atomic_set(&d->state.scan_pdt, true);
@@ -1150,7 +1150,7 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 
 	/* Deep sleep check */
 	if (atomic_read(&ts->state.sleep) == IC_DEEP_SLEEP) {
-		ret = snprintf(buf + ret, PAGE_SIZE - ret,
+		ret = touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG Not Test. IC state is Deep Sleep.\n");
 		TOUCH_I("LPWG Not Test. IC state is Deep Sleep.\n");
 		return ret;
@@ -1166,10 +1166,10 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 
 	fw_ver_ret = firmware_version_log(dev);
 	if (fw_ver_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Fail (Check connector)\n");
 		TOUCH_I("LPWG RawData : Fail (Check connector)\n");
 		goto exit;
@@ -1177,10 +1177,10 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 
 	prd_info_ret = production_info_check(dev);
 	if (prd_info_ret < 0) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 				"\n========RESULT=======\n");
 		TOUCH_I("========RESULT=======\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret,
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret,
 			"LPWG RawData : Fail (Invalid Product ID)\n");
 		TOUCH_I("LPWG RawData : Fail (Invalid Product ID)\n");
 		goto exit;
@@ -1190,8 +1190,8 @@ static ssize_t show_lpwg_sd(struct device *dev, char *buf)
 		ret = s3707_lpwg_sd(dev, buf);
 	} else {
 		TOUCH_E("Show_lpwg_sd Test Error!!!(product_id error)\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "-1\n");
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "Read Fail Touch IC Info\n");
 	}
 
 exit:

@@ -30,7 +30,7 @@
 int touch_spi_read(struct spi_device *spi, struct touch_bus_msg *msg)
 {
 	struct spi_transfer x = { 0, };
-	struct spi_message m;
+	struct spi_message m = {{0}, };
 
 	if (msg->rx_size > MAX_BUF_SIZE || msg->tx_size > MAX_BUF_SIZE) {
 		TOUCH_E("buffer overflow\n");
@@ -50,7 +50,7 @@ int touch_spi_read(struct spi_device *spi, struct touch_bus_msg *msg)
 int touch_spi_write(struct spi_device *spi, struct touch_bus_msg *msg)
 {
 	struct spi_transfer x = { 0, };
-	struct spi_message m;
+	struct spi_message m = {{0}, };
 
 	if (msg->tx_size > MAX_BUF_SIZE) {
 		TOUCH_E("buffer overflow\n");
@@ -71,8 +71,8 @@ int touch_spi_xfer(struct spi_device *spi, struct touch_xfer_msg *xfer)
 {
 	struct touch_xfer_data_t *tx = NULL;
 	struct touch_xfer_data_t *rx = NULL;
-	struct spi_transfer x[MAX_XFER_COUNT];
-	struct spi_message m;
+	struct spi_transfer x[MAX_XFER_COUNT] = {{0}, };
+	struct spi_message m = {{0}, };
 	int i = 0;
 
 	if (xfer->msg_count > MAX_XFER_COUNT) {

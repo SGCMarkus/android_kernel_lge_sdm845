@@ -59,6 +59,12 @@ static diag_lock_state_t get_diag_lock_state_from_smem(void)
 		char model_name[16];
 		char sw_version[64];
 		char operator_name[16];
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+		char ntcode[2048];
+		char lg_modem_name[20];
+		unsigned int sim_num;
+#endif
+		uint32_t flag_gpio; /* flex gpio */
 		char diag_enable;
 	} *smem_id_vendor0 = NULL;
 	unsigned int size;
@@ -81,10 +87,15 @@ static diag_lock_state_t get_diag_lock_state_from_smem(void)
 
 bool diag_lock_is_allowed(void)
 {
-#if defined(CONFIG_LGE_USB_FACTORY) && !defined(CONFIG_LGE_USB_DIAG_LOCK_SPR)
+#ifdef CONFIG_LGE_USB_FACTORY
+#if defined(CONFIG_LGE_ONE_BINARY_SKU) || !defined(CONFIG_LGE_USB_DIAG_LOCK_SPR)
 	if (lge_get_factory_boot())
-		return true;
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+            if(lge_get_laop_operator() != OP_SPR_US)
 #endif
+		    return true;
+#endif
+#endif /* CONFIG_LGE_USB_FACTORY */
 	return diag_lock_state == DIAG_LOCK_STATE_UNLOCK;
 }
 EXPORT_SYMBOL(diag_lock_is_allowed);
@@ -98,6 +109,47 @@ bool diag_lock_is_allowed_command(const unsigned char *buf)
 
 	if (diag_lock_is_allowed())
 		return true;
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+	i = lge_get_laop_operator();
+	pr_info("%s: opcode = %d\n",__func__, i);
+
+	switch (i) {
+	case OP_SPR_US:
+		switch (buf[0]) {
+		case 0xA1:	//port lock
+			return true;
+		default:
+			break;
+		}
+
+		return false;
+
+	case OP_VZW_POSTPAID:
+	case OP_VZW_PREPAID:
+		switch (buf[0]) {
+		case 0xF8:	//vzw at lock
+			return true;
+		default:
+			break;
+		}
+		/* fall-through */
+	default:
+		switch (buf[0]) {
+		case 0x29: //testmode reset
+		case 0x3A: //dload reset
+		case 0x7E: //async hdlc flag
+		case 0xA1: //port lock
+		case 0xEF: //web download
+		case 0xFA: //testmode
+			return true;
+		default:
+			break;
+		}
+
+		return false;
+	}
+#endif
 
 	for (i = 0; i < sizeof(allowed_commands); i++) {
 		if (allowed_commands[i] == buf[0])
@@ -163,6 +215,9 @@ static int __init diag_lock_init(void)
 	int rc;
 
 #ifdef CONFIG_LGE_USB_DIAG_LOCK_SPR
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+	if (lge_get_laop_operator() == OP_SPR_US)
+#endif
 	diag_lock_state = get_diag_lock_state_from_smem();
 #endif
 

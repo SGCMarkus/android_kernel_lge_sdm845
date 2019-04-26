@@ -12,6 +12,10 @@ config LGE_USB_GADGET
 	select LGE_USB_CONFIGFS_LAF
 	select LGE_USB_FACTORY
 	select LGE_USB_DIAG_LOCK
+	select LGE_USB_DIAG_LOCK_SPR if LGE_ONE_BINARY_SKU
+	select LGE_USB_DIAG_LOCK_TRF if LGE_ONE_BINARY_SKU
+	select LGE_USB_DIAG_LOCK_VZW if LGE_ONE_BINARY_SKU
+	select LGE_USB_GADGET_AUTORUN_VZW if LGE_ONE_BINARY_SKU
 	help
 	  Customized Android Gadget USB framework for
 	  LGE United PC host USB driver.

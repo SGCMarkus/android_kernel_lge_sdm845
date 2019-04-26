@@ -25,7 +25,7 @@
 #include <touch_i2c.h>
 #endif
 #define TOUCH_SHOW(ret, buf, fmt, args...) \
-	(ret += snprintf(buf + ret, PAGE_SIZE - ret, fmt, ##args))
+	(ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, fmt, ##args))
 
 static char ime_str[3][8] = {"OFF", "ON", "SWYPE"};
 static char incoming_call_str[7][15] = {"IDLE", "RINGING", "OFFHOOK", "CDMA_RINGING", "CDMA_OFFHOOK", "LTE_RINGING", "LTE_OFFHOOK"};
@@ -117,7 +117,7 @@ static ssize_t show_lpwg_data(struct device *dev, char *buf)
 	for (i = 0; i < MAX_LPWG_CODE; i++) {
 		if (ts->lpwg.code[i].x == -1 && ts->lpwg.code[i].y == -1)
 			break;
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%d %d\n",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "%d %d\n",
 				ts->lpwg.code[i].x, ts->lpwg.code[i].y);
 	}
 	memset(ts->lpwg.code, 0, sizeof(struct point) * MAX_LPWG_CODE);
@@ -187,7 +187,7 @@ static ssize_t show_lockscreen_state(struct device *dev, char *buf)
 
 	value = atomic_read(&ts->state.lockscreen);
 
-	ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
+	ret = touch_snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
 		value ? "LOCK" : "UNLOCK", value);
 
 	return ret;
@@ -221,7 +221,7 @@ static ssize_t show_ime_state(struct device *dev, char *buf)
 
 	value = atomic_read(&ts->state.ime);
 
-	ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
+	ret = touch_snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
 			ime_str[value], value);
 
 	return ret;
@@ -261,7 +261,7 @@ static ssize_t show_quick_cover_state(struct device *dev, char *buf)
 
 	value = atomic_read(&ts->state.quick_cover);
 
-	ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
+	ret = touch_snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
 		value ? "CLOSE" : "OPEN", value);
 
 	return ret;
@@ -296,7 +296,7 @@ static ssize_t show_incoming_call_state(struct device *dev, char *buf)
 	value = atomic_read(&ts->state.incoming_call);
 
 	if (value >= INCOMING_CALL_IDLE && value <= INCOMING_CALL_LTE_OFFHOOK) {
-		ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
+		ret = touch_snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
 			incoming_call_str[value], value);
 	}
 
@@ -363,7 +363,7 @@ static ssize_t show_mfts_state(struct device *dev, char *buf)
 
 	value = atomic_read(&ts->state.mfts);
 
-	ret = snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
+	ret = touch_snprintf(buf, PAGE_SIZE, "%s : %s(%d)\n", __func__,
 			mfts_str[value], value);
 
 	return ret;
@@ -393,7 +393,7 @@ static ssize_t show_mfts_lpwg(struct device *dev, char *buf)
 	struct touch_core_data *ts = to_touch_core(dev);
 	int ret = 0;
 
-	ret = snprintf(buf, PAGE_SIZE, "%d\n", ts->role.use_lpwg_test);
+	ret = touch_snprintf(buf, PAGE_SIZE, "%d\n", ts->role.use_lpwg_test);
 
 	return ret;
 }
@@ -419,7 +419,7 @@ static ssize_t show_sp_link_touch_off(struct device *dev, char *buf)
 	struct touch_core_data *ts = to_touch_core(dev);
 	int ret = 0;
 
-	ret = snprintf(buf, PAGE_SIZE, "sp link touch status %d\n",
+	ret = touch_snprintf(buf, PAGE_SIZE, "sp link touch status %d\n",
 			atomic_read(&ts->state.sp_link));
 
 	return ret;
@@ -458,7 +458,7 @@ static ssize_t show_debug_tool_state(struct device *dev, char *buf)
 
 	value = atomic_read(&ts->state.debug_tool);
 
-	ret = snprintf(buf, PAGE_SIZE, "%d\n", value);
+	ret = touch_snprintf(buf, PAGE_SIZE, "%d\n", value);
 
 	return ret;
 }
@@ -494,7 +494,7 @@ static ssize_t show_debug_option_state(struct device *dev, char *buf)
 
 	value = atomic_read(&ts->state.debug_option_mask);
 
-	ret = snprintf(buf, PAGE_SIZE, "%d\n", value);
+	ret = touch_snprintf(buf, PAGE_SIZE, "%d\n", value);
 
 	return ret;
 }
@@ -539,7 +539,7 @@ static ssize_t show_app_data(struct device *dev, char *buf)
 	TOUCH_TRACE();
 
 	for(i = 0 ; i < 3 ; i++) {
-		ret += snprintf(buf + ret, PAGE_SIZE - ret, "%d %s %d %d\n",
+		ret += touch_snprintf(buf + ret, PAGE_SIZE - ret, "%d %s %d %d\n",
 				ts->app_data[i].app, ts->app_data[i].version,
 				ts->app_data[i].icon_size, ts->app_data[i].touch_slop);
 		if (ts->app_data[i].icon_size != 0) {
@@ -558,7 +558,7 @@ static ssize_t store_app_data(struct device *dev,
 {
 
 	struct touch_core_data *ts = to_touch_core(dev);
-	struct app_info app_data_buf;
+	struct app_info app_data_buf = {0, };
 
 	TOUCH_TRACE();
 
@@ -581,7 +581,7 @@ static ssize_t show_click_test(struct device *dev, char *buf)
 {
 	struct touch_core_data *ts = to_touch_core(dev);
 	int ret = 0;
-	struct touch_data tdata;
+	struct touch_data tdata = {0, };
 	int cnt = 100 / ts->perf_test.delay;	/* click 100ms */
 	int i = 0;
 

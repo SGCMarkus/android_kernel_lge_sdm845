@@ -331,6 +331,7 @@ void veneer_voter_passover(enum voter_type type, int limit, bool enable);
 bool veneer_voter_effecting(struct voter_entry* voter);
 bool veneer_voter_enabled(struct voter_entry* voter);
 void veneer_voter_set(struct voter_entry* voter, int limit);
+void veneer_voter_rerun(struct voter_entry* voter);
 void veneer_voter_release(struct voter_entry* voter);
 void veneer_voter_unregister(struct voter_entry* entry);
 bool veneer_voter_register(struct voter_entry* entry, const char* name, enum voter_type type, bool fakeui);

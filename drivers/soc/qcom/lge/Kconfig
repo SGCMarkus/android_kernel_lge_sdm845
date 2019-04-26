@@ -345,7 +345,7 @@ config LGE_QSDL_SUPPORT
 
 config LGE_PSTORE_BACKUP
 	tristate "Support pstore backup"
-	default y
+	default n
 	depends on MACH_LGE
 	help
 	  Ramoops region is backed up to pstore partition

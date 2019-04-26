@@ -99,9 +99,9 @@ void log_file_size_check(char *filename)
 
 		for (i = MAX_LOG_FILE_COUNT - 1; i >= 0; i--) {
 			if (i == 0)
-				sprintf(buf1, "%s", filename);
+				touch_snprintf(buf1, sizeof(buf1), "%s", filename);
 			else
-				sprintf(buf1, "%s.%d", filename, i);
+				touch_snprintf(buf1, sizeof(buf1), "%s.%d", filename, i);
 
 			ret = sys_access(buf1, 0);
 
@@ -120,7 +120,7 @@ void log_file_size_check(char *filename)
 							"%s : remove file [%s]\n",
 							__func__, buf1);
 				} else {
-					sprintf(buf2, "%s.%d", filename,
+					touch_snprintf(buf2, sizeof(buf2), "%s.%d", filename,
 							(i + 1));
 
 					if (sys_rename(buf1, buf2) < 0) {
@@ -170,14 +170,14 @@ void _write_time_log(char *filename, char *data, int data_include)
 	loff_t pos = 0;
 	char *fname = NULL;
 	char time_string[64] = {0};
-	struct timespec my_time;
-	struct tm my_date;
+	struct timespec my_time = {0, };
+	struct tm my_date = {0, };
 
 	mm_segment_t old_fs = get_fs();
 
 	my_time = __current_kernel_time();
 	time_to_tm(my_time.tv_sec, sys_tz.tz_minuteswest * 60 * (-1), &my_date);
-	snprintf(time_string,
+	touch_snprintf(time_string,
 			sizeof(time_string),
 			"%02d-%02d %02d:%02d:%02d.%03lu\n\n",
 			my_date.tm_mon + 1,

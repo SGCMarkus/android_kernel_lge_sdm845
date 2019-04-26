@@ -4424,6 +4424,12 @@ int dsi_display_cont_splash_config(void *dsi_display)
 	dsi_config_host_engine_state_for_cont_splash(display);
 	mutex_unlock(&display->display_lock);
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	rc = lge_dsi_panel_drv_post_init(display->panel);
+	if (rc)
+		pr_err("lge_dsi_panel_drv_post_init failed, rc=%d\n", rc);
+#endif
+
 	return rc;
 
 clks_disabled:
@@ -4901,12 +4907,6 @@ static int dsi_display_bind(struct device *dev,
 
 	/* register te irq handler */
 	dsi_display_register_te_irq(display);
-
-#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
-	rc = lge_dsi_panel_drv_post_init(display->panel);
-	if (rc)
-		pr_err("lge_dsi_panel_drv_post_init failed, rc=%d\n", rc);
-#endif
 
 	goto error;
 
