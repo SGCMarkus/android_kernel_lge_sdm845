@@ -74,6 +74,10 @@
 		interrupt-controller;
 	};
 
+	qcom,msm-cdsp-loader {
+		compatible = "qcom,cdsp-loader";
+		qcom,proc-img-to-load = "cdsp";
+	};
 };
 
 &pil_modem {

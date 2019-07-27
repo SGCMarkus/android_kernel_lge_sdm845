@@ -1784,9 +1784,74 @@ static const struct msm_pinctrl_soc_data sdm845_pinctrl = {
 	.dir_conn_irq_base = 216,
 };
 
+#ifdef CONFIG_LGE_PM
+static int access_denied_list[MAX_DENIED_CNT];
+static int access_denied_cnt;
+
+bool msm_gpio_check_access(int gpio)
+{
+	int cnt = access_denied_cnt;
+	int i = 0;
+
+	for (i = 0; i < cnt; i++) {
+		if (access_denied_list[i] == gpio)
+			return false;
+	}
+	return true;
+}
+EXPORT_SYMBOL(msm_gpio_check_access);
+#endif
+
 static int sdm845_pinctrl_probe(struct platform_device *pdev)
 {
+#ifdef CONFIG_LGE_PM
+	int len = 0;
+	int rc = 0;
+	int i = 0;
+	struct property *gpios;
+	u32 value[MAX_DENIED_CNT] = {0, };
+
+	if (!pdev->dev.of_node) {
+		goto exit;
+	}
+
+	gpios = of_find_property(pdev->dev.of_node, "lge,access-denied-gpios", &len);
+
+	len /= sizeof(u32);
+
+	if (!gpios) {
+		goto exit;
+	} else if (len < 1 || len > MAX_DENIED_CNT) {
+		printk(KERN_ERR "access denied length error, %d\n", len);
+		goto exit;
+	} else {
+		rc = of_property_read_u32_array(pdev->dev.of_node,
+				"lge,access-denied-gpios", value, len);
+		if (rc) {
+			printk(KERN_ERR "property array read fail, %d\n", rc);
+			goto exit;
+		} else {
+			for (i = 0; i < MAX_DENIED_CNT; i++) {
+				if (i < len)
+					access_denied_list[i] = value[i];
+				else
+					access_denied_list[i] = -EINVAL;
+			}
+		}
+		access_denied_cnt = len;
+		return msm_pinctrl_probe(pdev, &sdm845_pinctrl);
+	};
+
+exit:
+	for (i = 0; i < MAX_DENIED_CNT; i++) {
+		access_denied_list[i] = -EINVAL;
+	}
+	access_denied_cnt = 0;
+
 	return msm_pinctrl_probe(pdev, &sdm845_pinctrl);
+#else
+	return msm_pinctrl_probe(pdev, &sdm845_pinctrl);
+#endif
 }
 
 static const struct of_device_id sdm845_pinctrl_of_match[] = {

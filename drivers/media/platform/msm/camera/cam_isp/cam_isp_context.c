@@ -394,11 +394,13 @@ static int __cam_isp_ctx_handle_buf_done_in_activated_state(
 				CAM_DBG(CAM_ISP, "Sync failed with rc = %d",
 					 rc);
 		} else if (!req_isp->bubble_report) {
-			CAM_DBG(CAM_ISP,
-				"Sync with failure: req %lld res 0x%x fd 0x%x",
-				req->request_id,
+			/* LGE_CHANGE, CST, change log level for fence error */
+			CAM_INFO(CAM_ISP,
+				"Sync failure: req %lld res %s(0x%x) sync_id %d with bubble %d",
+				req->request_id,__cam_isp_resource_handle_id_to_type(
+				req_isp->fence_map_out[i].resource_handle),
 				req_isp->fence_map_out[j].resource_handle,
-				req_isp->fence_map_out[j].sync_id);
+				req_isp->fence_map_out[j].sync_id, bubble_state);
 
 			rc = cam_sync_signal(req_isp->fence_map_out[j].sync_id,
 				CAM_SYNC_STATE_SIGNALED_ERROR);
@@ -1218,7 +1220,7 @@ static int __cam_isp_ctx_apply_req_in_activated_state(
 		ctx_isp->substate_activated);
 	req_isp = (struct cam_isp_ctx_req *) req->req_priv;
 
-	if (ctx_isp->active_req_cnt >=  2) {
+	if (ctx_isp->active_req_cnt >= 4 ) { /* LGE_CHANGE CN03462622 Fix 240fps frame drop. Change active_req_cnt from 2 to 4 because QC FIFO size is 4. 2018-05-17 sungmin.cho@lge.com */
 		CAM_ERR_RATE_LIMIT(CAM_ISP,
 			"Reject apply request (id %lld) due to congestion(cnt = %d)",
 			req->request_id,

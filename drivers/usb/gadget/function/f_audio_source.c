@@ -17,7 +17,6 @@
 #include <linux/device.h>
 #include <linux/usb/audio.h>
 #include <linux/wait.h>
-#include <linux/pm_qos.h>
 #include <sound/core.h>
 #include <sound/initval.h>
 #include <sound/pcm.h>
@@ -35,7 +34,11 @@
 #define IN_EP_MAX_PACKET_SIZE 256
 
 /* Number of requests to allocate */
+#ifdef CONFIG_LGE_USB_GADGET
+#define IN_EP_REQ_COUNT 8
+#else
 #define IN_EP_REQ_COUNT 4
+#endif
 
 #define AUDIO_AC_INTERFACE	0
 #define AUDIO_AS_INTERFACE	1
@@ -296,8 +299,6 @@ struct audio_dev {
 	/* number of frames sent since start_time */
 	s64				frames_sent;
 	struct audio_source_config	*config;
-	/* for creating and issuing QoS requests */
-	struct pm_qos_request pm_qos;
 };
 
 static inline struct audio_dev *func_to_audio(struct usb_function *f)
@@ -818,10 +819,6 @@ static int audio_pcm_open(struct snd_pcm_substream *substream)
 	runtime->hw.channels_max = 2;
 
 	audio->substream = substream;
-
-	/* Add the QoS request and set the latency to 0 */
-	pm_qos_add_request(&audio->pm_qos, PM_QOS_CPU_DMA_LATENCY, 0);
-
 	return 0;
 }
 
@@ -829,9 +826,6 @@ static int audio_pcm_close(struct snd_pcm_substream *substream)
 {
 	struct audio_dev *audio = substream->private_data;
 	unsigned long flags;
-
-	/* Remove the QoS request */
-	pm_qos_remove_request(&audio->pm_qos);
 
 	spin_lock_irqsave(&audio->lock, flags);
 

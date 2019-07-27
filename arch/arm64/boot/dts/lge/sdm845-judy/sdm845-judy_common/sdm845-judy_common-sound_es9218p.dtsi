@@ -1,0 +1,26 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&qupv3_se12_i2c { /*QUPV3 SE12 */
+		status = "ok";
+		es9218-codec@48{
+			compatible = "dac,es9218-codec";
+			status = "ok";
+			reg = <0x48>;
+			dac,use-internal-ldo;
+			dac,power-gpio = <&tlmm 40 0x0>;
+			dac,hph-sw = <&pm8998_gpios 12 0x0>;
+			dac,reset-gpio = <&pmi8998_gpios 2 0x0>;
+			dac,32-384_crystal;
+		};
+};
+

@@ -102,8 +102,7 @@ config IRQ_FORCED_THREADING
 
 config SPARSE_IRQ
 	bool "Support sparse irq numbering" if MAY_HAVE_SPARSE_IRQ
-	---help---
-
+	help
 	  Sparse irq numbering is useful for distro kernels that want
 	  to define a high CONFIG_NR_CPUS value but still want to have
 	  low kernel memory footprint on smaller machines.
@@ -112,5 +111,11 @@ config SPARSE_IRQ
 	    out the interrupt descriptors in a more NUMA-friendly way. )
 
 	  If you don't know what to do here, say N.
+config SYSFS_IRQDESC
+	bool "Support sysfs for irqdesc"
+	depends on SPARSE_IRQ
+        help
+	  Say Y if you want to see sysfs for irqdesc. It is needed to reduce
+	  number of sysfs nodes for performance issue.
 
 endmenu

@@ -1,0 +1,94 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-judy_common/sdm845-judy_common-pinctrl.dtsi"
+
+&tlmm {
+			extra_ldo_panel_power_active: extra_ldo_panel_power_active {
+				mux {
+					pins = "gpio2";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio2";
+					drive-strength = <8>;   /* 8 mA */
+					bias-disable = <0>;   /* no pull */
+				};
+
+			};
+			extra_ldo_panel_power_suspend: extra_ldo_panel_power_suspend {
+				mux {
+					pins = "gpio2";
+					function = "gpio";
+				};
+
+				config {
+					pins = "gpio2";
+					drive-strength = <2>;   /* 2 mA */
+					bias-pull-down;         /* PULL DOWN */
+				};
+			};
+
+		atmf04_int_pin {
+			atmf04_int_active: atmf04_int_active {
+				mux {
+					pins = "gpio135", "gpio44";
+					function = "gpio";
+				};
+				config {
+					pins = "gpio135", "gpio44";
+					drive-strength = <6>;   /* 6 MA */
+					bias-pull-up;           /* PULL UP*/
+				};
+			};
+
+			atmf04_int_suspend: atmf04_int_suspend {
+				mux {
+					pins = "gpio135", "gpio44";
+					function = "gpio";
+				};
+				config {
+					drive-strength = <6>;   /* 6 MA */
+					bias-pull-up;           /* PULL UP */
+				};
+			};
+		};
+};
+
+&qupv3_se5_spi_sleep {
+	mux {
+		pins = "gpio85", "gpio86", "gpio87",
+					"gpio88";
+		function = "gpio";
+	};
+
+	config {
+		pins = "gpio85", "gpio86", "gpio87",
+					"gpio88";
+		drive-strength = <6>;
+		bias-pull-down;
+	};
+};
+
+&soc {
+	gpio_keys {
+		hot1_key {
+			label = "hot1_key";
+			gpios = <&tlmm 89 GPIO_ACTIVE_LOW>;
+			linux,input-type = <1>;
+			linux,code = <377>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+		};
+	};
+};

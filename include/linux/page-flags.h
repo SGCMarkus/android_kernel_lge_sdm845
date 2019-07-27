@@ -79,6 +79,7 @@ enum pageflags {
 	PG_dirty,
 	PG_lru,
 	PG_active,
+	PG_workingset,
 	PG_slab,
 	PG_owner_priv_1,	/* Owner use. If pagecache, fs may use*/
 	PG_arch_1,
@@ -104,6 +105,9 @@ enum pageflags {
 #if defined(CONFIG_IDLE_PAGE_TRACKING) && defined(CONFIG_64BIT)
 	PG_young,
 	PG_idle,
+#endif
+#ifdef CONFIG_ZRAM_ASYNC_IO
+	PG_async_wb,
 #endif
 	__NR_PAGEFLAGS,
 
@@ -262,6 +266,7 @@ PAGEFLAG(Dirty, dirty, PF_HEAD) TESTSCFLAG(Dirty, dirty, PF_HEAD)
 PAGEFLAG(LRU, lru, PF_HEAD) __CLEARPAGEFLAG(LRU, lru, PF_HEAD)
 PAGEFLAG(Active, active, PF_HEAD) __CLEARPAGEFLAG(Active, active, PF_HEAD)
 	TESTCLEARFLAG(Active, active, PF_HEAD)
+PAGEFLAG(Workingset, workingset, PF_HEAD)
 __PAGEFLAG(Slab, slab, PF_NO_TAIL)
 __PAGEFLAG(SlobFree, slob_free, PF_NO_TAIL)
 PAGEFLAG(Checked, checked, PF_NO_COMPOUND)	   /* Used by some filesystems */
@@ -311,6 +316,10 @@ PAGEFLAG(Readahead, reclaim, PF_NO_COMPOUND)
 #define PageHighMem(__p) is_highmem_idx(page_zonenum(__p))
 #else
 PAGEFLAG_FALSE(HighMem)
+#endif
+#ifdef CONFIG_ZRAM_ASYNC_IO
+PAGEFLAG(AsyncWriteback, async_wb, PF_NO_COMPOUND)
+	TESTCLEARFLAG(AsyncWriteback, async_wb, PF_NO_COMPOUND)
 #endif
 
 #ifdef CONFIG_SWAP

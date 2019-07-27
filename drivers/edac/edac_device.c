@@ -666,6 +666,13 @@ void edac_device_handle_ce(struct edac_device_ctl_info *edac_dev,
 		panic("EDAC %s: CE instance: %s block %s '%s'\n",
 			edac_dev->ctl_name, instance->name,
 			block ? block->name : "N/A", msg);
+#if defined(CONFIG_MACH_LGE)
+	else {
+		pr_err("EDAC %s: CE instance: %s block %s '%s'\n",
+			edac_dev->ctl_name, instance->name,
+			block ? block->name : "N/A", msg);
+	}
+#endif
 }
 EXPORT_SYMBOL_GPL(edac_device_handle_ce);
 

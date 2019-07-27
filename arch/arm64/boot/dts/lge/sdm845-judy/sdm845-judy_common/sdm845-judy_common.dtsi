@@ -1,0 +1,108 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+&reserved_memory {
+		ramoops_mem: ramoops_region@b0000000 {
+			compatible = "removed-dma-pool";
+			no-map;
+			reg = <0 0xb0000000 0 0x100000>;
+		};
+
+		crash_fb_mem: crash_fb_mem@b0100000 {
+			linux,contiguous-region;
+			reg = <0 0xb0100000 0 0x1800000>;
+			label = "crash_fb_mem";
+		};
+};
+
+
+&secure_display_memory {
+	size = <0 0xB800000>;
+};
+
+&qseecom_mem {
+	reg = <0 0xb2000000 0 0x1800000>;
+};
+
+&pil_adsp_mem {
+	reg = <0 0x8c500000 0 0x1e00000>;
+};
+
+&wlan_fw_region {
+	reg = <0 0x8e300000 0 0x100000>;
+};
+
+&pil_modem_mem {
+	reg = <0 0x8e400000 0 0x8900000>;
+};
+
+&pil_video_mem {
+	reg = <0 0x96D00000 0 0x500000>;
+};
+
+&pil_cdsp_mem {
+	reg = <0 0x97200000 0 0x800000>;
+};
+
+&pil_mba_mem {
+	reg = <0 0x97A00000 0 0x200000>;
+};
+
+&pil_slpi_mem {
+	reg = <0 0x97C00000 0 0x1400000>;
+};
+
+&pil_spss_mem {
+	reg = <0 0x99000000 0 0x100000>;
+};
+
+&soc {
+	wdog: qcom,wdt@17980000{
+		qcom,bark-time = <16000>;
+	};
+
+	ramoops {
+		compatible = "ramoops";
+		mem-size = <0x80000>;
+		mem-address = <0xb0000000>;
+		record-size = <4096>;
+		console-size = <0x40000>;
+		ftrace-size = <0x40000>;
+		pmsg-size = <0>;
+		ecc-size = <0>;
+	};
+
+	crash_fb {
+		compatible = "crash_fb";
+		mem-addr = <0xb0100000>;
+		mem-size = <0x1800000>;
+	};
+
+	bootlog {
+		compatible = "bootlog";
+	};
+
+	lge,monitor-thermal {
+		compatible = "lge,monitor-thermal";
+		status = "ok";
+		lge,hot-poll-time = <10000>;
+		lge,hot-crit-temp = <48>;
+		lge,poll-time = <30000>;
+	};
+};
+
+&pcie0 {
+	status = "disabled";
+};
+
+&wil6210 {
+	status = "disabled";
+};

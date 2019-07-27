@@ -126,7 +126,11 @@ int cam_sync_init_group_object(struct sync_table_row *table,
 		}
 		parent_info->sync_id = idx;
 		list_add_tail(&parent_info->list, &child_row->parents_list);
+/* LGE_CHANGE_S, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
+#if 1
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_objs[i]]);
+#endif
+/* LGE_CHANGE_E, CN#03621890 Fix PostCS2 deadlock 2018-08-17 sungmin.cho@lge.com */
 	}
 
 	if (!row->remaining) {
@@ -178,9 +182,9 @@ int cam_sync_deinit_object(struct sync_table_row *table, uint32_t idx)
 	}
 
 	if (row->state == CAM_SYNC_STATE_ACTIVE)
-		CAM_WARN(CAM_SYNC,
+		CAM_DBG(CAM_SYNC,
 			"Destroying an active sync object name:%s id:%i",
-			row->name, row->sync_id);
+			row->name, row->sync_id); /* LGE_CHANGE, change log level (CN03745176) 2018-11-13 sungmin.cho@lge.com */
 
 	row->state = CAM_SYNC_STATE_INVALID;
 

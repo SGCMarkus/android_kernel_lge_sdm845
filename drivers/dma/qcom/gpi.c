@@ -940,7 +940,6 @@ static void gpi_generate_cb_event(struct gpii_chan *gpii_chan,
 /* process transfer completion interrupt */
 static void gpi_process_ieob(struct gpii *gpii)
 {
-
 	gpi_write_reg(gpii, gpii->ieob_clr_reg, BIT(0));
 
 	/* process events based on priority */

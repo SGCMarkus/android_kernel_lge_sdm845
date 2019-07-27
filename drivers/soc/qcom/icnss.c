@@ -1679,6 +1679,55 @@ out:
 	return ret;
 }
 
+static int wlfw_send_modem_shutdown_msg(void)
+{
+       int ret;
+       struct wlfw_shutdown_req_msg_v01 req;
+       struct wlfw_shutdown_resp_msg_v01 resp;
+       struct msg_desc req_desc, resp_desc;
+
+       if (!penv || !penv->wlfw_clnt)
+               return -ENODEV;
+
+       icnss_pr_dbg("Sending modem shutdown request, state: 0x%lx\n",
+                    penv->state);
+
+       memset(&req, 0, sizeof(req));
+       memset(&resp, 0, sizeof(resp));
+
+       req.shutdown_valid = 1;
+       req.shutdown = 1;
+
+       req_desc.max_msg_len = WLFW_SHUTDOWN_REQ_MSG_V01_MAX_MSG_LEN;
+       req_desc.msg_id = QMI_WLFW_SHUTDOWN_REQ_V01;
+       req_desc.ei_array = wlfw_shutdown_req_msg_v01_ei;
+
+       resp_desc.max_msg_len = WLFW_SHUTDOWN_RESP_MSG_V01_MAX_MSG_LEN;
+       resp_desc.msg_id = QMI_WLFW_SHUTDOWN_RESP_V01;
+       resp_desc.ei_array = wlfw_shutdown_resp_msg_v01_ei;
+
+       ret = qmi_send_req_wait(penv->wlfw_clnt, &req_desc, &req, sizeof(req),
+                       &resp_desc, &resp, sizeof(resp), WLFW_TIMEOUT_MS);
+       if (ret < 0) {
+               icnss_pr_err("Send modem shutdown req failed, ret: %d\n", ret);
+               goto out;
+       }
+
+       if (resp.resp.result != QMI_RESULT_SUCCESS_V01) {
+               icnss_pr_err("QMI modem shutdown request rejected result:%d error:%d\n",
+                            resp.resp.result, resp.resp.error);
+               ret = -resp.resp.result;
+               goto out;
+       }
+
+       icnss_pr_dbg("modem shutdown request sent successfully, state: 0x%lx\n",
+                     penv->state);
+       return 0;
+
+out:
+       return ret;
+}
+
 static int wlfw_ini_send_sync_msg(uint8_t fw_log_mode)
 {
 	int ret;
@@ -2497,7 +2546,8 @@ static int icnss_driver_event_pd_service_down(struct icnss_priv *priv,
 		goto out;
 	}
 
-	icnss_fw_crashed(priv, event_data);
+	if (!test_bit(ICNSS_PD_RESTART, &priv->state))
+		icnss_fw_crashed(priv, event_data);
 
 out:
 	kfree(data);
@@ -2684,6 +2734,10 @@ static int icnss_modem_notifier_nb(struct notifier_block *nb,
 	if (code != SUBSYS_BEFORE_SHUTDOWN)
 		return NOTIFY_OK;
 
+    if (code == SUBSYS_BEFORE_SHUTDOWN && !notif->crashed)
+		if (wlfw_send_modem_shutdown_msg())
+			icnss_pr_dbg("Fail to send modem shutdown Indication\n");
+		
 	if (test_bit(ICNSS_PDR_REGISTERED, &priv->state)) {
 		set_bit(ICNSS_FW_DOWN, &priv->state);
 		icnss_ignore_qmi_timeout(true);
