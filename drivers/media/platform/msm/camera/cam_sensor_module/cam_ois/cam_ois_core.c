@@ -753,7 +753,7 @@ static int cam_ois_pkt_parse(struct cam_ois_ctrl_t *o_ctrl, void *arg)
 			break;
 		}
 		rc = cam_mem_get_cpu_buf(cmd_desc[0].mem_handle,
-				(uint64_t *)&generic_ptr, &len_of_buff);
+				&generic_ptr, &len_of_buff);
 		if (rc < 0) {
 			CAM_ERR(CAM_OIS, "Failed to get cpu buf");
 			return rc;

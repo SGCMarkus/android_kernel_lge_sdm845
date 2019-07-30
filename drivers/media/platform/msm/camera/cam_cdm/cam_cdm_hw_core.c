@@ -388,8 +388,8 @@ int cam_hw_cdm_submit_gen_irq(struct cam_hw_info *cdm_hw,
 			((4 * core->ops->cdm_required_size_genirq()) - 1),
 			core->bl_tag);
 	} else {
-		CAM_ERR(CAM_CDM, "CDM hw bl write failed for gen irq bltag=%d because gen_irq had been released(kmdvaddr = 0x%llx).",
-			core->bl_tag, core->gen_irq.kmdvaddr);
+		CAM_ERR(CAM_CDM, "CDM hw bl write failed for gen irq bltag=%d because gen_irq had been released(kmdvaddr = 0x).",
+			core->bl_tag /*, core->gen_irq.kmdvaddr*/);
 		list_del_init(&node->entry);
 		kfree(node);
 		rc = -EIO;
