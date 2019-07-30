@@ -17,6 +17,9 @@
 	pinctrl-0 = <&uart_console_active>;
 };
 
+#include <dt-bindings/clock/msm-clocks-8952.h>
+#include "qm215-camera-sensor-qrd.dtsi"
+
 &pm8916_chg{
 	status = "ok";
 	qcom,chgr-led-support;
@@ -73,15 +76,6 @@
 	};
 };
 
-/ {
-	qrd_batterydata: qcom,batterydata {
-		qcom,rpull-up-kohm = <100>;
-		qcom,vref-batt-therm = <1800000>;
-
-		#include "vbms-batterydata-mlp356477-2800mah.dtsi"
-	};
-};
-
 &sdhc_1 {
 	/* device core power supply */
 	vdd-supply = <&pm8916_l8>;
@@ -125,16 +119,7 @@
 	pinctrl-0 = <&sdc2_clk_on &sdc2_cmd_on &sdc2_data_on &sdc2_cd_on>;
 	pinctrl-1 = <&sdc2_clk_off &sdc2_cmd_off &sdc2_data_off>;
 
-	#address-cells = <0>;
-	interrupt-parent = <&sdhc_2>;
-	interrupts = <0 1 2>;
-	#interrupt-cells = <1>;
-	interrupt-map-mask = <0xffffffff>;
-	interrupt-map = <0 &intc 0 125 0
-		1 &intc 0 221 0
-		2 &tlmm 67 0>;
-	interrupt-names = "hc_irq", "pwr_irq", "status_irq";
-	cd-gpios = <&tlmm 67 0x1>;
+	cd-gpios = <&tlmm 67 0x0>;
 
 	qcom,clk-rates = <400000 20000000 25000000 50000000 100000000
 								200000000>;

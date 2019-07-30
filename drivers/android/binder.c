@@ -506,7 +506,7 @@ struct binder_priority {
  *                        (invariant after initialized)
  * @files                 files_struct for process
  *                        (protected by @files_lock)
- *@files_lock             mutex to protect @files
+ * @files_lock            mutex to protect @files
  * @deferred_work_node:   element for binder_deferred_list
  *                        (protected by binder_deferred_lock)
  * @deferred_work:        bitmap of deferred work to perform
@@ -995,7 +995,6 @@ static long task_close_fd(struct binder_proc *proc, unsigned int fd)
 		retval = -ESRCH;
 		goto err;
 	}
-
 	retval = __close_fd(proc->files, fd);
 	/* can't restart close syscall because file table entry was cleared */
 	if (unlikely(retval == -ERESTARTSYS ||

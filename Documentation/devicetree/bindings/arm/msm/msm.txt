@@ -68,6 +68,9 @@ SoCs:
 - MSM8917
   compatible = "qcom,msm8917"
 
+- MSM8940
+  compatible = "qcom,msm8940"
+
 - MSM8936
   compatible = "qcom,msm8936"
 

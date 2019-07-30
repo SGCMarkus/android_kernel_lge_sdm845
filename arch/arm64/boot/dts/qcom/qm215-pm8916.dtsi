@@ -590,4 +590,3 @@
 	HSUSB_3p3-supply = <&pm8916_l13>;
 	extcon = <&pm8916_chg>;
 };
-
