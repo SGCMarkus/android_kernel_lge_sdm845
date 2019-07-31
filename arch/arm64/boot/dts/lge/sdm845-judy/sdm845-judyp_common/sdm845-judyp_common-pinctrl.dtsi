@@ -1,0 +1,64 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-judy_common/sdm845-judy_common-pinctrl.dtsi"
+
+&tlmm {
+	extra_ldo_panel_power_active: extra_ldo_panel_power_active {
+		mux {
+			pins = "gpio2", "gpio113";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio2", "gpio113";
+			drive-strength = <8>;   /* 8 mA */
+			bias-disable = <0>;   /* no pull */
+		};
+	};
+	extra_ldo_panel_power_suspend: extra_ldo_panel_power_suspend {
+		mux {
+			pins = "gpio2", "gpio113";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio2", "gpio113";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+		};
+	};
+	panel_err_detect_int_active: panel_err_detect_int_active {
+		mux {
+			pins = "gpio11";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio11";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+		};
+	};
+	panel_err_detect_int_suspend: panel_err_detect_int_suspend {
+		mux {
+			pins = "gpio11";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio11";
+			drive-strength = <2>;   /* 2 mA */
+			bias-pull-down;         /* PULL DOWN */
+		};
+	};
+};

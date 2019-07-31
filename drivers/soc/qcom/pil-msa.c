@@ -125,6 +125,7 @@ static int pil_mss_power_up(struct q6v5_data *drv)
 	int ret = 0;
 	u32 regval;
 
+        pr_info("%s: pil mss power up..\n", __func__);
 	if (drv->cxrail_bhs) {
 		regval = readl_relaxed(drv->cxrail_bhs);
 		regval |= EXTERNAL_BHS_ON;
@@ -141,6 +142,8 @@ static int pil_mss_power_down(struct q6v5_data *drv)
 {
 	u32 regval;
 
+        pr_info("%s: pil mss power down..\n", __func__);
+
 	if (drv->cxrail_bhs) {
 		regval = readl_relaxed(drv->cxrail_bhs);
 		regval &= ~EXTERNAL_BHS_ON;
@@ -154,6 +157,7 @@ static int pil_mss_enable_clks(struct q6v5_data *drv)
 {
 	int ret;
 
+        pr_info("%s: pil mss enable clocks. start.\n", __func__);
 	ret = clk_prepare_enable(drv->ahb_clk);
 	if (ret)
 		goto err_ahb_clk;
@@ -172,6 +176,8 @@ static int pil_mss_enable_clks(struct q6v5_data *drv)
 	ret = clk_prepare_enable(drv->mnoc_axi_clk);
 	if (ret)
 		goto err_mnoc_axi_clk;
+
+        pr_info("%s: pil mss enable clocks. done.\n", __func__);
 	return 0;
 err_mnoc_axi_clk:
 	clk_disable_unprepare(drv->mnoc_axi_clk);
@@ -233,6 +239,8 @@ static int pil_mss_restart_reg(struct q6v5_data *drv, u32 mss_restart)
 	int scm_ret = 0;
 	struct scm_desc desc = {0};
 
+        pr_info("%s: pil mss restart reg. start.\n", __func__);
+
 	desc.args[0] = mss_restart;
 	desc.args[1] = 0;
 	desc.arginfo = SCM_ARGS(2);
@@ -255,12 +263,16 @@ static int pil_mss_restart_reg(struct q6v5_data *drv, u32 mss_restart)
 			pr_err("Secure MSS restart failed\n");
 	}
 
+        pr_info("%s: pil mss restart reg. done.\n", __func__);
+
 	return ret;
 }
 
 int pil_mss_assert_resets(struct q6v5_data *drv)
 {
 	int ret = 0;
+
+        pr_info("%s: pil mss assert reset. start.\n", __func__);
 
 	pil_mss_pdc_sync(drv, 1);
 	pil_mss_alt_reset(drv, 1);
@@ -271,6 +283,8 @@ int pil_mss_assert_resets(struct q6v5_data *drv)
 	}
 
 	ret = pil_mss_restart_reg(drv, true);
+
+        pr_info("%s: pil mss assert reset. done.\n", __func__);
 
 	return ret;
 }
@@ -305,6 +319,8 @@ static int pil_msa_wait_for_mba_ready(struct q6v5_data *drv)
 
 	val = is_timeout_disabled() ? 0 : pbl_mba_boot_timeout_ms * 1000;
 
+        pr_info("%s: pil msa pbl boot and wait for mba ready. start.\n", __func__);
+
 	/* Wait for PBL completion. */
 	ret = readl_poll_timeout(drv->rmb_base + RMB_PBL_STATUS, status,
 				 status != 0, POLL_INTERVAL_US, val);
@@ -330,6 +346,8 @@ static int pil_msa_wait_for_mba_ready(struct q6v5_data *drv)
 		return -EINVAL;
 	}
 
+        pr_info("%s: pil msa pbl boot and wait for mba ready. done.\n", __func__);
+
 	return 0;
 }
 
@@ -337,6 +355,8 @@ int pil_mss_shutdown(struct pil_desc *pil)
 {
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
 	int ret = 0;
+
+        dev_info(pil->dev, "pil mss shutdown. start.\n");
 
 	if (drv->axi_halt_base) {
 		pil_q6v5_halt_axi_port(pil,
@@ -384,6 +404,7 @@ int pil_mss_shutdown(struct pil_desc *pil)
 		drv->is_booted = false;
 	}
 
+        dev_info(pil->dev, "pil mss shutdown. done.\n");
 	return ret;
 }
 
@@ -395,6 +416,8 @@ int __pil_mss_deinit_image(struct pil_desc *pil, bool err_path)
 	struct device *dma_dev = drv->mba_mem_dev_fixed ?: &drv->mba_mem_dev;
 	s32 status;
 	u64 val = is_timeout_disabled() ? 0 : pbl_mba_boot_timeout_ms * 1000;
+
+        dev_info(pil->dev, "pil mss deinit image..\n");
 
 	if (err_path) {
 		writel_relaxed(CMD_PILFAIL_NFY_MBA,
@@ -414,6 +437,12 @@ int __pil_mss_deinit_image(struct pil_desc *pil, bool err_path)
 
 	if (q6_drv->ahb_clk_vote)
 		clk_disable_unprepare(q6_drv->ahb_clk);
+
+	if (system_state == SYSTEM_RESTART ||
+		system_state == SYSTEM_POWER_OFF) {
+		pr_err("Leaking MBA memory to prevent access during lockdown\n");
+		return ret;
+	}
 
 	/* In case of any failure where reclaiming MBA and DP memory
 	 * could not happen, free the memory here
@@ -441,6 +470,8 @@ int pil_mss_make_proxy_votes(struct pil_desc *pil)
 	int ret;
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
 	int uv = 0;
+
+        dev_info(pil->dev, "pil mss make proxy votes. start.\n");
 
 	ret = of_property_read_u32(pil->dev->of_node, "vdd_mx-uV", &uv);
 	if (ret) {
@@ -505,12 +536,16 @@ out:
 		regulator_set_voltage(drv->vreg_mx, 0, INT_MAX);
 	}
 
+        dev_info(pil->dev, "pil mss make proxy votes. done.\n");
+
 	return ret;
 }
 
 void pil_mss_remove_proxy_votes(struct pil_desc *pil)
 {
 	struct q6v5_data *drv = container_of(pil, struct q6v5_data, desc);
+
+        dev_info(pil->dev, "pil mss remove proxy votes..\n");
 
 	pil_q6v5_remove_proxy_votes(pil);
 	regulator_disable(drv->vreg_mx);
@@ -535,6 +570,8 @@ static int pil_mss_mem_setup(struct pil_desc *pil,
 	int ret;
 	struct scm_desc desc = {0};
 
+        dev_info(pil->dev, "pil mss mem setup. start.\n");
+
 	if (!md->subsys_desc.pil_mss_memsetup)
 		return 0;
 
@@ -556,6 +593,8 @@ static int pil_mss_mem_setup(struct pil_desc *pil,
 	}
 	if (ret)
 		return ret;
+
+        dev_info(pil->dev, "pil mss mem setup. done.\n");
 	return scm_ret;
 }
 
@@ -567,6 +606,7 @@ static int pil_mss_reset(struct pil_desc *pil)
 	int ret;
 
 	trace_pil_func(__func__);
+        dev_info(pil->dev, "pil mss reset and mba boot. start.\n");
 	if (drv->mba_dp_phys)
 		start_addr = drv->mba_dp_phys;
 
@@ -791,6 +831,8 @@ err_invalid_fw:
 	if (fw)
 		release_firmware(fw);
 	drv->mba_dp_virt = NULL;
+
+        dev_info(pil->dev, "pil mss reset and load mba. done.\n");
 	return ret;
 }
 
@@ -871,6 +913,8 @@ static int pil_msa_auth_modem_mdt(struct pil_desc *pil, const u8 *metadata,
 	unsigned long attrs = 0;
 
 	trace_pil_func(__func__);
+        dev_info(pil->dev, "pil msa authentication modem mdt. start.\n");
+
 	dma_dev->coherent_dma_mask = DMA_BIT_MASK(sizeof(dma_addr_t) * 8);
 	attrs |= DMA_ATTR_SKIP_ZEROING;
 	attrs |= DMA_ATTR_STRONGLY_ORDERED;
@@ -939,6 +983,7 @@ fail:
 		}
 
 	}
+        dev_info(pil->dev, "pil msa authentication modem mdt. done.\n");
 	return ret;
 }
 
@@ -991,6 +1036,8 @@ static int pil_msa_mba_auth(struct pil_desc *pil)
 	s32 status;
 	u64 val = is_timeout_disabled() ? 0 : modem_auth_timeout_ms * 1000;
 
+        dev_info(pil->dev, "pil msa mba authentication. start.\n");
+
 	/* Wait for all segments to be authenticated or an error to occur */
 	ret = readl_poll_timeout(drv->rmb_base + RMB_MBA_STATUS, status,
 		status == STATUS_AUTH_COMPLETE || status < 0, 50, val);
@@ -1020,6 +1067,8 @@ static int pil_msa_mba_auth(struct pil_desc *pil)
 		modem_log_rmb_regs(drv->rmb_base);
 	if (q6_drv->ahb_clk_vote)
 		clk_disable_unprepare(q6_drv->ahb_clk);
+
+        dev_info(pil->dev, "pil mba mba authentication. done.\n");
 
 	return ret;
 }

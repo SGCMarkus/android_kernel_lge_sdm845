@@ -893,6 +893,9 @@ static int sde_hdcp_1x_write_ksv_fifo(struct sde_hdcp_1x *hdcp)
 	for (i = 0; i < ksv_bytes - 1; i++) {
 		/* Write KSV byte and do not set DONE bit[0] */
 		DSS_REG_W_ND(sec_io, reg_set->sec_sha_data, ksv_fifo[i] << 16);
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+		msleep(5);
+#endif
 
 		/*
 		 * Once 64 bytes have been written, we need to poll for

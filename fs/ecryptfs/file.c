@@ -82,7 +82,7 @@ ecryptfs_filldir(struct dir_context *ctx, const char *lower_name,
 						  buf->sb, lower_name,
 						  lower_namelen);
 	if (rc) {
-		printk(KERN_ERR "%s: Error attempting to decode and decrypt "
+		ecryptfs_printk(KERN_ERR, "%s: Error attempting to decode and decrypt "
 		       "filename [%s]; rc = [%d]\n", __func__, lower_name,
 		       rc);
 		goto out;
@@ -195,11 +195,14 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 {
 	int rc = 0;
 	struct ecryptfs_crypt_stat *crypt_stat = NULL;
+	struct ecryptfs_mount_crypt_stat *mount_crypt_stat;
 	struct dentry *ecryptfs_dentry = file->f_path.dentry;
 	/* Private value of ecryptfs_dentry allocated in
 	 * ecryptfs_lookup() */
 	struct ecryptfs_file_info *file_info;
 
+	mount_crypt_stat = &ecryptfs_superblock_to_private(
+            ecryptfs_dentry->d_sb)->mount_crypt_stat;
 	/* Released in ecryptfs_release or end of function if failure */
 	file_info = kmem_cache_zalloc(ecryptfs_file_info_cache, GFP_KERNEL);
 	ecryptfs_set_file_private(file, file_info);
@@ -220,7 +223,7 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 	mutex_unlock(&crypt_stat->cs_mutex);
 	rc = ecryptfs_get_lower_file(ecryptfs_dentry, inode);
 	if (rc) {
-		printk(KERN_ERR "%s: Error attempting to initialize "
+		ecryptfs_printk(KERN_ERR, "%s: Error attempting to initialize "
 			"the lower file for the dentry with name "
 			"[%pd]; rc = [%d]\n", __func__,
 			ecryptfs_dentry, rc);
@@ -229,7 +232,7 @@ static int ecryptfs_open(struct inode *inode, struct file *file)
 	if ((ecryptfs_inode_to_private(inode)->lower_file->f_flags & O_ACCMODE)
 	    == O_RDONLY && (file->f_flags & O_ACCMODE) != O_RDONLY) {
 		rc = -EPERM;
-		printk(KERN_WARNING "%s: Lower file is RO; eCryptfs "
+		ecryptfs_printk(KERN_WARNING, "%s: Lower file is RO; eCryptfs "
 		       "file must hence be opened RO\n", __func__);
 		goto out_put;
 	}
@@ -279,7 +282,7 @@ static int ecryptfs_dir_open(struct inode *inode, struct file *file)
 	lower_file = dentry_open(ecryptfs_dentry_to_lower_path(ecryptfs_dentry),
 				 file->f_flags, current_cred());
 	if (IS_ERR(lower_file)) {
-		printk(KERN_ERR "%s: Error attempting to initialize "
+		ecryptfs_printk(KERN_ERR, "%s: Error attempting to initialize "
 			"the lower file for the dentry with name "
 			"[%pd]; rc = [%ld]\n", __func__,
 			ecryptfs_dentry, PTR_ERR(lower_file));

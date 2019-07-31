@@ -30,6 +30,9 @@
 
 struct inet_bind_bucket;
 struct tcp_congestion_ops;
+#ifdef CONFIG_LGP_DATA_TCPIP_MPTCP
+struct tcp_options_received;
+#endif
 
 /*
  * Pointers to address related TCP functions
@@ -287,11 +290,6 @@ static inline void inet_csk_reqsk_queue_added(struct sock *sk)
 static inline int inet_csk_reqsk_queue_len(const struct sock *sk)
 {
 	return reqsk_queue_len(&inet_csk(sk)->icsk_accept_queue);
-}
-
-static inline int inet_csk_reqsk_queue_young(const struct sock *sk)
-{
-	return reqsk_queue_len_young(&inet_csk(sk)->icsk_accept_queue);
 }
 
 static inline int inet_csk_reqsk_queue_is_full(const struct sock *sk)

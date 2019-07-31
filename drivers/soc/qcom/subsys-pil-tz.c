@@ -46,6 +46,8 @@
 #define desc_to_data(d) container_of(d, struct pil_tz_data, desc)
 #define subsys_to_data(d) container_of(d, struct pil_tz_data, subsys_desc)
 
+extern void ext_dcc_disable(void);
+
 struct pil_map_fw_info {
 	void *region;
 	unsigned long attrs;
@@ -951,6 +953,9 @@ static irqreturn_t subsys_wdog_bite_irq_handler(int irq, void *dev_id)
 		return IRQ_HANDLED;
 	pr_err("Watchdog bite received from %s!\n", d->subsys_desc.name);
 
+        if (strcmp(d->subsys_desc.name, "slpi") == 0) 
+                ext_dcc_disable();
+
 	if (d->subsys_desc.system_debug &&
 			!gpio_get_value(d->subsys_desc.err_fatal_gpio))
 		panic("%s: System ramdump requested. Triggering device restart!\n",
@@ -1136,6 +1141,8 @@ static int pil_tz_driver_probe(struct platform_device *pdev)
 	d->subsys_desc.ramdump = subsys_ramdump;
 	d->subsys_desc.free_memory = subsys_free_memory;
 	d->subsys_desc.crash_shutdown = subsys_crash_shutdown;
+        d->subsys_desc.ramdump_disable_gpio = 1;
+        d->subsys_desc.ramdump_disable = 1;
 	if (of_property_read_bool(pdev->dev.of_node,
 					"qcom,pil-generic-irq-handler")) {
 		d->subsys_desc.generic_handler = subsys_generic_handler;

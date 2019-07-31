@@ -1,0 +1,69 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-judy_common/sdm845-judy_common-panel.dtsi"
+
+&labibb {
+	status = "ok";
+	qcom,qpnp-labibb-mode = "amoled";
+	qcom,swire-control;
+};
+
+&pmi8998_wled {
+	status = "ok";
+	qcom,disp-type-amoled;
+	qcom,avdd-target-voltage-mv = <6700>;
+};
+
+&dsi_sim_cmd {
+	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
+	lge,panel-pins =
+		<&tlmm 2 0>,  // vddio
+		<&tlmm 113 0>; // vpnl
+};
+
+&soc {
+	gpio_keys {
+		pinctrl-0 = <&nfccover_gpio_default>;
+		smart_cover {
+			status = "disabled";
+		};
+		nfc_cover {
+			label = "nfc_cover";
+			gpios = <&pm8998_gpios 4 GPIO_ACTIVE_LOW>;
+			linux,input-type = <5>;
+			linux,code = <222>;
+			gpio-key,wakeup;
+			debounce-interval = <1000>;
+			linux,can-disable;
+		};
+	};
+};
+
+&pm8998_gpios {
+	smart_cover_gpio {
+		status = "disabled";
+	};
+	nfc_cover_gpio {
+		 nfccover_gpio_default: nfccover_gpio_default {
+			pins = "gpio4";
+			function = "normal";
+			input-enable;
+			bias-pull-up;
+			power-source = <0>;
+		};
+	};
+};
+
+&sde_dp {
+	lge,dp-use;
+};

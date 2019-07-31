@@ -1,0 +1,89 @@
+
+qcom,LGE_BLT39_Tocad_3000mAh {
+	qcom, = <24>;
+	/* fg feature for battery charactistics */
+	/* constant parameter */
+	lge,fg-cutoff-voltage = <3200>;
+	lge,fg-cutoff-current = <200>;
+	lge,fg-cutoff-lt-voltage = <3300>;
+	lge,fg-cutoff-lt-current = <100>;
+	lge,fg-esr-tight-lt-filter-micro-pct = <30000>;
+	lge,fg-esr-broad-lt-filter-micro-pct = <30000>;
+
+	/* runtime changing parameter */
+	lge,ki-coeff-curr-lowth-dischg = <200>;
+	lge,ki-coeff-curr-highth-dischg = <1000>;
+	lge,ki-coeff-soc-dischg = <30 60 90>;
+	lge,ki-coeff-low-dischg = <500 500 500>;
+	lge,ki-coeff-med-dischg = <300 300 300>;
+	lge,ki-coeff-hi-dischg = <300 300 300>;
+
+	/* #3354263_LGE_BLT39tocad_3000mAh_averaged_MasterSlave_Mar12th2018*/
+	qcom,max-voltage-uv = <4400000>;
+	qcom,nom-batt-capacity-mah = <3000>;
+	qcom,fg-cc-cv-threshold-mv = <4390>;
+	qcom,fastchg-current-ma = <2800>;
+	qcom,batt-id-kohm = <46>;
+	qcom,battery-beta = <4150>;
+	qcom,battery-type = "LGE_BLT39_Tocad_3000mAh";
+	qcom,checksum = <0x4B2E>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.58";
+	qcom,fg-profile-data = [
+		 F1 1F 47 05
+		 A3 0A 71 FC
+		 EF 1C 45 FB
+		 D9 04 A6 03
+		 E9 17 A6 23
+		 A7 44 19 5A
+		 84 00 00 00
+		 11 00 00 00
+		 00 00 54 BB
+		 96 CC 57 AD
+		 2B 00 08 00
+		 4E E3 76 ED
+		 EA 05 1A 01
+		 B5 0C 9B EC
+		 0C E5 4C 32
+		 22 06 09 20
+		 24 00 14 00
+		 8C 1F C9 05
+		 59 0A 65 06
+		 90 1C A9 03
+		 52 15 FA 12
+		 56 18 3B 2A
+		 2A 4D 82 62
+		 61 00 00 00
+		 0C 00 00 00
+		 00 00 8D D5
+		 C4 C3 EB C3
+		 1D 00 00 00
+		 6F EB 76 ED
+		 9B 06 90 00
+		 E5 06 27 02
+		 3A 07 EF 1A
+		 99 33 CC FF
+		 07 10 00 00
+		 AB 0B 66 46
+		 1D 00 40 00
+		 CC 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};

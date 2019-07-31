@@ -155,6 +155,13 @@ config QPNP_QG
 	  to determine the battery state-of-charge (SOC) and supports other
 	  battery management features.
 
+config LGE_PM_BATT_ID_ADC
+    bool "LGE BATT ID ADC"
+    default n
+    depends on LGE_PM
+    help
+      For distinguish battery id by adc value
+
 config SMB1390_CHARGE_PUMP
 	tristate "SMB1390 Charge Pump"
 	depends on MFD_I2C_PMIC

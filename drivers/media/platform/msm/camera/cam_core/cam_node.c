@@ -118,7 +118,7 @@ static int __cam_node_handle_acquire_dev(struct cam_node *node,
 		goto free_ctx;
 	}
 
-	CAM_DBG(CAM_CORE, "[%s] Acquire ctx_id %d",
+	CAM_INFO(CAM_CORE, "[%s] Acquire ctx_id %d",
 		node->name, ctx->ctx_id);
 
 	return 0;
@@ -306,7 +306,7 @@ destroy_dev_hdl:
 		CAM_ERR(CAM_CORE, "destroy device hdl failed for node %s",
 			node->name);
 
-	CAM_DBG(CAM_CORE, "[%s] Release ctx_id=%d, refcount=%d",
+	CAM_INFO(CAM_CORE, "[%s] Release ctx_id=%d, refcount=%d",
 		node->name, ctx->ctx_id,
 		atomic_read(&(ctx->refcount.refcount)));
 

@@ -355,7 +355,6 @@ static void diagfwd_data_process_done(struct diagfwd_info *fwd_info,
 	}
 
 	hdlc_disabled = driver->p_hdlc_disabled[peripheral];
-
 	if (hdlc_disabled) {
 		/* The data is raw and and on APPS side HDLC is disabled */
 		if (!buf) {
@@ -639,9 +638,7 @@ static void diagfwd_data_read_done(struct diagfwd_info *fwd_info,
 
 	mutex_lock(&driver->hdlc_disable_mutex);
 	mutex_lock(&fwd_info->data_mutex);
-
 	hdlc_disabled = driver->p_hdlc_disabled[fwd_info->peripheral];
-
 	if (!driver->feature[fwd_info->peripheral].encode_hdlc) {
 		if (fwd_info->buf_1 && fwd_info->buf_1->data == buf) {
 			temp_buf = fwd_info->buf_1;

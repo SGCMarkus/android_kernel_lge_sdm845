@@ -39,6 +39,10 @@
 #include "sde_trace.h"
 #include "sde_core_irq.h"
 
+#ifdef CONFIG_LGE_PM_PRM
+#include "vfps/lge_vfps.h"
+#endif
+
 #define SDE_DEBUG_ENC(e, fmt, ...) SDE_DEBUG("enc%d " fmt,\
 		(e) ? (e)->base.base.id : -1, ##__VA_ARGS__)
 
@@ -1494,8 +1498,10 @@ static void _sde_encoder_update_vsync_source(struct sde_encoder_virt *sde_enc,
 
 		vsync_cfg.pp_count = sde_enc->num_phys_encs;
 		vsync_cfg.frame_rate = mode_info.frame_rate;
-		vsync_cfg.vsync_source =
-			sde_enc->cur_master->hw_pp->caps->te_source;
+
+		if (sde_enc->cur_master)
+			vsync_cfg.vsync_source =
+				sde_enc->cur_master->hw_pp->caps->te_source;
 		if (is_dummy)
 			vsync_cfg.vsync_source = SDE_VSYNC_SOURCE_WD_TIMER_1;
 		else if (disp_info->is_te_using_watchdog_timer)
@@ -2576,9 +2582,9 @@ error:
 
 static void _sde_encoder_input_disconnect(struct input_handle *handle)
 {
-	 input_close_device(handle);
-	 input_unregister_handle(handle);
-	 kfree(handle);
+	input_close_device(handle);
+	input_unregister_handle(handle);
+	kfree(handle);
 }
 
 /**
@@ -2708,6 +2714,20 @@ void sde_encoder_virt_restore(struct drm_encoder *drm_enc)
 	_sde_encoder_virt_enable_helper(drm_enc);
 }
 
+static void sde_encoder_off_work(struct kthread_work *work)
+{
+	struct sde_encoder_virt *sde_enc = container_of(work,
+	struct sde_encoder_virt, delayed_off_work.work);
+	struct drm_encoder *drm_enc;
+
+	if (!sde_enc) {
+		SDE_ERROR("invalid sde encoder\n");
+		return;
+	}
+	drm_enc = &sde_enc->base;
+	sde_encoder_idle_request(drm_enc);
+}
+
 static void sde_encoder_virt_enable(struct drm_encoder *drm_enc)
 {
 	struct sde_encoder_virt *sde_enc = NULL;
@@ -2767,6 +2787,11 @@ static void sde_encoder_virt_enable(struct drm_encoder *drm_enc)
 		else
 			sde_enc->input_handler_registered = true;
 	}
+
+	if (!(msm_is_mode_seamless_vrr(cur_mode)
+			|| msm_is_mode_seamless_dms(cur_mode)))
+		kthread_init_delayed_work(&sde_enc->delayed_off_work,
+				sde_encoder_off_work);
 
 	ret = sde_encoder_resource_control(drm_enc, SDE_ENC_RC_EVENT_KICKOFF);
 	if (ret) {
@@ -2950,7 +2975,19 @@ static void sde_encoder_vblank_callback(struct drm_encoder *drm_enc,
 
 	spin_lock_irqsave(&sde_enc->enc_spinlock, lock_flags);
 	if (sde_enc->crtc_vblank_cb)
+#ifdef CONFIG_LGE_PM_PRM
+	{
+		if (sde_enc->disp_info.is_primary) {
+			if (!lge_vfps_check_internal())
+				sde_enc->crtc_vblank_cb(sde_enc->crtc_vblank_cb_data);
+		} else {
+			sde_enc->crtc_vblank_cb(sde_enc->crtc_vblank_cb_data);
+		}
+	}
+#else
 		sde_enc->crtc_vblank_cb(sde_enc->crtc_vblank_cb_data);
+#endif
+
 	spin_unlock_irqrestore(&sde_enc->enc_spinlock, lock_flags);
 
 	atomic_inc(&phy_enc->vsync_cnt);
@@ -3092,21 +3129,6 @@ int sde_encoder_idle_request(struct drm_encoder *drm_enc)
 						SDE_ENC_RC_EVENT_ENTER_IDLE);
 
 	return 0;
-}
-
-static void sde_encoder_off_work(struct kthread_work *work)
-{
-	struct sde_encoder_virt *sde_enc = container_of(work,
-			struct sde_encoder_virt, delayed_off_work.work);
-	struct drm_encoder *drm_enc;
-
-	if (!sde_enc) {
-		SDE_ERROR("invalid sde encoder\n");
-		return;
-	}
-	drm_enc = &sde_enc->base;
-
-	sde_encoder_idle_request(drm_enc);
 }
 
 /**
@@ -4384,6 +4406,14 @@ static void _sde_encoder_destroy_debugfs(struct drm_encoder *drm_enc)
 
 static int sde_encoder_late_register(struct drm_encoder *encoder)
 {
+#ifdef CONFIG_LGE_PM_PRM
+	if (encoder) {
+		struct sde_encoder_virt *sde_enc = to_sde_encoder_virt(encoder);
+		if (sde_enc->disp_info.is_primary) {
+			lge_vfps_set_encoder(encoder);
+		}
+	}
+#endif
 	return _sde_encoder_init_debugfs(encoder);
 }
 
@@ -4682,6 +4712,9 @@ struct drm_encoder *sde_encoder_init(
 
 	kthread_init_work(&sde_enc->esd_trigger_work,
 			sde_encoder_esd_trigger_work_handler);
+
+	kthread_init_work(&sde_enc->input_event_work,
+			sde_encoder_input_event_work_handler);
 
 	memcpy(&sde_enc->disp_info, disp_info, sizeof(*disp_info));
 

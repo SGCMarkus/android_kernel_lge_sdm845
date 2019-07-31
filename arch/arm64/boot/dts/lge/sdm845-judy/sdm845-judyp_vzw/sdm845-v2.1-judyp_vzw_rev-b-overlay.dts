@@ -1,0 +1,37 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+/plugin/;
+
+#include "sdm845-judyp_vzw.dtsi"
+#include "../sdm845-judy_common/sdm845-judy_common-usb_ext_pulldown_ctrl.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDM845 V2.1 - LG Electronics, judyp_vzw rev_b";
+	compatible = "qcom,sdm845-mtp", "qcom,sdm845", "qcom,mtp";
+	qcom,msm-id = <321 0x20001>;
+	qcom,board-id = <0x080008 0>;
+};
+
+&usb_qmp_dp_phy {
+	qcom,tx-a-pre-emphasis = <0x15>;
+	qcom,tx-b-pre-emphasis = <0x15>;
+	qcom,tx-a-swing = <0x1f>;
+	qcom,tx-b-swing = <0x1f>;
+};
+
+&qusb_phy0 {
+	qcom,qusb-phy-tune = <0x53 0x29 0xca 0x07 0x03>;
+	qcom,qusb-phy-tune-host = <0x53 0x29 0xca 0x07 0x03>;
+};

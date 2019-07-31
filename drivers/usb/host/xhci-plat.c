@@ -498,6 +498,8 @@ static int xhci_plat_runtime_resume(struct device *dev)
 
 	ret = xhci_resume(xhci, false);
 	pm_runtime_mark_last_busy(dev);
+	usb_hcd_resume_root_hub(xhci->shared_hcd);
+	usb_hcd_resume_root_hub(hcd);
 
 	return ret;
 }

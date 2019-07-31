@@ -16,6 +16,7 @@
 
 #include <linux/clk.h>
 #include "dp_power.h"
+#include <linux/delay.h>
 
 #define DP_CLIENT_NAME_SIZE	20
 
@@ -356,6 +357,7 @@ static bool dp_power_find_gpio(const char *gpio1, const char *gpio2)
 	return !!strnstr(gpio1, gpio2, strlen(gpio1));
 }
 
+#ifndef CONFIG_LGE_DISPLAY_COMMON
 static void dp_power_set_gpio(struct dp_power_private *power, bool flip)
 {
 	int i;
@@ -409,6 +411,83 @@ static int dp_power_config_gpios(struct dp_power_private *power, bool flip,
 
 	return 0;
 }
+
+#else
+static void lge_dp_power_set_gpio(struct dp_power_private *power, bool flip)
+{
+	int i;
+	struct dss_module_power *mp = &power->parser->mp[DP_CORE_PM];
+	struct dss_gpio *config;
+	config = mp->gpio_config;
+	for (i = 0; i < mp->num_gpio; i++) {
+		if (gpio_is_valid(config->gpio)) {
+			if (dp_power_find_gpio(config->gpio_name, "aux-sel")) {
+				config->value = flip;
+				usleep_range(1000,1000);
+				gpio_direction_output(config->gpio, config->value);
+				pr_info("gpio %s -> %d, flip %d\n ", config->gpio_name,
+						gpio_get_value(config->gpio), flip ? 1 : 0);
+				break;
+			}
+		}
+		config++;
+	}
+
+	usleep_range(30000,30000);
+	config = mp->gpio_config;
+	for (i = 0; i < mp->num_gpio; i++) {
+		if (gpio_is_valid(config->gpio)) {
+			if (dp_power_find_gpio(config->gpio_name, "aux-en")) {
+				gpio_direction_output(config->gpio, 0);
+				pr_info("gpio %s -> %d, flip %d\n ", config->gpio_name,
+					 	gpio_get_value(config->gpio), flip ? 1 : 0);
+				break;
+			}
+		}
+		config++;
+	}
+}
+
+static int dp_power_config_gpios(struct dp_power_private *power, bool flip,
+					bool enable)
+{
+	int rc = 0, i;
+	struct dss_module_power *mp;
+	struct dss_gpio *config;
+
+	mp = &power->parser->mp[DP_CORE_PM];
+	config = mp->gpio_config;
+
+	if (enable) {
+		rc = dp_power_request_gpios(power);
+		if (rc) {
+			pr_err("gpio request failed\n");
+			return rc;
+		}
+		lge_dp_power_set_gpio(power,flip);
+	} else {
+		config = mp->gpio_config;
+		for (i = 0; i < mp->num_gpio; i++) {
+			if (gpio_is_valid(config->gpio)) {
+				if (dp_power_find_gpio(config->gpio_name, "aux-en")) {
+					gpio_set_value(config->gpio, 1);
+					gpio_free(config->gpio);
+				} else if (dp_power_find_gpio(config->gpio_name, "aux-sel")) {
+					gpio_set_value(config->gpio, 0);
+					gpio_free(config->gpio);
+				} else {
+					gpio_set_value(config->gpio, 0);
+					gpio_free(config->gpio);
+				}
+				pr_info("gpio %s -> %d, flip %d\n ", config->gpio_name,
+					gpio_get_value(config->gpio), flip ? 1 : 0);
+			}
+			config++;
+		}
+	}
+	return 0;
+}
+#endif
 
 static int dp_power_client_init(struct dp_power *dp_power,
 		struct sde_power_handle *phandle)

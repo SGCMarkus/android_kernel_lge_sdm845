@@ -274,6 +274,7 @@ void sde_fence_prepare(struct sde_fence_context *ctx)
 	} else {
 		spin_lock_irqsave(&ctx->lock, flags);
 		++ctx->commit_count;
+		ctx->fence_timeline_update = true;
 		spin_unlock_irqrestore(&ctx->lock, flags);
 	}
 }
@@ -341,8 +342,13 @@ int sde_fence_create(struct sde_fence_context *ctx, uint64_t *val,
 	 */
 	spin_lock_irqsave(&ctx->lock, flags);
 	trigger_value = ctx->commit_count + offset;
-
+	if (!ctx->fence_timeline_update) {
+		*val = ctx->fd;
+		rc = 0;
+		goto end;
+	}
 	spin_unlock_irqrestore(&ctx->lock, flags);
+
 
 	fd = _sde_fence_create_fd(ctx, trigger_value);
 	*val = fd;
@@ -357,6 +363,12 @@ int sde_fence_create(struct sde_fence_context *ctx, uint64_t *val,
 	} else {
 		rc = fd;
 	}
+
+	spin_lock_irqsave(&ctx->lock, flags);
+	ctx->fd = fd;
+	ctx->fence_timeline_update = false;
+end:
+	spin_unlock_irqrestore(&ctx->lock, flags);
 
 	return rc;
 }

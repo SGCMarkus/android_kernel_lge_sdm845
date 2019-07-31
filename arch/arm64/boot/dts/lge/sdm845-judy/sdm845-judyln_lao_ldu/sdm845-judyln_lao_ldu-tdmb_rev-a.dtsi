@@ -1,0 +1,128 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&pm8998_l28 {
+	regulator-min-microvolt = <1800000>;
+	regulator-max-microvolt = <1800000>;
+	qcom,init-voltage = <1800000>;
+	status = "ok";
+};
+
+&pm8998_l16 {
+	regulator-min-microvolt = <2704000>;
+	regulator-max-microvolt = <2704000>;
+	qcom,init-voltage = <2704000>;
+	status = "ok";
+};
+
+
+&soc {
+		qupv3_se7_spi: spi@89c000 {	// [Modified] QUP_BASE address for BLSP# QUP# (ref. AP datasheet, This model use BLSP-1 QUP7)
+			/* [S][Modified] Ref. kernel/msm-4.9/arch/arm64/boot/dts/qcom/sdm845-qupv3.dtsi */
+			compatible = "qcom,spi-geni"; // [Fixed] Should be "qcom,spi-geni (qup-v3)".
+
+			#address-cells = <1>;
+			#size-cells = <0>;
+
+			reg-names = "se_phys";
+			reg = <0x89c000 0x4000>;
+
+			interrupts = <GIC_SPI 608 0>;
+
+			spi-max-frequency = <50000000>;
+			qcom,wrapper-core = <&qupv3_0>;
+
+			clock-names = "se-clk", "m-ahb", "s-ahb";
+			clocks = <&clock_gcc GCC_QUPV3_WRAP0_S7_CLK>,
+				<&clock_gcc GCC_QUPV3_WRAP_0_M_AHB_CLK>,
+				<&clock_gcc GCC_QUPV3_WRAP_0_S_AHB_CLK>;
+			/* [E][Modified] Ref. kernel/msm-4.9/arch/arm64/boot/dts/qcom/sdm845-qupv3.dtsi */
+
+			// [Fixed] Must contain "default" and "sleep" if pinctrl is to be used. Keep the same names.
+			pinctrl-names = "default", "sleep";
+			/* [Fixed] List of phandles, each pointing at a pin configuration node within a pin controller.
+				The list of names to assign states, List entry 0 defines the name for integer state ID 0... */
+			pinctrl-0 = <&spi_tdmb_active>;
+			pinctrl-1 = <&spi_tdmb_suspend>;
+
+			dmas = "";
+			dma-names = "";
+/*
+			dmas = <&gpi_dma0 0 7 1 64 0>, <&gpi_dma0 1 7 1 64 0>;
+			dma-names = "tx", "rx";
+*/
+			status = "ok";
+		};
+};
+
+
+&qupv3_se7_spi {
+	tdmb@0 {
+		compatible = "lge,tdmb"; // [Fixed] Should be "lge,tdmb".
+		reg = <0>;
+		interrupt-parent = <&tlmm>;  // [Fixed] tlmm is the parent
+		interrupts = <91 0x0>; // [Modified] Set INT GPIO, first # is gpio #, second flag keep it 0.
+
+		// [Fixed] Specifies maximum SPI clock frequency of DMB chipset(38.4 MHz). (ref. FC8080 datasheet)
+		spi-max-frequency = <40000000>;
+
+		/* [Modified] List of phandles, each pointing at a pin configuration node within a pin controller.
+			The list of names to assign states, List entry 0,1,2... define the name for integer state ID 0,1,2...
+			Ex. control cases are INT(tdmb_int), EN(tdmb_ctrl), ANT SW(tdmb_ant) LNA Gain Ctrl(tdmb_lna_ctrl) LNA EN(tdmb_lna_en)*/
+		pinctrl-names = "tdmb_int", "tdmb_ctrl", "tdmb_ant", "tdmb_lna_ctrl", "tdmb_lna_en";
+
+		pinctrl-0 = <&tdmb_int>;
+		pinctrl-1 = <&tdmb_ctrl>;
+		pinctrl-2 = <&tdmb_ant>;
+		pinctrl-3 = <&tdmb_lna_ctrl>;
+		pinctrl-4 = <&tdmb_lna_en>;
+
+		/* [Modified] when using clock buffer,
+			 you should check which clock buffer used for dmb device */
+		clock-names = "tdmb_xo";
+		clocks = <&clock_rpmh RPMH_RF_CLK3>;
+
+		/* [Modified] set hw configure here
+			when use pmic clk buffer, change use-xtal to 0
+			and set xtal-freq(DMB Chipset Core clk), interface-freq(SPI interface clk) inter value. */
+		use-xtal = <0>;
+	        xtal-freq = <38400>;
+		interface-freq = <24000>;
+
+		/* [Modified] Set DMB-EN, DMB-INT GPIO
+			tlmm is the parent, second # is gpio #, third flag keep it 0. */
+		tdmb-fc8080,irq-gpio = <&tlmm 91 0x00>;
+		tdmb-fc8080,en-gpio = <&tlmm 100 0x00>;
+
+		/* [Modified] when use ant switching, change use-ant-sw to 1, 
+	                 and set ant active mode (high(1) or low(0)), ant-gpio. */
+		use-ant-sw = <1>;
+		ant-active-mode = <1>;
+		tdmb-fc8080,ant-gpio = <&tlmm 92 0x00>;
+
+		// [Modified] when use ldo for LDO_IN, chage ctrl-dmb-ldo to 1, and set dmb_ldo-supply.
+		ctrl-dmb-ldo = <1>;
+		dmb_ldo-supply = <&pm8998_l28>;
+
+		// [Modified] when use ldo for LNA(U1800), chage ctrl-lna-ldo to 1, and set lna_ldo-supply.
+		ctrl-lna-ldo = <1>;
+		lna_ldo-supply = <&pm8998_l16>;
+
+		// [Modified] when use LNA, chage use-lna-ctrl to 1, and set lna-ctrl-gpio.
+		use-lna-ctrl = <1>;
+		tdmb-fc8080,lna-ctrl-gpio = <&tlmm 129 0x00>;
+
+		// [Modified] when use LNA EN, chage use-lna-en to 1, and set lna-en-gpio.
+		use-lna-en = <1>;
+		tdmb-fc8080,lna-en-gpio = <&tlmm 128 0x00>;
+	};
+};

@@ -137,6 +137,9 @@ static int __init register_earlycon(char *buf, const struct earlycon_id *match)
 		buf = NULL;
 
 	spin_lock_init(&port->lock);
+#if defined(CONFIG_SERIAL_MSM_GENI_LOCK)
+	spin_lock_init(&port->rx_lock);
+#endif
 	port->uartclk = BASE_BAUD * 16;
 	if (port->mapbase)
 		port->membase = earlycon_map(port->mapbase, 64);

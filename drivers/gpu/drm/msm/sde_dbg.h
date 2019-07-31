@@ -50,7 +50,7 @@ enum sde_dbg_dump_flag {
 };
 
 #ifdef CONFIG_DRM_SDE_EVTLOG_DEBUG
-#define SDE_EVTLOG_DEFAULT_ENABLE (SDE_EVTLOG_CRITICAL | SDE_EVTLOG_IRQ)
+#define SDE_EVTLOG_DEFAULT_ENABLE (SDE_EVTLOG_CRITICAL | SDE_EVTLOG_IRQ | SDE_EVTLOG_VERBOSE)
 #else
 #define SDE_EVTLOG_DEFAULT_ENABLE 0
 #endif
@@ -60,7 +60,7 @@ enum sde_dbg_dump_flag {
  * sysfs node or panic. This prevents kernel log from evtlog message
  * flood.
  */
-#define SDE_EVTLOG_PRINT_ENTRY	256
+#define SDE_EVTLOG_PRINT_ENTRY	256*4
 
 /*
  * evtlog keeps this number of entries in memory for debug purpose. This

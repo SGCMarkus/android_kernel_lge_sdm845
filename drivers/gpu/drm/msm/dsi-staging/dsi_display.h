@@ -237,6 +237,8 @@ struct dsi_display {
 	struct work_struct fifo_underflow_work;
 	struct work_struct fifo_overflow_work;
 	struct work_struct lp_rx_timeout_work;
+
+	bool low_persist_enable;
 };
 
 /**
@@ -646,6 +648,11 @@ int dsi_display_pre_kickoff(struct dsi_display *display,
  *
  * Return: enum dsi_pixel_format type
  */
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+int dsi_display_post_kickoff(struct dsi_display *display);
+#endif
+
 enum dsi_pixel_format dsi_display_get_dst_format(void *display);
 
 /**

@@ -835,6 +835,11 @@ void __noreturn do_exit(long code)
 	tsk->exit_code = code;
 	taskstats_exit(tsk, group_dead);
 
+	if (unlikely(task_pid_nr(tsk) == 1)) {
+		panic("Attempted to kill init? exitcode=0x%08x\n",
+			tsk->signal->group_exit_code ?: tsk->exit_code);
+	}
+
 	exit_mm(tsk);
 
 	if (group_dead)

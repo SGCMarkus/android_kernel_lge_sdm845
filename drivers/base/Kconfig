@@ -170,6 +170,11 @@ config FW_CACHE
        depends on PM_SLEEP
        default n
 
+config LGE_FW_CACHE
+       bool "Enable firmware caching during suspend"
+       depends on PM_SLEEP
+       default n
+       
 config WANT_DEV_COREDUMP
 	bool
 	help

@@ -1154,10 +1154,13 @@ int cam_fd_hw_process_cmd(void *hw_priv, uint32_t cmd_type,
 			break;
 		}
 
+		/* LGE_CHANGE, CST, guarrantee fd core_state */
+		mutex_lock(&fd_hw->hw_mutex);
 		cmd_frame_results =
 			(struct cam_fd_hw_frame_done_args *)cmd_args;
 		rc = cam_fd_hw_util_processcmd_frame_done(fd_hw,
 			cmd_frame_results);
+		mutex_unlock(&fd_hw->hw_mutex);
 		break;
 	}
 	default:

@@ -329,6 +329,37 @@ TRACE_EVENT(mm_page_alloc_extfrag,
 		__entry->change_ownership)
 );
 
+#ifdef CONFIG_MIGRATE_HIGHORDER
+TRACE_EVENT(ion_alloc_count,
+
+	TP_PROTO(const char *heap_name,
+		 size_t len,
+		 unsigned int flags,
+		 unsigned int highorder_size),
+
+	TP_ARGS(heap_name, len, flags, highorder_size),
+
+	TP_STRUCT__entry(
+		__field(const char *,	heap_name)
+		__field(size_t,		len)
+		__field(unsigned int,	flags)
+		__field(unsigned int,	highorder_size)
+	),
+
+	TP_fast_assign(
+		__entry->heap_name	= heap_name;
+		__entry->len		= len;
+		__entry->flags		= flags;
+		__entry->highorder_size = highorder_size;
+	),
+
+	TP_printk("heap_name=%s len=%zu flags=0x%x highorder_size=%u",
+		__entry->heap_name,
+		__entry->len,
+		__entry->flags,
+		__entry->highorder_size)
+);
+#endif
 
 DECLARE_EVENT_CLASS(ion_alloc,
 

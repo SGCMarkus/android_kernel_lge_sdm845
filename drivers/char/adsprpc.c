@@ -3305,8 +3305,13 @@ static int fastrpc_device_open(struct inode *inode, struct file *filp)
 		return err;
 	snprintf(strpid, PID_SIZE, "%d", current->pid);
 	buf_size = strlen(current->comm) + strlen(strpid) + 1;
+
+/* kasan fix: using correct buf_size */
+	if(buf_size > UL_SIZE)
+		buf_size = UL_SIZE;
+
 	fl->debug_buf = kzalloc(buf_size, GFP_KERNEL);
-	snprintf(fl->debug_buf, UL_SIZE, "%.10s%s%d",
+	snprintf(fl->debug_buf, buf_size, "%.10s%s%d",
 	current->comm, "_", current->pid);
 	debugfs_file = debugfs_create_file(fl->debug_buf, 0644,
 	debugfs_root, fl, &debugfs_fops);
