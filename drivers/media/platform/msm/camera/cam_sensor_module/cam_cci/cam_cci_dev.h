@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2019, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -27,6 +27,7 @@
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <linux/semaphore.h>
+#include <linux/mutex.h>
 #include <media/cam_sensor.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
@@ -207,6 +208,8 @@ enum cam_cci_state_t {
  * @is_burst_read: Flag to determine if we are performing
  *                 a burst read operation or not
  * @irqs_disabled: Mask for IRQs that are disabled
+ * @init_mutex: Mutex for maintaining refcount for attached
+ *              devices to cci during init/deinit.
  */
 struct cci_device {
 	struct v4l2_subdev subdev;
@@ -236,6 +239,7 @@ struct cci_device {
 	bool is_burst_read;
 	struct mutex global_mutex;
 	uint32_t irqs_disabled;
+	struct mutex init_mutex;
 };
 
 enum cam_cci_i2c_cmd_type {
