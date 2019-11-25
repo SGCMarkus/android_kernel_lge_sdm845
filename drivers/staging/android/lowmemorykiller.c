@@ -167,19 +167,6 @@ void handle_lmk_event(struct task_struct *selected, int selected_tasksize,
 	int tail;
 	struct lmk_event *events;
 	struct lmk_event *event;
-	int res;
-	char taskname[MAX_TASKNAME];
-
-	res = get_cmdline(selected, taskname, MAX_TASKNAME - 1);
-
-	/* No valid process name means this is definitely not associated with a
-	 * userspace activity.
-	 */
-
-	if (res <= 0 || res >= MAX_TASKNAME)
-		return;
-
-	taskname[res] = '\0';
 
 	spin_lock(&lmk_event_lock);
 
@@ -195,7 +182,7 @@ void handle_lmk_event(struct task_struct *selected, int selected_tasksize,
 	events = (struct lmk_event *) event_buffer.buf;
 	event = &events[head];
 
-	memcpy(event->taskname, taskname, res + 1);
+	strncpy(event->taskname, selected->comm, MAX_TASKNAME);
 
 	event->pid = selected->pid;
 	event->uid = from_kuid_munged(current_user_ns(), task_uid(selected));
@@ -1385,6 +1372,7 @@ kill:
 #ifdef CONFIG_HSWAP
 		strcpy(pre_killed_task_comm, selected->comm);
 #endif
+		get_task_struct(selected);
 		send_sig(SIGKILL, selected, 0);
 		if (selected->mm) {
 			task_set_lmk_waiting(selected);
@@ -1449,7 +1437,6 @@ kill:
 				reclaimed_cnt, reclaimable_cnt, min_score_adj);
 #endif
 		rcu_read_unlock();
-		get_task_struct(selected);
 		/* give the system time to free up the memory */
 		msleep_interruptible(20);
 		trace_almk_shrink(selected_tasksize, ret,
