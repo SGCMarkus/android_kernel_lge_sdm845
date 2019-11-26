@@ -5177,9 +5177,19 @@ CONFIG_SENSORS_SSC=y
 # CONFIG_TEE is not set
 
 #
-# TouchSense driver support
+# Tspdrv support
 #
 CONFIG_TSPDRV=y
+
+#
+# TouchSense dw7800 driver support
+#
+CONFIG_VIB_DW7800=y
+
+#
+# TouchSense dw7912 driver support
+#
+CONFIG_VIB_DW7912=y
 
 #
 # LGE Broadcast Device Support
