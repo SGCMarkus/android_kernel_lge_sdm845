@@ -1354,8 +1354,11 @@ static int dwc3_probe(struct platform_device *pdev)
 	dwc->num_out_eps = 16;
 
 	ret = dwc3_core_init_mode(dwc);
-	if (ret)
+	if (ret) {
+		if (ret != -EPROBE_DEFER)
+			dev_err(dev, "failed to initialize core: %d\n", ret);
 		goto err1;
+	}
 
 	ret = dwc3_debugfs_init(dwc);
 	if (ret) {
