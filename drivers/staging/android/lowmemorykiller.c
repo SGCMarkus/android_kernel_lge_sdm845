@@ -1429,6 +1429,7 @@ kill:
 
 		lowmem_deathpending_timeout = jiffies + HZ;
 		rem += selected_tasksize;
+
 #ifdef CONFIG_HSWAP
 		if (kill_reason == KILL_MEMORY_PRESSURE)
 			rem = SHRINK_STOP;
@@ -1436,12 +1437,15 @@ kill:
 		lowmem_print(3, "reclaimed cnt = %d, reclaim cont = %d, min oom score= %hd\n",
 				reclaimed_cnt, reclaimable_cnt, min_score_adj);
 #endif
+
 		rcu_read_unlock();
 		/* give the system time to free up the memory */
 		msleep_interruptible(20);
 		trace_almk_shrink(selected_tasksize, ret,
 				  other_free, other_file,
 				  selected_oom_score_adj);
+
+		get_task_struct(selected);
 	} else {
 		trace_almk_shrink(1, ret, other_free, other_file, 0);
 		rcu_read_unlock();
