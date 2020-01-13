@@ -123,6 +123,8 @@
 		compatible = "qcom,bg-rsb";
 		vdd-ldo1-supply = <&pm660_l11>;
 		vdd-ldo2-supply = <&pm660_l15>;
+		qcom,bg-rsb-gpio = <&tlmm 40 1>;
+		qcom,rsb-use-msm-gpio;
 	};
 
 	qcom,bg-daemon {
