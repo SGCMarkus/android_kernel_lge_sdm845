@@ -29,10 +29,18 @@
 #include <soc/qcom/tcs.h>
 #include <soc/qcom/cmd-db.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC_RPMH_TIMEOUT
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
 #define RPMH_MAX_MBOXES			2
 #define RPMH_MAX_FAST_RES		32
 #define RPMH_MAX_REQ_IN_BATCH		10
+#ifdef CONFIG_LGE_HANDLE_PANIC_RPMH_TIMEOUT
 #define RPMH_TIMEOUT			msecs_to_jiffies(10000)
+#else
+#define RPMH_TIMEOUT			msecs_to_jiffies(10000)
+#endif
 
 #define DEFINE_RPMH_MSG_ONSTACK(rc, s, q, c, name)	\
 	struct rpmh_msg name = {			\
@@ -207,6 +215,12 @@ static inline void wait_for_tx_done(struct rpmh_client *rc,
 			dev_err(rc->dev,
 				"RPMH waiting for interrupt from AOSS\n");
 			mbox_chan_debug(rc->chan);
+#ifdef CONFIG_LGE_HANDLE_PANIC_RPMH_TIMEOUT
+			if (rc->dev != NULL	&& rc->dev->kobj.name != NULL) {
+				lge_set_rphm_timeout_panic(rc->dev->kobj.name);
+			}
+			panic("RPMH Timeout");
+#endif
 			BUG();
 		} else {
 			dev_err(rc->dev,

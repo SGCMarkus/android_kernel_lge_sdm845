@@ -14,7 +14,72 @@
 #define _CAM_IO_UTIL_H_
 
 #include <linux/types.h>
+#include <linux/io.h>
+#include <linux/err.h>
+#include "cam_debug_util.h"
 
+/* LGE_CHANGE, CST, converted to inline function for logging RTB */
+#ifdef CONFIG_QCOM_RTB
+static inline int cam_io_w(uint32_t data, void __iomem *addr)
+{
+	if (!addr)
+		return -EINVAL;
+
+	CAM_DBG(CAM_UTIL, "0x%pK %08x", addr, data);
+	writel_relaxed(data, addr);
+
+	return 0;
+}
+
+static inline int cam_io_w_mb(uint32_t data, void __iomem *addr)
+{
+	if (!addr)
+		return -EINVAL;
+
+	CAM_DBG(CAM_UTIL, "0x%pK %08x", addr, data);
+	/* Ensure previous writes are done */
+	wmb();
+	writel_relaxed(data, addr);
+	/* Ensure previous writes are done */
+	wmb();
+
+	return 0;
+}
+
+static inline uint32_t cam_io_r(void __iomem *addr)
+{
+	uint32_t data;
+
+	if (!addr) {
+		CAM_ERR(CAM_UTIL, "Invalid args");
+		return 0;
+	}
+
+	data = readl_relaxed(addr);
+	CAM_DBG(CAM_UTIL, "0x%pK %08x", addr, data);
+
+	return data;
+}
+
+static inline uint32_t cam_io_r_mb(void __iomem *addr)
+{
+	uint32_t data;
+
+	if (!addr) {
+		CAM_ERR(CAM_UTIL, "Invalid args");
+		return 0;
+	}
+
+	/* Ensure previous read is done */
+	rmb();
+	data = readl_relaxed(addr);
+	CAM_DBG(CAM_UTIL, "0x%pK %08x", addr, data);
+	/* Ensure previous read is done */
+	rmb();
+
+	return data;
+}
+#else
 /**
  * cam_io_w()
  *
@@ -78,6 +143,7 @@ uint32_t cam_io_r_mb(void __iomem *addr);
  *
  * @return:             Success or Failure
  */
+ #endif
 int cam_io_memcpy(void __iomem *dest_addr,
 		void __iomem *src_addr, uint32_t len);
 

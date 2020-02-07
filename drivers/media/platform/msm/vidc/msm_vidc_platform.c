@@ -81,12 +81,12 @@ static struct msm_vidc_codec_data sdm670_codec_data[] =  {
  * 3x3 transformation matrix coefficients in s4.9 fixed point format
  */
 static u32 vpe_csc_custom_matrix_coeff[HAL_MAX_MATRIX_COEFFS] = {
-	470, 8170, 8148, 0, 490, 50, 0, 34, 483
+	440, 8140, 8098, 0, 460, 52, 0, 34, 463 /*QCT_Patch,change the CSC color matrix for video,2018-04-12,soyoung.baek@lge.com*/
 };
 
 /* offset coefficients in s9 fixed point format */
 static u32 vpe_csc_custom_bias_coeff[HAL_MAX_BIAS_COEFFS] = {
-	34, 0, 4
+	53, 0, 4 /*QCT_Patch,change the CSC color matrix for video,2018-04-12,soyoung.baek@lge.com*/
 };
 
 /* clamping value for Y/U/V([min,max] for Y/U/V) */
@@ -154,10 +154,12 @@ static struct msm_vidc_common_data sdm845_common_data[] = {
 		.key = "qcom,debug-timeout",
 		.value = 0,
 	},
+//QCT_PRE_PATCH_S, SDM845, miracast-dev@lge.com, for #03429423(CR#2222291)
 	{
 		.key = "qcom,enable-idle-indicator",
 		.value = 1,
 	},
+//QCT_PRE_PATCH_S, SDM845, miracast-dev@lge.com, for #03429423(CR#2222291)
 };
 
 static struct msm_vidc_common_data sdm670_common_data_v0[] = {

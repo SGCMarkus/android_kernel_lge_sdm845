@@ -30,3 +30,6 @@ obj-$(CONFIG_UCSI)			+= ucsi.o
 
 obj-$(CONFIG_USB_SISUSBVGA)		+= sisusbvga/
 obj-$(CONFIG_USB_LINK_LAYER_TEST)	+= lvstest.o
+
+obj-$(CONFIG_LGE_USB_SWITCH_FUSB252)	+= fusb252.o
+obj-$(CONFIG_LGE_USB_MOISTURE_DETECTION) += lgmd/

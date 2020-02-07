@@ -67,8 +67,8 @@ static void configfs_d_iput(struct dentry * dentry,
 		if (sd->s_dentry == dentry)
 			sd->s_dentry = NULL;
 
-		spin_unlock(&configfs_dirent_lock);
 		configfs_put(sd);
+		spin_unlock(&configfs_dirent_lock);
 	}
 	iput(inode);
 }

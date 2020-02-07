@@ -673,11 +673,14 @@ int cam_mem_mgr_map(struct cam_mem_mgr_map_cmd *cmd)
 			CAM_SMMU_REGION_IO);
 		if (rc)
 			goto map_fail;
-	} else {
+	}
+    /*LGE_CHANGE_S, outfocus preview broken patch, hyunuk.park@lge.com*/
+	else {
 		rc = ion_handle_get_size(tbl.client, ion_hdl, &len);
 		if (rc)
-			return rc;
+			goto map_fail;
 	}
+    /*LGE_CHANGE_E, outfocus preview broken patch, hyunuk.park@lge.com*/
 
 	idx = cam_mem_get_slot();
 	if (idx < 0) {

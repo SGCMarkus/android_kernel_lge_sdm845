@@ -25,6 +25,7 @@
 #include "peripheral-loader.h"
 #include "pil-msa.h"
 #include "pil-q6v5.h"
+#include "pil-msa.h"
 
 /* QDSP6SS Register Offsets */
 #define QDSP6SS_RESET			0x014

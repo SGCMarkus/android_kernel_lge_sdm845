@@ -36,6 +36,12 @@ struct diag_mux_ops {
 #define DIAG_MULTI_MODE			3
 #define DIAG_PCIE_MODE		4
 
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+#define DIAG_SOCKET_MODE		20
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
+
 #define DIAG_MUX_LOCAL		0
 #define DIAG_MUX_LOCAL_LAST	1
 #define DIAG_MUX_BRIDGE_BASE	DIAG_MUX_LOCAL_LAST

@@ -151,6 +151,30 @@
  * space allocated to the page cache.
  *
  *
+ *		Refaulting active pages
+ *
+ * If, on the other hand, the refaulting pages have been recently
+ * deactivated, it means that the active list is no longer protecting
+ * actively used cache from reclaim: the cache is not transitioning to
+ * a different workingset, the existing workingset is thrashing in the
+ * space allocated to the page cache.
+ *
+ * When that is the case, mere activation of the refaulting pages is
+ * not enough. The page reclaim code needs to be informed of the high
+ * IO cost associated with the continued reclaim of page cache, so
+ * that it can steer pressure to the anonymous list.
+ *
+ * Just as when refaulting inactive pages, it's possible that there
+ * are cold(er) anonymous pages that can be swapped and forgotten in
+ * order to increase the space available to the page cache as a whole.
+ *
+ * If anonymous pages start thrashing as well, the reclaim scanner
+ * will aim for the list that imposes the lowest cost on the system,
+ * where cost is defined as:
+ *
+ *	refault rate * relative IO cost (as determined by swappiness)
+ *
+ *
  *		Implementation
  *
  * For each node's file LRU lists, a counter for inactive evictions
@@ -162,6 +186,21 @@
  *
  * On cache misses for which there are shadow entries, an eligible
  * refault distance will immediately activate the refaulting page.
+ *
+ * On activation, cache pages are marked PageWorkingset, which is not
+ * cleared until the page is freed. Shadow entries will remember that
+ * flag to be able to tell inactive from active refaults. Refaults of
+ * previous workingset pages will restore that page flag and inform
+ * page reclaim of the IO cost.
+ *
+ * XXX: Since we don't track anonymous references, every swap-in event
+ * is considered a workingset refault - regardless of distance. Swapin
+ * floods will thus always raise the assumed IO cost of reclaiming the
+ * anonymous LRU lists, even if the pages haven't been used recently.
+ * Temporary events don't matter that much other than they might delay
+ * the stabilization a bit. But during continuous thrashing, anonymous
+ * pages can have a leg-up against page cache. This might need fixing
+ * for ultra-fast IO devices or secondary memory types.
  */
 
 #define EVICTION_SHIFT	(RADIX_TREE_EXCEPTIONAL_ENTRY + \
@@ -254,6 +293,7 @@ void workingset_refault(struct page *page, void *shadow)
 	unsigned long eviction;
 	struct lruvec *lruvec;
 	unsigned long refault;
+	unsigned long anon;
 	bool workingset;
 	int memcgid;
 
@@ -282,6 +322,12 @@ void workingset_refault(struct page *page, void *shadow)
 	lruvec = mem_cgroup_lruvec(pgdat, memcg);
 	refault = atomic_long_read(&lruvec->inactive_age);
 	active_file = lruvec_lru_size(lruvec, LRU_ACTIVE_FILE, MAX_NR_ZONES);
+	if (mem_cgroup_get_nr_swap_pages(memcg) > 0)
+		anon = lruvec_lru_size(lruvec, LRU_ACTIVE_ANON, MAX_NR_ZONES) +
+			lruvec_lru_size(lruvec, LRU_INACTIVE_ANON, MAX_NR_ZONES);
+	else
+		anon = 0;
+
 
 	/*
 	 * Calculate the refault distance
@@ -308,7 +354,7 @@ void workingset_refault(struct page *page, void *shadow)
 	 * don't act on pages that couldn't stay resident even if all
 	 * the memory was available to the page cache.
 	 */
-	if (refault_distance > active_file)
+	if (refault_distance > active_file + anon)
 		goto out;
 
 	SetPageActive(page);

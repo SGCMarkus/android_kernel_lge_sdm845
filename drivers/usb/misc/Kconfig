@@ -292,3 +292,11 @@ config UCSI
 
 	  To compile the driver as a module, choose M here: the module will be
 	  called ucsi.
+
+config LGE_USB_SWITCH_FUSB252
+	bool "USB Type-C CC with D+\D- Port Protection Switch driver"
+	help
+	  The FUSB252 is an integrated port protection switch for USB Type-C
+	  applications.
+
+source "drivers/usb/misc/lgmd/Kconfig"

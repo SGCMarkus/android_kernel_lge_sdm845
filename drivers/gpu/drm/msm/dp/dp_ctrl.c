@@ -13,6 +13,7 @@
  */
 
 #define pr_fmt(fmt)	"[drm-dp] %s: " fmt, __func__
+#define DEBUG
 
 #include <linux/types.h>
 #include <linux/completion.h>
@@ -41,6 +42,10 @@
 #define MR_LINK_PRBS7 0x100
 #define MR_LINK_CUSTOM80 0x200
 #define MR_LINK_TRAINING4  0x40
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+bool dp_lt1_state;
+#endif
 
 struct dp_vc_tu_mapping_table {
 	u32 vic;
@@ -143,6 +148,10 @@ static void dp_ctrl_push_idle(struct dp_ctrl *dp_ctrl)
 		pr_warn("PUSH_IDLE pattern timedout\n");
 
 	pr_debug("mainlink off done\n");
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	dp_lt1_state = false;
+#endif
 }
 
 static void dp_ctrl_config_ctrl(struct dp_ctrl_private *ctrl)
@@ -901,6 +910,14 @@ static int dp_ctrl_link_rate_down_shift(struct dp_ctrl_private *ctrl)
 	if (!ctrl)
 		return -EINVAL;
 
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	if (ctrl->parser->lge_dp_use && !dp_lt1_state) {
+		dp_lt1_state = true;
+		pr_info("[drm-dp] lge_dp_use LT#1 failed, no action down shift BW \n ");
+		return 0;
+	}
+#endif
+
 	switch (ctrl->link->link_params.bw_code) {
 	case DP_LINK_BW_8_1:
 		ctrl->link->link_params.bw_code = DP_LINK_BW_5_4;
@@ -1000,7 +1017,18 @@ static int dp_ctrl_link_train(struct dp_ctrl_private *ctrl)
 	struct drm_dp_link link_info = {0};
 
 	ctrl->link->phy_params.p_level = 0;
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	if (ctrl->parser->lge_dp_use && !dp_lt1_state)
+		ctrl->link->phy_params.v_level = 2;
+	else
+		ctrl->link->phy_params.v_level = 0;
+
+	pr_info("lge_dp_use set : %d, swing level set : %d\n",
+		ctrl->parser->lge_dp_use, ctrl->link->phy_params.v_level);
+#else
 	ctrl->link->phy_params.v_level = 0;
+#endif
 
 	dp_ctrl_config_ctrl(ctrl);
 
@@ -1415,6 +1443,7 @@ static int dp_ctrl_on(struct dp_ctrl *dp_ctrl)
 
 	if (ctrl->link->sink_request & DP_TEST_LINK_PHY_TEST_PATTERN)
 		dp_ctrl_send_phy_test_pattern(ctrl);
+	ctrl->power_on = true;
 
 	ctrl->power_on = true;
 	pr_debug("End-\n");
@@ -1439,7 +1468,6 @@ static void dp_ctrl_off(struct dp_ctrl *dp_ctrl)
 	wmb();
 
 	dp_ctrl_disable_mainlink_clocks(ctrl);
-
 	ctrl->power_on = false;
 	pr_debug("DP off done\n");
 }

@@ -1033,6 +1033,8 @@ static int geni_i2c_runtime_resume(struct device *dev)
 
 static int geni_i2c_suspend_noirq(struct device *device)
 {
+#ifdef CONFIG_LGE_PM
+	/* CR#2121218 */
 	struct geni_i2c_dev *gi2c = dev_get_drvdata(device);
 	int ret;
 
@@ -1043,13 +1045,19 @@ static int geni_i2c_suspend_noirq(struct device *device)
 				"late I2C transaction request\n");
 		return -EBUSY;
 	}
+
 	if (!pm_runtime_status_suspended(device)) {
 		geni_i2c_runtime_suspend(device);
 		pm_runtime_disable(device);
 		pm_runtime_set_suspended(device);
 		pm_runtime_enable(device);
 	}
+
 	i2c_unlock_bus(&gi2c->adap, I2C_LOCK_SEGMENT);
+#else
+	if (!pm_runtime_status_suspended(device))
+		return -EBUSY;
+#endif
 	return 0;
 }
 #else

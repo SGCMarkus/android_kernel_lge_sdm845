@@ -399,14 +399,13 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 		for (i = 0; i < flash_ctrl->torch_num_sources; i++) {
 			if (flash_ctrl->torch_trigger[i]) {
 				max_current = soc_private->torch_max_current[i];
-
 				if (flash_data->led_current_ma[i] <=
 					max_current)
 					curr = flash_data->led_current_ma[i];
 				else
 					curr = soc_private->torch_op_current[i];
 
-				CAM_DBG(CAM_PERF,
+				CAM_ERR(CAM_FLASH,
 					"Led_Current[%d] = %d", i, curr);
 				cam_res_mgr_led_trigger_event(
 					flash_ctrl->torch_trigger[i],
@@ -418,13 +417,21 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 			if (flash_ctrl->flash_trigger[i]) {
 				max_current = soc_private->flash_max_current[i];
 
+				/*LGE_CHANGE_S, flash current set to 800mA for pre-flash, hyunuk.park@lge.com*/
+				#ifdef QCT_ORIGINAL
 				if (flash_data->led_current_ma[i] <=
 					max_current)
 					curr = flash_data->led_current_ma[i];
 				else
 					curr = soc_private->flash_op_current[i];
+				#else
+				curr = soc_private->flash_op_current[i];
+				#endif
+				CAM_ERR(CAM_FLASH, "led_current_ma[%d] = %d", i, flash_data->led_current_ma[i]);
+				CAM_ERR(CAM_FLASH, "flash_op_current[%d] = %d", i, soc_private->flash_op_current[i]);
+				/*LGE_CHANGE_E, flash current set to 800mA for pre-flash, hyunuk.park@lge.com*/
 
-				CAM_DBG(CAM_PERF, "LED flash_current[%d]: %d",
+				CAM_ERR(CAM_FLASH, "LED flash_current[%d]: %d",
 					i, curr);
 				cam_res_mgr_led_trigger_event(
 					flash_ctrl->flash_trigger[i],

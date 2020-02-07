@@ -771,8 +771,8 @@ static int spi_geni_prepare_transfer_hardware(struct spi_master *spi)
 			GENI_SE_ERR(mas->ipc, false, NULL,
 			"%s: Error %d pinctrl_select_state\n", __func__, ret);
 	}
-
 	ret = pm_runtime_get_sync(mas->dev);
+
 	if (ret < 0) {
 		dev_err(mas->dev, "%s:Error enabling SE resources %d\n",
 							__func__, ret);
@@ -909,6 +909,7 @@ static int spi_geni_unprepare_transfer_hardware(struct spi_master *spi)
 		pm_runtime_mark_last_busy(mas->dev);
 		pm_runtime_put_autosuspend(mas->dev);
 	}
+
 	return 0;
 }
 
@@ -1073,7 +1074,7 @@ static int spi_geni_transfer_one(struct spi_master *spi,
 {
 	int ret = 0;
 	struct spi_geni_master *mas = spi_master_get_devdata(spi);
-	unsigned long timeout;
+	long timeout;
 
 	if ((xfer->tx_buf == NULL) && (xfer->rx_buf == NULL)) {
 		dev_err(mas->dev, "Invalid xfer both tx rx are NULL\n");

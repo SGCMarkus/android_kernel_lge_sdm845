@@ -2361,7 +2361,7 @@ static int cam_ife_csid_reset_regs(
 	if (rc <= 0) {
 		CAM_ERR(CAM_ISP, "CSID:%d csid_reset %s fail rc = %d",
 			csid_hw->hw_intf->hw_idx, reset_hw ? "hw" : "sw", rc);
-		rc = -ETIMEDOUT;
+		rc=0;//-ETIMEDOUT;	  /* LGE_CHANGE, workaround for timeout CN#03587321, 2018-7-28, jonghwan.ko@lge.com */
 		goto end;
 	} else {
 		CAM_DBG(CAM_ISP, "CSID:%d %s reset completed %d",

@@ -1,3 +1,5 @@
+ccflags-$(CONFIG_LGE_PM_PRM) += -Idrivers/soc/qcom/lge/power
+
 # CPUfreq core
 obj-$(CONFIG_CPU_FREQ)			+= cpufreq.o freq_table.o
 

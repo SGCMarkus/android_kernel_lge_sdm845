@@ -256,6 +256,9 @@ struct ufs_desc_size {
 	int interc_desc;
 	int unit_desc;
 	int conf_desc;
+#ifdef CONFIG_UFS_LGE_FEATURE
+	int health_desc;
+#endif
 };
 
 /**
@@ -564,6 +567,15 @@ struct debugfs_files {
 	u32 err_inj_scenario_mask;
 	struct fault_attr fail_attr;
 #endif
+#ifdef CONFIG_UFS_LGE_FEATURE
+    struct dentry *dump_config_desc;
+    struct dentry *dump_unit_desc;
+    struct dentry *dump_geo_desc;
+    struct dentry *dump_inter_desc;
+    struct dentry *dump_power_desc;
+    struct dentry *dump_string_desc;
+    struct dentry *dump_health_desc;
+#endif
 	bool is_sys_suspended;
 };
 
@@ -791,6 +803,11 @@ struct ufs_hba {
 	int spm_lvl;
 	struct device_attribute rpm_lvl_attr;
 	struct device_attribute spm_lvl_attr;
+
+#ifdef CONFIG_UFSDBG_SYSFS_COMMON
+	struct device_attribute health_desc_attr;
+#endif
+
 	int pm_op_in_progress;
 
 	struct ufshcd_lrb *lrb;
@@ -996,6 +1013,10 @@ struct ufs_hba {
 	struct io_latency_state io_lat_write;
 	struct ufs_desc_size desc_size;
 	bool restore_needed;
+
+#ifdef CONFIG_UFSDBG_TUNABLES
+	void *ufsdbg_tunables;
+#endif
 };
 
 static inline void ufshcd_mark_shutdown_ongoing(struct ufs_hba *hba)
@@ -1199,6 +1220,15 @@ out:
 }
 
 int ufshcd_read_device_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+
+#ifdef CONFIG_UFS_LGE_FEATURE
+int ufshcd_read_geo_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+int ufshcd_read_config_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+int ufshcd_read_unit_desc(struct ufs_hba *hba, int u_index, u8 *buf, u32 size);
+int ufshcd_read_inter_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+int ufshcd_read_power_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+int ufshcd_read_health_desc(struct ufs_hba *hba, u8 *buf, u32 size);
+#endif
 
 static inline bool ufshcd_is_hs_mode(struct ufs_pa_layer_attr *pwr_info)
 {

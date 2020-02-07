@@ -166,6 +166,7 @@ config CRYPTO_GF128MUL
 
 config CRYPTO_NULL
 	tristate "Null algorithms"
+	default y
 	select CRYPTO_NULL2
 	help
 	  These are 'Null' algorithms, used by IPsec, which do nothing.

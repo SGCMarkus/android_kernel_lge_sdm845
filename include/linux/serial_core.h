@@ -117,6 +117,9 @@ typedef unsigned int __bitwise__ upstat_t;
 
 struct uart_port {
 	spinlock_t		lock;			/* port lock */
+#if defined(CONFIG_SERIAL_MSM_GENI_LOCK)
+	spinlock_t		rx_lock;
+#endif
 	unsigned long		iobase;			/* in/out[bwl] */
 	unsigned char __iomem	*membase;		/* read/write[bwl] */
 	unsigned int		(*serial_in)(struct uart_port *, int);

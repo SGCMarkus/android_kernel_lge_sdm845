@@ -947,7 +947,7 @@ static int cam_jpeg_mgr_flush_req(void *hw_mgr_priv,
 			cfg_req->hw_cfg_args.ctxt_to_hw_map != ctx_data)
 			continue;
 
-		if (cfg_req->req_id != request_id)
+		if ((cfg_req) && (cfg_req->req_id != request_id))
 			continue;
 
 		list_del_init(&cfg_req->list);

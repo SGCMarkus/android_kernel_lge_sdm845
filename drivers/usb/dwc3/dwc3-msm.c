@@ -55,6 +55,7 @@
 #include "debug.h"
 #include "xhci.h"
 
+
 #define SDP_CONNETION_CHECK_TIME 10000 /* in ms */
 
 /* time out to wait for USB cable status notification (in ms)*/
@@ -2374,8 +2375,14 @@ static int dwc3_msm_prepare_suspend(struct dwc3_msm *mdwc)
 			break;
 		usleep_range(20, 30);
 	}
-	if (!(reg & PWR_EVNT_LPM_IN_L2_MASK))
+	if (!(reg & PWR_EVNT_LPM_IN_L2_MASK)){
 		dev_err(mdwc->dev, "could not transition HS PHY to L2\n");
+		if (mdwc->in_host_mode) {
+			mdwc->hc_died = true;
+			schedule_delayed_work(&mdwc->sm_work, 0);
+			return -EBUSY;
+		}
+	}
 
 	/* Clear L2 event bit */
 	dwc3_msm_write_reg(mdwc->base, PWR_EVNT_IRQ_STAT_REG,
@@ -3570,7 +3577,6 @@ static ssize_t usb_compliance_mode_store(struct device *dev,
 }
 static DEVICE_ATTR_RW(usb_compliance_mode);
 
-
 static ssize_t xhci_link_compliance_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
@@ -3599,6 +3605,49 @@ static ssize_t xhci_link_compliance_store(struct device *dev,
 }
 
 static DEVICE_ATTR_RW(xhci_link_compliance);
+
+#ifdef CONFIG_LGE_USB
+static char * dwc3_revision(struct dwc3 *dwc)
+{
+	switch (dwc->revision) {
+	case DWC3_REVISION_173A: return "DWC3_REVISION_173A";
+	case DWC3_REVISION_175A: return "DWC3_REVISION_175A";
+	case DWC3_REVISION_180A: return "DWC3_REVISION_180A";
+	case DWC3_REVISION_183A: return "DWC3_REVISION_183A";
+	case DWC3_REVISION_185A: return "DWC3_REVISION_185A";
+	case DWC3_REVISION_187A: return "DWC3_REVISION_187A";
+	case DWC3_REVISION_188A: return "DWC3_REVISION_188A";
+	case DWC3_REVISION_190A: return "DWC3_REVISION_190A";
+	case DWC3_REVISION_194A: return "DWC3_REVISION_194A";
+	case DWC3_REVISION_200A: return "DWC3_REVISION_200A";
+	case DWC3_REVISION_202A: return "DWC3_REVISION_202A";
+	case DWC3_REVISION_210A: return "DWC3_REVISION_210A";
+	case DWC3_REVISION_220A: return "DWC3_REVISION_220A";
+	case DWC3_REVISION_230A: return "DWC3_REVISION_230A";
+	case DWC3_REVISION_240A: return "DWC3_REVISION_240A";
+	case DWC3_REVISION_250A: return "DWC3_REVISION_250A";
+	case DWC3_REVISION_260A: return "DWC3_REVISION_260A";
+	case DWC3_REVISION_270A: return "DWC3_REVISION_270A";
+	case DWC3_REVISION_280A: return "DWC3_REVISION_280A";
+	case DWC3_REVISION_290A: return "DWC3_REVISION_290A";
+	case DWC3_REVISION_300A: return "DWC3_REVISION_300A";
+	case DWC3_REVISION_310A: return "DWC3_REVISION_310A";
+	case DWC3_REVISION_320A: return "DWC3_REVISION_320A";
+	default: return "Unknown";
+	}
+}
+
+static ssize_t usb_controller_show(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct dwc3_msm *mdwc = dev_get_drvdata(dev);
+	struct dwc3 *dwc = platform_get_drvdata(mdwc->dwc3);
+
+	return snprintf(buf, PAGE_SIZE, "%s\n",
+			dwc3_revision(dwc));
+}
+static DEVICE_ATTR_RO(usb_controller);
+#endif
 
 static int dwc3_msm_probe(struct platform_device *pdev)
 {
@@ -3958,6 +4007,9 @@ static int dwc3_msm_probe(struct platform_device *pdev)
 	device_create_file(&pdev->dev, &dev_attr_speed);
 	device_create_file(&pdev->dev, &dev_attr_usb_compliance_mode);
 	device_create_file(&pdev->dev, &dev_attr_xhci_link_compliance);
+#ifdef CONFIG_LGE_USB
+	device_create_file(&pdev->dev, &dev_attr_usb_controller);
+#endif
 
 	host_mode = usb_get_dr_mode(&mdwc->dwc3->dev) == USB_DR_MODE_HOST;
 	if (!dwc->is_drd && host_mode) {
@@ -3998,6 +4050,9 @@ static int dwc3_msm_remove(struct platform_device *pdev)
 
 	device_remove_file(&pdev->dev, &dev_attr_mode);
 	device_remove_file(&pdev->dev, &dev_attr_xhci_link_compliance);
+#ifdef CONFIG_LGE_USB
+	device_remove_file(&pdev->dev, &dev_attr_usb_controller);
+#endif
 	if (mdwc->usb_psy)
 		power_supply_put(mdwc->usb_psy);
 
@@ -4220,6 +4275,13 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 	}
 
 	if (on) {
+#ifdef CONFIG_LGE_USB
+		if (mdwc->in_host_mode) {
+			dev_err(mdwc->dev, "%s: already turned on host\n",
+				 __func__);
+			return 0;
+		}
+#endif
 		dev_dbg(mdwc->dev, "%s: turn on host\n", __func__);
 
 		mdwc->hs_phy->flags |= PHY_HOST_MODE;
@@ -4314,6 +4376,13 @@ static int dwc3_otg_start_host(struct dwc3_msm *mdwc, int on)
 		schedule_delayed_work(&mdwc->perf_vote_work,
 				msecs_to_jiffies(1000 * PM_QOS_SAMPLE_SEC));
 	} else {
+#ifdef CONFIG_LGE_USB
+		if (!mdwc->in_host_mode) {
+			dev_err(mdwc->dev, "%s: already turned off host\n",
+				 __func__);
+			return 0;
+		}
+#endif
 		dev_dbg(mdwc->dev, "%s: turn off host\n", __func__);
 
 		usb_unregister_atomic_notify(&mdwc->usbdev_nb);

@@ -1744,6 +1744,9 @@ void timekeeping_resume(void)
 	if (inject_sleeptime) {
 		suspend_timing_needed = false;
 		__timekeeping_inject_sleeptime(tk, &ts_delta);
+
+		pr_info("Suspended for %lu.%03lu seconds\n", ts_delta.tv_sec,
+			ts_delta.tv_nsec / NSEC_PER_MSEC);
 	}
 
 	/* Re-base the last cycle value */

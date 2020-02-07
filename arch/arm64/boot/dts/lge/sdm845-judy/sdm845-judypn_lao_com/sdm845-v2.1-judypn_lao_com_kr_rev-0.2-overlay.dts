@@ -1,0 +1,51 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+
+/dts-v1/;
+/plugin/;
+
+#include "sdm845-judypn_lao_com.dtsi"
+#include "../sdm845-judy_common/sdm845-judy_common-usb_ext_pulldown_ctrl.dtsi"
+#include "sdm845-judypn_lao_com-tdmb_rev-0.dtsi"
+#include "../sdm845-camera/sdm845-storm-camera_rev-0.dtsi"
+#include "sdm845-judypn_lao_com-sound.dtsi"
+
+/ {
+	model = "Qualcomm Technologies, Inc. SDM845 V2.1 - LG Electronics, judypn_lao_kr rev_02";
+	compatible = "qcom,sdm845-mtp", "qcom,sdm845", "qcom,mtp";
+	qcom,msm-id = <321 0x20001>;
+	qcom,board-id = <0x01050008 0>;
+};
+
+&soc{
+	fingerprint@0 {
+		goodix,vddio-supply = <&pm8998_l22>;
+		gf,vddio-uV = <2800000>;
+	};
+	rpmh-regulator-ldoa22 {
+		pm8998_l22: regulator-l22 {
+			regulator-min-microvolt = <2800000>;
+			regulator-max-microvolt = <2800000>;
+			qcom,init-voltage = <2800000>;
+		};
+	};
+};
+
+&qupv3_se12_i2c { /*QUPV3 SE12 */
+                dw7912@59 {
+                        status = "ok";
+                };
+                dw7800@59 {
+                        status = "disabled";
+                };
+};

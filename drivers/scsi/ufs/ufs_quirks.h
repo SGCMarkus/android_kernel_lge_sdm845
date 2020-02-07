@@ -17,7 +17,7 @@
 /* return true if s1 is a prefix of s2 */
 #define STR_PRFX_EQUAL(s1, s2) !strncmp(s1, s2, strlen(s1))
 
-#define UFS_ANY_VENDOR -1
+#define UFS_ANY_VENDOR 0xffff
 #define UFS_ANY_MODEL  "ANY_MODEL"
 
 #define MAX_MODEL_LEN 16
@@ -145,6 +145,10 @@ struct ufs_card_fix {
  * instead of the default delay.
  */
 #define UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE	(1 << 9)
+
+#ifdef CONFIG_LGE_IOSCHED_EXTENSION
+#define UFS_DEVICE_QUIRK_CMD_ORDERED (1<<15)
+#endif
 
 struct ufs_hba;
 void ufs_advertise_fixup_device(struct ufs_hba *hba);

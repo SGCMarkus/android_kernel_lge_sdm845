@@ -27,6 +27,7 @@
 #include <linux/pm_runtime.h>
 #include <linux/qcom-geni-se.h>
 #include <linux/spinlock.h>
+#include <soc/qcom/watchdog.h>
 
 #define GENI_SE_IOMMU_VA_START	(0x40000000)
 #define GENI_SE_IOMMU_VA_SIZE	(0xC0000000)
@@ -1417,6 +1418,7 @@ int geni_se_iommu_map_buf(struct device *wrapper_dev, dma_addr_t *iova,
 		return -EINVAL;
 
 	*iova = DMA_ERROR_CODE;
+	trace_printk("%p\n", iova);
 	geni_se_dev = dev_get_drvdata(wrapper_dev);
 	if (!geni_se_dev || !geni_se_dev->cb_dev)
 		return -ENODEV;
@@ -1454,11 +1456,17 @@ void *geni_se_iommu_alloc_buf(struct device *wrapper_dev, dma_addr_t *iova,
 		return ERR_PTR(-EINVAL);
 
 	*iova = DMA_ERROR_CODE;
+	trace_printk("%p\n", iova);
 	geni_se_dev = dev_get_drvdata(wrapper_dev);
 	if (!geni_se_dev || !geni_se_dev->cb_dev)
 		return ERR_PTR(-ENODEV);
 
 	cb_dev = geni_se_dev->cb_dev;
+
+	if (*iova == DMA_ERROR_CODE) {
+		pr_err("geni_se_iommu_alloc_buf : qcom-geni-se.c - CN03352196\n");
+		msm_trigger_wdog_bite();
+	}
 
 	buf = dma_alloc_coherent(cb_dev, size, iova, GFP_KERNEL);
 	if (!buf)

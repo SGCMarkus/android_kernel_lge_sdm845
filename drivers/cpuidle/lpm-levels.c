@@ -58,6 +58,7 @@
 #define PSCI_AFFINITY_LEVEL(lvl) ((lvl & 0x3) << 24)
 #define BIAS_HYST (bias_hyst * NSEC_PER_MSEC)
 
+
 enum {
 	MSM_LPM_LVL_DBG_SUSPEND_LIMITS = BIT(0),
 	MSM_LPM_LVL_DBG_IDLE_LIMITS = BIT(1),
@@ -1287,7 +1288,6 @@ static int get_cluster_id(struct lpm_cluster *cluster, int *aff_lvl,
 
 		state_id += (level->psci_id & cluster->psci_mode_mask)
 					<< cluster->psci_mode_shift;
-
 		/*
 		 * We may have updated the broadcast timers, update
 		 * the wakeup value by reading the bc timer directly.

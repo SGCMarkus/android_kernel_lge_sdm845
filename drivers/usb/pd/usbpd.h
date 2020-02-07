@@ -58,6 +58,10 @@ enum pd_spec_rev {
 
 /* enable msg and signal to be received by phy */
 #define FRAME_FILTER_EN_SOP		BIT(0)
+#ifdef CONFIG_LGE_USB
+#define FRAME_FILTER_EN_SOPI		BIT(1)
+#define FRAME_FILTER_EN_SOPII		BIT(2)
+#endif
 #define FRAME_FILTER_EN_HARD_RESET	BIT(5)
 
 struct pd_phy_params {
@@ -76,6 +80,9 @@ int pd_phy_signal(enum pd_sig_type sig);
 int pd_phy_write(u16 hdr, const u8 *data, size_t data_len,
 		enum pd_sop_type sop);
 int pd_phy_update_roles(enum data_role dr, enum power_role pr);
+#ifdef CONFIG_LGE_USB
+int pd_phy_update_frame_filter(u8 frame_filter_val);
+#endif
 void pd_phy_close(void);
 #else
 static inline int pd_phy_open(struct pd_phy_params *params)
@@ -98,6 +105,13 @@ static inline int pd_phy_update_roles(enum data_role dr, enum power_role pr)
 {
 	return -ENODEV;
 }
+
+#ifdef CONFIG_LGE_USB
+int pd_phy_update_frame_filter(u8 frame_filter_val)
+{
+	return -ENODEV;
+}
+#endif
 
 static inline void pd_phy_close(void)
 {

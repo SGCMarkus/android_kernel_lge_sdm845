@@ -31,7 +31,7 @@
 #define SDE_ENCODER_NAME_MAX	16
 
 /* wait for at most 2 vsync for lowest refresh rate (24hz) */
-#define KICKOFF_TIMEOUT_MS		84
+#define KICKOFF_TIMEOUT_MS		1000
 #define KICKOFF_TIMEOUT_JIFFIES		msecs_to_jiffies(KICKOFF_TIMEOUT_MS)
 
 /**

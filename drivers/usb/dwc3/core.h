@@ -1180,6 +1180,7 @@ struct dwc3 {
 	unsigned int		bh_handled_evt_cnt[MAX_INTR_STATS];
 	unsigned int		bh_dbg_index;
 	ktime_t			irq_start_time[MAX_INTR_STATS];
+	ktime_t			irq_end_time[MAX_INTR_STATS];
 	ktime_t			t_pwr_evt_irq;
 	unsigned int		irq_completion_time[MAX_INTR_STATS];
 	unsigned int		irq_event_count[MAX_INTR_STATS];

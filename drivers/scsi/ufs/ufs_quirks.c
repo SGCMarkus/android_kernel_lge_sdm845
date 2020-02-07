@@ -16,6 +16,14 @@
 
 static struct ufs_card_fix ufs_fixups[] = {
 	/* UFS cards deviations table */
+#ifdef CONFIG_MACH_LGE
+	/* Toshiba recommend that we should not use FASTAUTO in Toshiba-UFS-Gen3.
+	 */
+	UFS_FIX(UFS_VENDOR_TOSHIBA, "THGLF2G8J4LBATR", UFS_DEVICE_NO_FASTAUTO),
+	/* HOST got numerous NAC on some SAMSUNG UFS */
+	UFS_FIX(UFS_VENDOR_SAMSUNG, UFS_ANY_MODEL,
+		UFS_DEVICE_QUIRK_RECOVERY_FROM_DL_NAC_ERRORS),
+#endif
 	UFS_FIX(UFS_VENDOR_SAMSUNG, UFS_ANY_MODEL, UFS_DEVICE_NO_VCCQ),
 	UFS_FIX(UFS_VENDOR_SAMSUNG, UFS_ANY_MODEL,
 		UFS_DEVICE_NO_FASTAUTO),
@@ -25,8 +33,19 @@ static struct ufs_card_fix ufs_fixups[] = {
 		UFS_DEVICE_QUIRK_PA_TACTIVATE),
 	UFS_FIX(UFS_VENDOR_TOSHIBA, "THGLF2G9D8KBADG",
 		UFS_DEVICE_QUIRK_PA_TACTIVATE),
+#ifdef CONFIG_MACH_LGE
+	UFS_FIX(UFS_ANY_VENDOR, UFS_ANY_MODEL,
+		UFS_DEVICE_QUIRK_HOST_PA_SAVECONFIGTIME),
+#else
 	UFS_FIX(UFS_VENDOR_SKHYNIX, UFS_ANY_MODEL,
 		UFS_DEVICE_QUIRK_HOST_PA_SAVECONFIGTIME),
+#endif
+
+#ifdef CONFIG_LGE_IOSCHED_EXTENSION
+	UFS_FIX(UFS_VENDOR_TOSHIBA, UFS_ANY_MODEL,
+		UFS_DEVICE_QUIRK_CMD_ORDERED),
+#endif
+
 	UFS_FIX(UFS_VENDOR_SKHYNIX, UFS_ANY_MODEL, UFS_DEVICE_NO_VCCQ),
 	UFS_FIX(UFS_VENDOR_SKHYNIX, UFS_ANY_MODEL,
 		UFS_DEVICE_QUIRK_WAIT_AFTER_REF_CLK_UNGATE),
@@ -80,8 +99,16 @@ void ufs_advertise_fixup_device(struct ufs_hba *hba)
 		    /* and same model */
 		    (STR_PRFX_EQUAL(f->model, model) ||
 		     !strcmp(f->model, UFS_ANY_MODEL)))
+#ifdef CONFIG_MACH_LGE
+		    {
+			    /* update quirks */
+			    dev_err(hba->dev, "[LGE][UFS] update quirks, manufacturerid:%d, model:%s, quirk:0x%x\n", f->w_manufacturer_id, f->model, f->quirk);
+			    hba->dev_info.quirks |= f->quirk;
+		    }
+#else
 			/* update quirks */
 			hba->dev_info.quirks |= f->quirk;
+#endif
 	}
 out:
 	kfree(model);
