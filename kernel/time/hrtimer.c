@@ -887,13 +887,6 @@ static void __remove_hrtimer(struct hrtimer *timer,
 	if (reprogram && timer == cpu_base->next_timer)
 		hrtimer_force_reprogram(cpu_base, 1);
 #endif
-
-out:
-	/*
-	* We need to preserve PINNED state here, otherwise we may end up
-	* migrating pinned hrtimers as well.
-	*/
-	timer->state = newstate | (timer->state & HRTIMER_STATE_PINNED);
 }
 
 /*
