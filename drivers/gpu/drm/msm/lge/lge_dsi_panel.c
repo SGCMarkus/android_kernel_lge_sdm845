@@ -1407,6 +1407,35 @@ static ssize_t mfts_auto_touch_test_mode_set(struct device *dev,
 static DEVICE_ATTR(mfts_auto_touch_test_mode, S_IRUGO | S_IWUSR | S_IWGRP,
 		mfts_auto_touch_test_mode_get, mfts_auto_touch_test_mode_set);
 
+static ssize_t get_low_power_mode(struct device *dev,
+		struct device_attribute *attr, char *buf)
+{
+	struct dsi_panel *panel = NULL;
+
+	panel = dev_get_drvdata(dev);
+	if (!panel) {
+		pr_err("panel is NULL\n");
+		return -EINVAL;
+	}
+	
+	switch(panel->lge.panel_state) {
+		case LGE_PANEL_NOLP:
+			return sprintf(buf, "0\n");
+		case LGE_PANEL_LP1:
+			return sprintf(buf, "1\n");
+		case LGE_PANEL_LP2:
+			return sprintf(buf, "2\n");
+		case LGE_PANEL_OFF:
+			return sprintf(buf, "3\n");
+		case LGE_PANEL_STATE_MAX:
+			return sprintf(buf, "0\n");
+		default:
+			return sprintf(buf, "-1\n");
+	}
+}
+
+static DEVICE_ATTR(low_power_mode, S_IRUGO, get_low_power_mode, NULL);
+
 void lge_panel_factory_create_sysfs(struct dsi_panel *panel, struct class *class_panel)
 {
 	static struct device *panel_reg_dev = NULL;
@@ -1420,6 +1449,8 @@ void lge_panel_factory_create_sysfs(struct dsi_panel *panel, struct class *class
 				pr_err("add panel_type node fail!\n");
 			if ((device_create_file(panel_reg_dev, &dev_attr_mfts_auto_touch_test_mode)) < 0)
 				pr_err("add mfts_auto_touch_test_mode node fail!\n");
+			if ((device_create_file(panel_reg_dev, &dev_attr_low_power_mode)) < 0)
+				pr_err("add low_power_mode node fail!\n");
 			if (panel->lge.use_line_detect)
 				lge_panel_line_detect_create_sysfs(panel_reg_dev);
 		}
