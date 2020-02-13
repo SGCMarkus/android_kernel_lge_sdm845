@@ -32,3 +32,10 @@ config FINGERPRINT_GOODIX_GF3208
 config INPUT_FPC1145
         tristate "FPC1145 fingerprint sensor support"
         depends on SPI_MASTER
+
+config EGISTEC_FINGERPRINT
+	tristate "Egistec ET520 platform device"
+	depends on SPI_MASTER
+	help
+	  If say Y here to use Egistec fingerprint driver.
+	  If unsure, say N.

@@ -1,0 +1,21 @@
+&vendor {
+	lgmd: lge,lgmd18 {
+		compatible = "lge,lgmd18";
+
+		qcom,channel-vadc = <&pm8998_vadc>;
+		qcom,channel-adc_tm = <&pm8998_adc_tm>;
+
+		chan@0 {
+			channel-num = <0x0e>;
+
+			bias-pull-up;
+			blue-thr-uv   = <1800000>;
+			green-thr-uv  = <1000000>;
+			yellow-thr-uv = <890000>;
+			red-thr-uv    = <500000>;
+			black-thr-uv  = <50000>;
+			thr-margin-uv = <25000>;
+			timer-ms      = <10000>;
+		};
+	};
+};

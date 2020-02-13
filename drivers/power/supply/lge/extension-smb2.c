@@ -1121,7 +1121,8 @@ static int charger_power_hvdcp(/*@Nonnull*/ struct power_supply* usb, int type) 
 		bool legacy_rphigh = is_client_vote_enabled(charger->hvdcp_disable_votable_indirect,
 			VBUS_CC_SHORT_VOTER) && charger->typec_mode == POWER_SUPPLY_TYPEC_SOURCE_HIGH;
 		bool disabled_hvdcp = is_client_vote_enabled(charger->hvdcp_hw_inov_dis_votable,
-			"DISABLE_HVDCP_VOTER");
+			"DISABLE_HVDCP_VOTER")
+			|| is_client_vote_enabled(charger->hvdcp_disable_votable_indirect, "DEFAULT_VOTER");
 
 		int voltage_mv = (legacy_rphigh || disabled_hvdcp)
 			? HVDCP_VOLTAGE_MV_MIN : HVDCP_VOLTAGE_MV_MAX;
@@ -1137,30 +1138,20 @@ static int charger_power_hvdcp(/*@Nonnull*/ struct power_supply* usb, int type) 
 	return power;
 }
 
-static int charger_power_adaptive(/*@Nonnull*/ struct power_supply* usb, int type) {
-	#define FAKING_QC (HVDCP_VOLTAGE_MV_MAX*HVDCP_CURRENT_MA_MAX)
-	int power = 0;
+#define SCALE_100MA 100
+static int charger_power_adaptive(/*@Nonnull*/ struct power_supply* usb, int type)
+{
+	int current_ma, power = 0;
+	int voltage_mv = 5000; /* 5V fixed for DCP and CDP */
+	union power_supply_propval buf = { .intval = 0, };
+	struct smb_charger* chg = power_supply_get_drvdata(usb);
 
 	if (type == POWER_SUPPLY_TYPE_USB_DCP || type == POWER_SUPPLY_TYPE_USB_CDP) {
-		struct smb_charger* charger = power_supply_get_drvdata(usb);
-		bool qcfaking = (type == POWER_SUPPLY_TYPE_USB_DCP)
-			&& get_effective_result(charger->hvdcp_enable_votable);
+		current_ma = !smblib_get_prop_input_current_settled(chg, &buf)
+			? buf.intval / 1000 : 0;
 
-		if (!qcfaking) {
-			union power_supply_propval buf =
-				{ .intval = 0, };
-			int voltage_mv = /* 5V fixed for DCP and CDP */
-				5000;
-			int current_ma = !smblib_get_prop_input_current_settled(charger, &buf)
-				? buf.intval / 1000 : 0;
-
-			#define SCALE_300MA 300
-			current_ma = ((current_ma - 1) / SCALE_300MA + 1) * SCALE_300MA;
-			power = voltage_mv * current_ma;
-		}
-		else {
-			power = FAKING_QC;
-		}
+		current_ma = ((current_ma - 1) / SCALE_100MA + 1) * SCALE_100MA;
+		power = voltage_mv * current_ma;
 	}
 	else {	// Assertion failed
 		pr_info("%s: Check the caller\n", __func__);
@@ -1413,7 +1404,8 @@ int extension_usb_get_property(struct power_supply *psy,
 		}
 		if (chg->typec_en_dis_active ||
 		    (chg->pd_hard_reset &&
-			 chg->typec_mode >= POWER_SUPPLY_TYPEC_SOURCE_DEFAULT)) {
+			 chg->typec_mode >= POWER_SUPPLY_TYPEC_SOURCE_DEFAULT) ||
+			workaround_fake_pd_hard_reset_show()) {
 			pr_debug("Set PRESENT by force\n");
 			val->intval = true;
 			return 0;

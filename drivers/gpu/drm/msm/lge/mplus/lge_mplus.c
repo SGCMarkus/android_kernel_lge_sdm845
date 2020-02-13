@@ -1,6 +1,5 @@
 #define pr_fmt(fmt)	"[Display][lge-mplus:%s:%d] " fmt, __func__, __LINE__
 
-#include <linux/kallsyms.h>
 #include <linux/backlight.h>
 #include <linux/delay.h>
 
@@ -48,7 +47,6 @@ static ssize_t mplus_hd_set(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	unsigned int **addr;
 	struct dsi_panel *panel;
 	struct dsi_display *display;
 	int mp_hd;
@@ -68,13 +66,7 @@ static ssize_t mplus_hd_set(struct device *dev,
 	}
 	mutex_unlock(&panel->panel_lock);
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("primary_display not founded.\n");
-		return -EINVAL;
-	}
+	display = primary_display;
 
 	if(!display) {
 		pr_err("display is null\n");
@@ -125,7 +117,6 @@ static ssize_t mplus_max_set(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	unsigned int **addr;
 	struct dsi_panel *panel;
 	struct dsi_display *display;
 	int mp_max;
@@ -153,13 +144,7 @@ static ssize_t mplus_max_set(struct device *dev,
 	}
 	mutex_unlock(&panel->panel_lock);
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("primary_display not founded.\n");
-		return -EINVAL;
-	}
+	display = primary_display;
 
 	if(!display) {
 		pr_err("display is null\n");
@@ -207,7 +192,6 @@ static ssize_t mplus_mode_set(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	unsigned int **addr;
 	struct dsi_panel *panel;
 	struct dsi_display *display;
 	int mp_mode;
@@ -227,13 +211,7 @@ static ssize_t mplus_mode_set(struct device *dev,
 	}
 	mutex_unlock(&panel->panel_lock);
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("primary_display not founded.\n");
-		return -EINVAL;
-	}
+	display = primary_display;
 
 	if(!display) {
 		pr_err("display is null\n");
@@ -351,7 +329,7 @@ int lge_mplus_backlight_dimming(struct backlight_device *bd,
 	struct sde_connector *c_conn;
 	int bl_lvl, old_bl_lvl, cur_bl_lvl, i;
 	int target_bl_lvl, bl_lvl_diff;
-	struct drm_event event;
+	struct drm_event event = {0,};
 	enum lge_blmap_type bl_type = LGE_BLMAP_DEFAULT;
 	int dim_cnt, dim_delay;
 

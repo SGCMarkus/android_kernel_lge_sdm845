@@ -1,6 +1,5 @@
 
 #define pr_fmt(fmt)	"[Display][lge-drs:%s:%d] " fmt, __func__, __LINE__
-#include <linux/kallsyms.h>
 #include <linux/device.h>
 #include <linux/mutex.h>
 #include "lge_drs_mngr.h"
@@ -11,6 +10,35 @@
 
 static struct lge_drs_mngr *gdrs_mngr = NULL;
 extern int dsi_panel_tx_cmd_set(struct dsi_panel *panel, enum dsi_cmd_set_type type);
+
+/*
+ * -------------------------------------------------
+ *  BIT(4) | BIT(3) | BIT(2) | BIT(1)  | BIT(0)
+ *  DONE   |  TBD   |  TBD   | TIMEOUT | FREEZE_STATE
+ * --------------------------------------------------
+ */
+
+static int get_freeze_state(enum lge_drs_request state)
+{
+	return (state & (BIT(0) | BIT(1)));
+}
+
+static int is_freeze_req(enum lge_drs_request state)
+{
+	return (state & BIT(0));
+}
+
+#if 0
+static int is_timeout(enum lge_drs_request state)
+{
+	return (state & BIT(1));
+}
+#endif
+
+static int is_done(enum lge_drs_request state)
+{
+	return (state & BIT(4));
+}
 
 static struct lge_drs_mngr* lge_drs_mngr_get_and_validate(struct dsi_panel *panel)
 {
@@ -287,16 +315,13 @@ int lge_drs_mngr_begin(struct dsi_panel *panel)
 
 static int lge_drs_mngr_get_main_display(struct lge_drs_mngr *drs_mngr)
 {
-	unsigned int **addr;
-
 	if (!drs_mngr)
 		return -EINVAL;
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr) {
-		drs_mngr->main_display = (struct dsi_display *)*addr;
+	if (primary_display) {
+		drs_mngr->main_display = primary_display;
 	} else {
-		pr_err("%s not found\n", "main_display");
+		pr_err("%s not found\n", "primary_display");
 		return -EAGAIN;
 	}
 
@@ -414,11 +439,15 @@ int lge_drs_mngr_freeze_state_hal(int req_type)
 		return -EINVAL;
 	}
 
+	if (is_freeze_req(req_type) && is_done(req_type)) {
+		req_type = DRS_FREEZE_DONE;
+	}
+
 	switch (req_type) {
 	case DRS_UNFREEZE:
 		kobject_uevent_env(&dev->primary->kdev->kobj, KOBJ_CHANGE, envp0);
 		break;
-	case DRS_FREEZE:
+	case DRS_FREEZE_REQ:
 		drs_mngr->drs_requested = true;
 		if (is_bist_supported(panel, "drs")) {
 			drs_mngr->keep_bist_on = false;
@@ -430,6 +459,9 @@ int lge_drs_mngr_freeze_state_hal(int req_type)
 		rc = lge_drs_mngr_freeze_timedout(panel);
 		if (rc < 0)
 			pr_err("failed timedout func\n");
+		break;
+	case DRS_FREEZE_DONE:
+		pr_info("freeze done\n");
 		break;
 	default:
 		pr_err("invalid request=%d\n", req_type);
@@ -450,7 +482,7 @@ int lge_drs_mngr_set_freeze_state(enum lge_drs_request state)
 	}
 
 	pr_info("change state (%d)->(%d)\n", drs_mngr->current_freeze_state, state);
-	drs_mngr->current_freeze_state = state;
+	drs_mngr->current_freeze_state = get_freeze_state(state);
 
 	return 0;
 }
@@ -458,13 +490,22 @@ int lge_drs_mngr_set_freeze_state(enum lge_drs_request state)
 int lge_drs_mngr_get_freeze_state(void)
 {
 	struct lge_drs_mngr *drs_mngr = gdrs_mngr;
+	int state = 0;
 
 	if (!drs_mngr) {
 		pr_err("gdrs mngr is null\n");
 		return -EINVAL;
 	}
 
-	return drs_mngr->current_freeze_state;
+	pr_info("current_freeze_state=%d\n", drs_mngr->current_freeze_state);
+
+	state = drs_mngr->current_freeze_state;
+
+	if (state < 0) {
+		return state;
+	} else {
+		return (get_freeze_state(state) & is_done(state));
+	}
 }
 
 static ssize_t freeze_state_hal_show(struct device *dev,

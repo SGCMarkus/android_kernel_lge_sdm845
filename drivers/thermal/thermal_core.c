@@ -601,6 +601,16 @@ static void store_temperature(struct thermal_zone_device *tz, int temp)
 static void update_temperature(struct thermal_zone_device *tz)
 {
 	int temp, ret;
+#ifdef CONFIG_LGE_PM
+	static bool init_flag = false;
+	if (!init_flag && !strncmp(tz->type, "pmi8998_tz", 10)) {
+		init_flag = true;
+		temp = 25000;
+		store_temperature(tz, temp);
+
+		return;
+	}
+#endif
 
 	ret = thermal_zone_get_temp(tz, &temp);
 	if (ret) {

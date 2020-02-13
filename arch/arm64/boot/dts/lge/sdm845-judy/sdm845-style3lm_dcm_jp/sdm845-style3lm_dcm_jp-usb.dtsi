@@ -12,6 +12,11 @@
 
 #include "../sdm845-judy_common/sdm845-judy_common-usb.dtsi"
 
+&qusb_phy0 {
+	qcom,qusb-phy-tune = <0x77 0x29 0xca 0x04 0x03 0x15>;
+	qcom,qusb-phy-tune-host = <0x77 0x29 0xca 0x07 0x03 0x15>;
+};
+
 &usb_qmp_dp_phy {
    qcom,tx-a-pre-emphasis = <0x16>;
    qcom,tx-b-pre-emphasis = <0x16>;

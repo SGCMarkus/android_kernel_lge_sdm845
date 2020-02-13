@@ -188,6 +188,6 @@ obj-$(CONFIG_LGE_BROADCAST_TDMB) += broadcast/
 obj-$(CONFIG_TSPDRV) += tspdrv/
 
 # Mobicore
-ifeq ($(LAOP_BUILD), KR)
+ifeq ($(TARGET_LGE_REGION), KR)
 obj-$(CONFIG_TRUSTONIC_TEE) += gud/
 endif

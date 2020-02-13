@@ -10,22 +10,22 @@
  * GNU General Public License for more details.
  */
 
-&qupv3_se5_spi { /* QUP5 */
-	status = "disable";
-};
-
-&soc{
-	fingerprint@0 {
-		status = "ok";
-		compatible = "goodix,fingerprint";
+&soc {
+	/* add for FP ET520 zuoqiquan@huaqin.com 190326 */
+	egistec {
+		status = "okay";
+		compatible = "egistec,et520";
 
 		interrupt-parent = <&tlmm>;
-		interrupts = <121>;
+		interrupts = <121 0x00>;
 
-		goodix,gpio_irq = <&tlmm 121 0x00>;
-		goodix,gpio_reset = <&tlmm 122 0x00>;
-		goodix,gpio_cs  = <&tlmm 88 0x00>;
-		goodix,vddio-supply = <&pm8998_l19>;
-		gf,vddio-uV = <3300000>;
+		/* GPIO82 : FP_AVDD_EN / GPIO106 : FP_VIO_EN */
+                egistec,vdd_io-supply = <&pm8998_l19>;
+//		egistec,gpio_pwr_en = <&tlmm 83 0x00>;
+//		egistec,gpio_ldo1p8_en = <&tlmm 82 0x00>;
+
+		/* GPIO122 : FP_RESET / GPIO121 : FP_INT */
+		egistec,gpio_rst = <&tlmm 122 0x00>;
+		egistec,gpio_irq = <&tlmm 121 0x00>;
 	};
 };

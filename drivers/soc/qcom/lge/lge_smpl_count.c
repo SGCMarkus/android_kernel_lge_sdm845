@@ -86,7 +86,13 @@ static int read_smpl_count(char *buffer, const struct kernel_param *kp)
 #endif
 	{
 		smpl_condition = ((warm_reset == 0)
+#if defined(CONFIG_MACH_SDM845_JUDY_VZW)
+					&& ((boot_cause &= PWR_ON_EVENT_SMPL)
+					|| (poff_sts == PWR_OFF_EVENT_S2_RESET)
+					|| (poff_sts == PWR_OFF_EVENT_S3_RESET)));
+#else
 					&& (boot_cause &= PWR_ON_EVENT_SMPL));
+#endif
 	}
 
 	if (smpl_condition) {

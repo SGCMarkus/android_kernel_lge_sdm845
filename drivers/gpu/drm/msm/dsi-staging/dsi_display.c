@@ -79,7 +79,11 @@ static const struct of_device_id dsi_display_dt_match[] = {
 	{}
 };
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+struct dsi_display *primary_display;
+#else /*QCT original*/
 static struct dsi_display *primary_display;
+#endif
 static struct dsi_display *secondary_display;
 
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
@@ -597,6 +601,7 @@ static void dsi_display_parse_te_gpio(struct dsi_display *display)
 
 	display->disp_te_gpio = of_get_named_gpio(dev->of_node,
 					"qcom,platform-te-gpio", 0);
+	pr_info("disp_te_gpio = %d\n", display->disp_te_gpio);
 }
 
 static int dsi_display_read_status(struct dsi_display_ctrl *ctrl,

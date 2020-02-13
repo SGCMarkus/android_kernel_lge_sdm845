@@ -1,0 +1,33 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common-nfc.dtsi"
+
+&qupv3_se3_i2c { /* QUP_3 (NFC) */
+	qcom,clk-freq-out = <1000000>;
+	status = "ok";
+	pn547@28 {
+		compatible = "nxp,pn547";
+		reg = <0x28>;
+		status = "ok";
+		nxp,gpio_sda = <&tlmm 41 0x00>;
+		nxp,gpio_scl = <&tlmm 42 0x00>;
+		nxp,gpio_ven = <&tlmm 12 0x00>;
+		nxp,gpio_mode = <&tlmm 62 0x00>;
+		nxp,gpio_irq = <&tlmm 63 0x00>;
+		nxp,i2c-pull-up = <1>;
+		qcom,clk-src = "BBCLK2";
+		interrupt-parent = <&tlmm>;
+		interrupts = <63 0>;
+		interrupt-names = "nfc_irq";
+	};
+};

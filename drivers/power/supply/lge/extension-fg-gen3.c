@@ -134,7 +134,7 @@ static int get_charging_type(struct fg_chip *chip)
 
 	if (chip->batt_psy) {
 		if (!power_supply_get_property(chip->batt_psy,
-			POWER_SUPPLY_PROP_STATUS, &val))
+			POWER_SUPPLY_PROP_STATUS_RAW, &val))
 			if (val.intval != POWER_SUPPLY_STATUS_CHARGING)
 				return TCOMP_CHG_NONE;
 	}
@@ -198,11 +198,11 @@ static int get_batt_temp_current(struct fg_chip *chip)
 								val.intval / -1000 : ichg;
 				goto out;
 			} else {
-				/* if charging current is over -25mA,
+				/* if charging current is over 25mA,
 					batt_therm compensation current keeps the previous value */
 				if (!power_supply_get_property(chip->batt_psy,
 						POWER_SUPPLY_PROP_CURRENT_NOW, &val) &&
-							val.intval < -25000)
+							val.intval > 25000)
 					ichg = val.intval / 1000;
 
 				goto out;
@@ -293,6 +293,7 @@ static int calculate_battery_temperature(/* @Nonnull */ struct fg_chip *chip)
 	union power_supply_propval val = { 0, };
 	bool tbl_changed = false;
 	static int pre_tbl_pt = -1;
+	int weight = 0;
 
 	if (fg_get_battery_temp(chip, &battemp_cell)){
 		pr_info("get real batt therm error\n");
@@ -354,7 +355,7 @@ static int calculate_battery_temperature(/* @Nonnull */ struct fg_chip *chip)
 				&& val.intval == POWER_SUPPLY_STATUS_CHARGING
 				&& !power_supply_get_property(
 					chip->batt_psy, POWER_SUPPLY_PROP_CURRENT_NOW, &val)
-				&& val.intval < 0)
+				&& val.intval > 0)
 				ichg = ((val.intval) / 1000);
 		}
 	} else {
@@ -362,7 +363,15 @@ static int calculate_battery_temperature(/* @Nonnull */ struct fg_chip *chip)
 			battemp_cell + battemp_bias, battemp_cell, battemp_bias);
 	}
 
-	battemp_icomp = ichg * ichg * tcomp.icoeff / 10000000;
+/* if original batt temp is under 20 degree, icomp isn't applied.
+ * if original batt temp is over 35 degree, icomp is applied by 100%.
+ * if original batt temp is within weighted range, icomp increases smoothly.
+ */
+	weight = battemp_cell - 200;
+	weight = max(0, weight);
+	weight = min(150, weight);
+
+	battemp_icomp = ichg * ichg * tcomp.icoeff / 10000000 * weight / 150;
 	temp = battemp_cell + battemp_bias - battemp_icomp;
 
 	if (tcomp.logging)
@@ -399,7 +408,7 @@ static int  lge_is_fg_charging(struct fg_chip *chip)
 
 	if (!power_supply_get_property(chip->batt_psy,
 					POWER_SUPPLY_PROP_CURRENT_NOW, &val)) {
-		if (val.intval < -25000 )
+		if (val.intval > 25000 )
 			return LGE_FG_CHARGING;
 		else
 			return LGE_FG_DISCHARGING;

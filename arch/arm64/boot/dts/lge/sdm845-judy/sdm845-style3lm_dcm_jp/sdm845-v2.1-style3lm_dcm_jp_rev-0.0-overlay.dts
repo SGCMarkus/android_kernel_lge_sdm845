@@ -17,8 +17,8 @@
 #include "sdm845-style3lm_dcm_jp.dtsi"
 #include "../sdm845-style3lm_common/sdm845-style3lm_common-sar-atmf04.dtsi"
 #include "../sdm845-judy_common/sdm845-judy_common-usb_ext_pulldown_ctrl.dtsi"
-#include "../sdm845-camera/sdm845-storm-camera.dtsi"
 #include "sdm845-style3lm_dcm_jp-sound.dtsi"
+#include "../sdm845-camera/sdm845-style3lm-camera.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. SDM845 V2.1 - LG Electronics, style3lm_dcm_jp rev_0.0";

@@ -95,10 +95,11 @@ module_init(dp_noti_class_init);
 module_exit(dp_noti_class_exit);
 
 #else // DP support
-
+#include <linux/string.h>
 #include "lge_dp.h"
 #include "lge_dp_def.h"
 #include "dp_display.h"
+#include "dp_parser.h"
 
 static ssize_t lge_dp_hpd_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
@@ -116,6 +117,79 @@ static ssize_t lge_dp_hpd_show(struct device *dev,
 }
 static DEVICE_ATTR(dp_hpd, S_IRUGO, lge_dp_hpd_show, NULL);
 
+extern struct dp_aux_cfg *lge_dp_display_parser_aux_cfg(struct dp_display *dp_display);
+
+static ssize_t lge_dp_aux_cfg1_show(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	struct dp_display *dp;
+	int i = 0;
+	struct dp_aux_cfg *cfg = NULL;
+
+	dp = dev_get_drvdata(dev);
+
+	if (!dp) {
+		pr_err("dp is NULL\n");
+		return -EINVAL;
+	}
+
+	cfg = lge_dp_display_parser_aux_cfg(dp);
+	if (!cfg) {
+		pr_err("aux_cfg is NULL\n");
+		return -EINVAL;
+	}
+	buf[0] = '\0';
+	for (i = 0; i < cfg[PHY_AUX_CFG1].cfg_cnt; ++i)
+		sprintf(buf+strlen(buf), "0x%02X ", cfg[PHY_AUX_CFG1].lut[i]);
+	return strlen(buf);
+}
+
+static ssize_t lge_dp_aux_cfg1_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	struct dp_display *dp;
+	int i = 0;
+	struct dp_aux_cfg *cfg = NULL;
+	u32 lut[DP_AUX_CFG_MAX_VALUE_CNT] = {0, };
+	u32 cnt = 0;
+	char *tmp1 = NULL;
+	char *tmp2 = NULL;
+	char *tok = NULL;
+	int error = 0;
+
+	dp = dev_get_drvdata(dev);
+
+	if (!dp) {
+		pr_err("dp is NULL\n");
+		return -EINVAL;
+	}
+
+	cfg = lge_dp_display_parser_aux_cfg(dp);
+	if (!cfg) {
+		pr_err("aux_cfg is NULL\n");
+		return -EINVAL;
+	}
+
+	tmp1 = tmp2 = kstrdup(buf, GFP_KERNEL);
+	while ((tok = strsep(&tmp2, " ")) != NULL) {
+		if (kstrtoint(tok, 16, &lut[cnt++])) {
+			error = 1;
+			break;
+		}
+	}
+	kfree(tmp1);
+
+	if (!error) {
+		cfg[PHY_AUX_CFG1].cfg_cnt = cnt>DP_AUX_CFG_MAX_VALUE_CNT?DP_AUX_CFG_MAX_VALUE_CNT:cnt;
+		for (i = 0; i < cfg[PHY_AUX_CFG1].cfg_cnt; ++i)
+			cfg[PHY_AUX_CFG1].lut[i] = lut[i];
+	} else {
+		pr_err("invalid parameters");
+	}
+
+	return strnlen(buf, PAGE_SIZE);
+}
+
+static DEVICE_ATTR(dp_aux_cfg1, S_IRUGO|S_IWUSR, lge_dp_aux_cfg1_show, lge_dp_aux_cfg1_store);
+
 static void lge_dp_create_sysfs(struct dp_display *dp_display)
 {
 	static struct class *class_dp = NULL;
@@ -132,6 +206,8 @@ static void lge_dp_create_sysfs(struct dp_display *dp_display)
 					pr_err("Failed to create dev(dp_sysfs_dev)!\n");
 				} else {
 					if ((device_create_file(dp_sysfs_dev, &dev_attr_dp_hpd)) < 0)
+						pr_err("add dp_hpd node failed!\n");
+					if ((device_create_file(dp_sysfs_dev, &dev_attr_dp_aux_cfg1)) < 0)
 						pr_err("add dp_hpd node failed!\n");
 				}
 			}

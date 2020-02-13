@@ -6,6 +6,19 @@
 #include <linux/of_gpio.h>
 #include <linux/power_supply.h>
 
+#define OF_PROP_READ_U32(dnode, buf, prop, rc)                                \
+do {                                                                          \
+	if (rc)                                                                   \
+		break;                                                                \
+                                                                              \
+	rc = of_property_read_u32(dnode, "lge," prop, &buf);                      \
+                                                                              \
+	if (rc)                                                                   \
+		pr_info("VENEER: Error reading " #prop " property rc = %d\n", rc);    \
+	else                                                                      \
+		pr_debug("VENEER: %s : %d\n", prop, buf);                             \
+} while (0)
+
 #define OF_PROP_READ_S32(dnode, buf, prop, rc)						\
 do {											\
 	if (rc)										\
@@ -63,6 +76,70 @@ enum voter_type {
 	VOTER_TYPE_HVDCP,
 
 	/* add 'veneer_voter_type's here */
+};
+
+enum veneer_feed_id {
+    VENEER_FEED_ACTM_MODE,
+    VENEER_FEED_ACTM_MODE_NOW,
+    VENEER_FEED_ACTM_LCDON_TEMP_OFFSET,
+    VENEER_FEED_ACTM_SENSOR_WIRED,
+    VENEER_FEED_ACTM_SENSOR_WIRELESS,
+    VENEER_FEED_ACTM_MAX_HOLD_CRITERIA_WIRED_0,
+    VENEER_FEED_ACTM_MAX_HOLD_CRITERIA_WIRED_1,
+    VENEER_FEED_ACTM_MAX_HOLD_CRITERIA_WIRED_2,
+    VENEER_FEED_ACTM_MAX_HOLD_CRITERIA_WIRELESS_0,
+    VENEER_FEED_ACTM_MAX_HOLD_CRITERIA_WIRELESS_1,
+    VENEER_FEED_ACTM_MAX_HOLD_CRITERIA_WIRELESS_2,
+    VENEER_FEED_ACTM_TEMPOFFS_WIRED_0,
+    VENEER_FEED_ACTM_TEMPOFFS_WIRED_1,
+    VENEER_FEED_ACTM_TEMPOFFS_WIRED_2,
+    VENEER_FEED_ACTM_TEMPOFFS_WIRELESS_0,
+    VENEER_FEED_ACTM_TEMPOFFS_WIRELESS_1,
+    VENEER_FEED_ACTM_TEMPOFFS_WIRELESS_2,
+    VENEER_FEED_ACTM_MAX_FCC_PPS,
+    VENEER_FEED_ACTM_MAX_FCC_QC3,
+    VENEER_FEED_ACTM_MAX_FCC_QC2,
+    VENEER_FEED_ACTM_CURRENT_WIRED_0,
+    VENEER_FEED_ACTM_CURRENT_WIRED_1,
+    VENEER_FEED_ACTM_CURRENT_WIRED_2,
+    VENEER_FEED_ACTM_CURRENT_CP_PPS,
+    VENEER_FEED_ACTM_CURRENT_CP_QC30,
+    VENEER_FEED_ACTM_CURRENT_EPP_0,
+    VENEER_FEED_ACTM_CURRENT_EPP_1,
+    VENEER_FEED_ACTM_CURRENT_EPP_2,
+    VENEER_FEED_ACTM_CURRENT_BPP_0,
+    VENEER_FEED_ACTM_CURRENT_BPP_1,
+    VENEER_FEED_ACTM_CURRENT_BPP_2,
+
+    VENEER_FEED_STATUS_RAW,
+    VENEER_FEED_CAPACITY,
+    VENEER_FEED_CAPACITY_RAW,
+    VENEER_FEED_CHARGER_TYPE,
+    VENEER_FEED_SENSOR_BATT,
+    VENEER_FEED_SENSOR_VTS,
+    VENEER_FEED_SENSOR_SKIN,
+    VENEER_FEED_FCC,
+    VENEER_FEED_IDC,
+    VENEER_FEED_VDC,
+    VENEER_FEED_QNOVO_DIAG_STAGE,
+    VENEER_FEED_IRC_ENABLED,
+    VENEER_FEED_IRC_RESISTANCE,
+
+    VENEER_FEED_CP_STATUS1,
+    VENEER_FEED_CP_STATUS2,
+    VENEER_FEED_PD_ACTIVE,
+    VENEER_FEED_SMB_EN_REASON,
+
+    VENEER_FEED_LCDON_STATUS,
+    VENEER_FEED_POWER_SUPPLY_CHANGED,
+
+	VENEER_FEED_BATT_PROFILE_FCC_VOTER,
+	VENEER_FEED_BATT_PROFILE_FV_VOTER,
+
+	VENEER_FEED_POWER_NOW,
+	VENEER_FEED_BSM_TTF,
+
+    VENEER_FEED_MAX,
 };
 
 struct voter_entry {
@@ -165,6 +242,8 @@ enum charging_supplier { // Exclusive charging types
 
 	CHARGING_SUPPLY_WIRELESS_5W,
 	CHARGING_SUPPLY_WIRELESS_9W,
+
+	CHARGING_SUPPLY_MAX,
 };
 
 enum charging_step {
@@ -346,10 +425,25 @@ bool charging_ceiling_create(struct device_node* dnode);
 int  charging_time_remains(int rawsoc);
 void charging_time_clear(void);
 void charging_time_destroy(void);
+#ifdef CONFIG_LGE_PM_TTF_V3
+bool charging_time_update(enum charging_supplier charger, bool reloading);
+bool charging_time_create(struct device_node* dnode, int fullraw,
+	int (*get_veneer_param)(int id, int *value),
+	int (*set_veneer_param)(int id, int value));
+#else
+#ifdef CONFIG_LGE_PM_TTF_V2
+bool charging_time_update(enum charging_supplier charger, bool reloading);
+bool charging_time_create(struct device_node* dnode, int fullraw,
+	bool (*feed_charging_time)(int* power, int* rawsoc, int* bcc_ttf),
+	void (*back_charging_time)(int power));
+#else
 bool charging_time_update(enum charging_supplier charger);
 bool charging_time_create(struct device_node* dnode, int fullraw,
 	bool (*feed_charging_time)(int* power),
 	void (*back_charging_time)(int power));
+#endif  // CONFIG_LGE_PM_TTF_V2
+#endif  // CONFIG_LGE_PM_TTF_V3
+
 
 void protection_battemp_monitor(void);
 void protection_battemp_destroy(void);
@@ -373,6 +467,14 @@ void protection_usbio_update(bool presence_usb);
 void protection_usbio_destroy(void);
 bool protection_usbio_create(struct device_node* dnode);
 
+#ifdef CONFIG_LGE_PM_ACTM
+void actm_trigger(void);
+void actm_destroy(void);
+bool actm_create(struct device_node* dnode,
+	int (*get_veneer_param)(int id, int *value),
+	int (*set_veneer_param)(int id, int value));
+#endif
+
 enum veneer_bootmode unified_bootmode_type(void);
 enum charger_usbid unified_bootmode_usbid(void);
 const char* unified_bootmode_operator(void);
@@ -389,5 +491,8 @@ bool unified_nodes_create(struct device_node* dnode);
 
 void unified_sysfs_destroy(void);
 bool unified_sysfs_create(struct device_node* dnode);
+
+int get_veneer_param(int id, int *val);
+int set_veneer_param(int id, int val);
 
 #endif

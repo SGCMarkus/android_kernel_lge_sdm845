@@ -4,3 +4,31 @@ config LGE_PM_VENEER_PSY
 	default n
 	help
 	  Say Y here enable support lge veneer psy
+
+config LGE_PM_ACTM
+	bool "LGE Adaptive Charging Thermal Mitigation Engine"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y here enable support lge actm
+
+config LGE_PM_TTF_V2
+	bool "LGE Time-To-Full Algorithm V2"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y here enable support lge ttf v2
+
+config LGE_PM_TTF_V3
+	bool "LGE Time-To-Full Algorithm V3"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y here enable support lge ttf v3
+
+config LGE_PM_QNOVO_QNS
+	bool "QNOVO QNS driver"
+	depends on LGE_PM
+	default n
+	help
+	  Say Y here to enable the Qnovo QNS solution.

@@ -88,6 +88,10 @@ ifeq ($(CONFIG_MACH_SDM845_JUDYP_SPR),y)
 DTS_TARGET := sdm845-judyp_spr
 endif
 
+ifeq ($(CONFIG_MACH_SDM845_CAYMANSLM),y)
+DTS_TARGET := sdm845-caymanslm
+endif
+
 ifeq ($(CONFIG_MACH_SDM845_STYLE3LM_DCM_JP),y)
 DTS_TARGET := sdm845-style3lm_dcm_jp
 endif

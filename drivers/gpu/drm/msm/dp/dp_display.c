@@ -1381,6 +1381,24 @@ static int dp_display_config_hdr(struct dp_display *dp_display,
 	return rc;
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+struct dp_aux_cfg *lge_dp_display_parser_aux_cfg(struct dp_display *dp_display)
+{
+	struct dp_display_private *dp = NULL;
+
+	if (!dp_display) {
+		pr_err("invalid input\n");
+		return NULL;
+	}
+
+	dp = container_of(dp_display, struct dp_display_private, dp_display);
+	if (dp->parser)
+		return dp->parser->aux_cfg;
+	else
+		return NULL;
+}
+#endif
+
 static int dp_display_create_workqueue(struct dp_display_private *dp)
 {
 	dp->wq = create_singlethread_workqueue("drm_dp");

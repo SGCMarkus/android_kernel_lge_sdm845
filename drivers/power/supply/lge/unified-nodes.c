@@ -32,6 +32,7 @@ struct unified_nodes {
 	const char*			charging_step;
 	bool				charging_showcase;
 	void*				charging_completed;
+	bool				status_lcd;
 	bool				fake_battery;
 	bool				fake_sdpmax;
 	bool				fake_hvdcp;
@@ -47,6 +48,21 @@ struct unified_nodes {
 	// Supporting features : used for verifying device
 	int				support_fastpl;
 	bool				support_fastchg;
+
+	struct __actm {
+		int mode;
+		int sensor_type[2];
+		int lcdon_temp_offset;
+		int max_hold_criteria_wired[3];
+		int max_hold_criteria_wireless[3];
+		int tempoffs_wired[3];
+		int tempoffs_wireless[3];
+		int power_epp[3];
+		int power_bpp[3];
+		int current_wired[3];
+		int wired_max_fcc[3];
+		int current_cp[2];
+	} actm;
 };
 
 static void voter_unregister(struct unified_nodes* uninodes) {
@@ -131,6 +147,205 @@ static ssize_t voter_show(struct voter_entry* voter, char* buf) {
 	return snprintf(buf, PAGE_SIZE, "%d", voter->limit);
 }
 
+static bool unified_nodes_actm_dt(
+	struct device_node* devnode, struct unified_nodes* uninodes)
+{
+	struct device_node* dnode = devnode->parent;
+	struct device_node* devnode_actm;
+	struct device_node* devnode_bvp;
+
+	int ret = 0;
+	bool actm_enable = false;
+	int actm_array_size = 0;
+	int actm_array[3] = {0, };
+
+	devnode_actm = of_find_node_by_name(dnode, "adaptive-charging-thermal");
+	devnode_bvp = of_find_node_by_name(dnode, "protection-batvolt");
+
+	actm_enable = of_property_read_bool(devnode_actm, "lge,actm-enable");
+	if (actm_enable) {
+		ret = of_property_read_s32(devnode_actm,
+			"lge,actm-default-mode", &uninodes->actm.mode);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,actm-default-mode'(%d)\n", ret);
+			uninodes->actm.mode = -2;
+		}
+
+		ret = of_property_read_s32(devnode_actm,
+			"lge,actm-lcdon-temp-offset", &uninodes->actm.lcdon_temp_offset);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,actm-lcdon-temp-offset'(%d)\n", ret);
+			uninodes->actm.lcdon_temp_offset = 0;
+		}
+
+		ret = of_property_read_u32(devnode_actm,
+			"lge,wired-therm-sensor-type", &uninodes->actm.sensor_type[0]);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wired-therm-sensor-type'(%d)\n", ret);
+			uninodes->actm.sensor_type[0] = 3;
+		}
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wired-max-hold-criteria", actm_array, 3);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wired-max-hold-criteria'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.max_hold_criteria_wired[0] = actm_array[0];
+		uninodes->actm.max_hold_criteria_wired[1] = actm_array[1];
+		uninodes->actm.max_hold_criteria_wired[2] = actm_array[2];
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wireless-max-hold-criteria", actm_array, 3);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wireless-max-hold-criteria'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.max_hold_criteria_wireless[0] = actm_array[0];
+		uninodes->actm.max_hold_criteria_wireless[1] = actm_array[1];
+		uninodes->actm.max_hold_criteria_wireless[2] = actm_array[2];
+
+		ret = of_property_read_u32(devnode_actm,
+			"lge,wired-stage-size", &actm_array_size);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wired-stage-size'(%d)\n", ret);
+			actm_array_size = 3;
+		}
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wired-temp-offset", actm_array, actm_array_size);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wired-temp-offset'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.tempoffs_wired[0] = actm_array[0];
+		uninodes->actm.tempoffs_wired[1] = actm_array[1];
+		uninodes->actm.tempoffs_wired[2] = actm_array[2];
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wired-current-limit-ma", actm_array, actm_array_size);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wired-current-limit-ma'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.current_wired[0] = actm_array[0];
+		uninodes->actm.current_wired[1] = actm_array[1];
+		uninodes->actm.current_wired[2] = actm_array[2];
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wired-curr-cp-limit-ma", actm_array, 2);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wired-curr-cp-limit-ma'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+		}
+		uninodes->actm.current_cp[0] = actm_array[0];
+		uninodes->actm.current_cp[1] = actm_array[1];
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wired-max-fcc-ma", actm_array, 3);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wired-max-fcc-ma'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.wired_max_fcc[0] = actm_array[0];
+		uninodes->actm.wired_max_fcc[1] = actm_array[1];
+		uninodes->actm.wired_max_fcc[2] = actm_array[2];
+
+		ret = of_property_read_u32(devnode_actm,
+			"lge,wireless-therm-sensor-type", &uninodes->actm.sensor_type[1]);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wireless-therm-sensor-type'(%d)\n", ret);
+			uninodes->actm.sensor_type[1] = 3;
+		}
+
+		ret = of_property_read_u32(devnode_actm,
+			"lge,wireless-stage-size", &actm_array_size);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wireless-stage-size'(%d)\n", ret);
+			actm_array_size = 3;
+		}
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wireless-temp-offset", actm_array, actm_array_size);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wireless-epp-power-limit-mw'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.tempoffs_wireless[0] = actm_array[0];
+		uninodes->actm.tempoffs_wireless[1] = actm_array[1];
+		uninodes->actm.tempoffs_wireless[2] = actm_array[2];
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wireless-epp-power-limit-mw", actm_array, actm_array_size);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wireless-epp-power-limit-mw'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.power_epp[0] = actm_array[0];
+		uninodes->actm.power_epp[1] = actm_array[1];
+		uninodes->actm.power_epp[2] = actm_array[2];
+
+		ret = of_property_read_u32_array(devnode_actm,
+			"lge,wireless-bpp-power-limit-mw", actm_array, actm_array_size);
+		if (ret != 0) {
+			pr_uninode("Failed to read 'lge,wireless-bpp-power-limit-mw'(%d)\n", ret);
+			actm_array[0] = 0;
+			actm_array[1] = 0;
+			actm_array[2] = 0;
+		}
+		uninodes->actm.power_bpp[0] = actm_array[0];
+		uninodes->actm.power_bpp[1] = actm_array[1];
+		uninodes->actm.power_bpp[2] = actm_array[2];
+	}
+	else {
+		uninodes->actm.mode = -2;
+		uninodes->actm.lcdon_temp_offset = 0;
+		uninodes->actm.max_hold_criteria_wired[0] = 0;
+		uninodes->actm.max_hold_criteria_wired[1] = 0;
+		uninodes->actm.max_hold_criteria_wired[2] = 0;
+		uninodes->actm.max_hold_criteria_wireless[0] = 0;
+		uninodes->actm.max_hold_criteria_wireless[1] = 0;
+		uninodes->actm.max_hold_criteria_wireless[2] = 0;
+		uninodes->actm.tempoffs_wired[0] = 0;
+		uninodes->actm.tempoffs_wired[1] = 0;
+		uninodes->actm.tempoffs_wired[2] = 0;
+		uninodes->actm.tempoffs_wireless[0] = 0;
+		uninodes->actm.tempoffs_wireless[1] = 0;
+		uninodes->actm.tempoffs_wireless[2] = 0;
+		uninodes->actm.wired_max_fcc[0] = 0;
+		uninodes->actm.wired_max_fcc[1] = 0;
+		uninodes->actm.wired_max_fcc[2] = 0;
+		uninodes->actm.current_wired[0] = 0;
+		uninodes->actm.current_wired[1] = 0;
+		uninodes->actm.current_wired[2] = 0;
+		uninodes->actm.current_cp[0] = 0;
+		uninodes->actm.current_cp[1] = 0;
+		uninodes->actm.power_epp[0] = 0;
+		uninodes->actm.power_epp[1] = 0;
+		uninodes->actm.power_epp[2] = 0;
+		uninodes->actm.power_bpp[0] = 0;
+		uninodes->actm.power_bpp[1] = 0;
+		uninodes->actm.power_bpp[2] = 0;
+	}
+
+	return true;
+}
+
 static bool unified_nodes_devicetree(struct device_node* devnode, struct unified_nodes* uninodes) {
 	int buf = 0;
 
@@ -146,6 +361,35 @@ static bool unified_nodes_devicetree(struct device_node* devnode, struct unified
 	return uninodes->devnode_restrictchg
 		 && uninodes->devnode_fakebatt
 		 && uninodes->devnode_battage;
+}
+
+static ssize_t status_lcd_store(struct device* dev, struct device_attribute* attr, const char* buf, size_t size) {
+	struct unified_nodes*   ref;
+	bool*           ori;
+	int         new;
+
+	pr_uninode("Storing %s\n", buf);
+
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		ori = &ref->status_lcd;
+
+		sscanf(buf, "%d", &new);
+		new = !!new;
+		if (*ori != new)
+			*ori = new;
+	}
+
+	return size;
+}
+static ssize_t status_lcd_show(struct device* dev, struct device_attribute* attr, char* buf) {
+	int ret = 0;
+
+	if (dev && dev->platform_data) {
+		ret = ((struct unified_nodes*)dev->platform_data)->status_lcd;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
 }
 
 static int charging_restriction_limit(struct device_node* parent,
@@ -223,6 +467,9 @@ static ssize_t charging_restriction_store(struct device* dev, struct device_attr
 			if (!strncasecmp(buf, iter->name, space-buf)) {
 				int limit = charging_restriction_limit(uninodes->devnode_restrictchg,
 					iter->name, vote_title(iter->type), cmd);
+
+				if (!strcmp(iter->name, "LCD"))
+					uninodes->status_lcd = !(limit == VOTE_TOTALLY_RELEASED);
 
 				pr_uninode("%s votes %d to %s\n", iter->name, limit, vote_title(iter->type));
 				veneer_voter_set(iter, limit);
@@ -860,11 +1107,352 @@ static ssize_t support_fastchg_show(struct device* dev, struct device_attribute*
 	return snprintf(buf, PAGE_SIZE, "%d", ret);
 }
 
+
+#define MAX_UNIFIED_NODES_SIZE	30
+static struct device_attribute unified_nodes_dattrs[];
+static int find_actm_attr_id(struct device_attribute* attr)
+{
+	int i = 0;
+
+	for (i = 0; i < MAX_UNIFIED_NODES_SIZE; i++)
+		if (attr == &unified_nodes_dattrs[i])
+			break;
+
+	if (i == MAX_UNIFIED_NODES_SIZE)
+		return -1;
+
+	return i;
+}
+
+static ssize_t actm_mode_store(
+	struct device* dev, struct device_attribute* attr, const char* buf, size_t size)
+{
+	struct unified_nodes *ref = NULL;
+	int *ori = NULL;
+	int new = -9999;
+
+	pr_uninode("Storing %s\n", buf);
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		ori = &ref->actm.mode;
+
+		sscanf(buf, "%d", &new);
+		if (*ori != new) {
+			if (new == -1 ||
+				new ==  0 || new ==  1 || new ==  2 || new ==  3 ||
+				new == 10 || new == 11 || new == 12 || new == 13 ||
+				new == 20 || new == 21 || new == 22 || new == 23 ||
+				new == 30 || new == 31 || new == 32 || new == 33 )
+				*ori = new;
+		}
+	}
+
+	return size;
+}
+
+static ssize_t actm_mode_show(
+	struct device* dev, struct device_attribute* attr, char* buf)
+{
+	int ret = -2;
+
+	if (dev && dev->platform_data)
+		ret = ((struct unified_nodes*)dev->platform_data)->actm.mode;
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
+}
+
+static ssize_t actm_lcdon_store(
+	struct device* dev, struct device_attribute* attr, const char* buf, size_t size)
+{
+	struct unified_nodes *ref = NULL;
+	int *ori = NULL;
+	int new = -9999;
+
+	pr_uninode("Storing %s\n", buf);
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		ori = &ref->actm.lcdon_temp_offset;
+
+		sscanf(buf, "%d", &new);
+		if (*ori != new) {
+			*ori = new;
+		}
+	}
+
+	return size;
+}
+
+static ssize_t actm_lcdon_show(
+	struct device* dev, struct device_attribute* attr, char* buf)
+{
+	int ret = -2;
+	struct unified_nodes* ref = NULL;
+
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		if (ref->status_lcd)
+			ret = ref->actm.lcdon_temp_offset;
+		else
+			ret = 0;
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
+}
+
+
+static ssize_t actm_sensor_store(
+	struct device* dev, struct device_attribute* attr, const char* buf, size_t size)
+{
+	struct unified_nodes *ref = NULL;
+	int *ori = NULL;
+	int new = -9999;
+	int id = find_actm_attr_id(attr);
+
+	pr_uninode("Storing %s\n", buf);
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+
+		switch (id) {
+			case 2: ori = &ref->actm.sensor_type[0]; break;
+			case 3: ori = &ref->actm.sensor_type[1]; break;
+		}
+
+		sscanf(buf, "%d", &new);
+		if (*ori != new) {
+			if (new == 1 || new == 2 || new == 3)
+				*ori = new;
+		}
+	}
+
+	return size;
+}
+
+static ssize_t actm_sensor_show(
+	struct device* dev, struct device_attribute* attr, char* buf)
+{
+	struct unified_nodes *ref = NULL;
+	int ret = -2, id = find_actm_attr_id(attr);
+
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		switch (id) {
+			case 2: ret = ref->actm.sensor_type[0]; break;
+			case 3: ret = ref->actm.sensor_type[1]; break;
+		}
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
+}
+
+static ssize_t actm_holddeg_store(
+	struct device* dev, struct device_attribute* attr, const char* buf, size_t size)
+{
+	struct unified_nodes *ref = NULL;
+	int *ori = NULL;
+	int new = -9999;
+	int id = find_actm_attr_id(attr);
+
+	pr_uninode("id = %d, Storing %s\n", id, buf);
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+
+		switch (id) {
+			case 4: ori = &ref->actm.max_hold_criteria_wired[0]; break;
+			case 5: ori = &ref->actm.max_hold_criteria_wired[1]; break;
+			case 6: ori = &ref->actm.max_hold_criteria_wired[2]; break;
+			case 7: ori = &ref->actm.max_hold_criteria_wireless[0]; break;
+			case 8: ori = &ref->actm.max_hold_criteria_wireless[1]; break;
+			case 9: ori = &ref->actm.max_hold_criteria_wireless[2]; break;
+		}
+
+		sscanf(buf, "%d", &new);
+		if (*ori != new && new > 0)
+			*ori = new;
+	}
+
+	return size;
+}
+
+static ssize_t actm_holddeg_show(
+	struct device* dev, struct device_attribute* attr, char* buf)
+{
+	struct unified_nodes *ref = NULL;
+	int ret = -9999, id = find_actm_attr_id(attr);
+
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		switch (id) {
+			case 4: ret = ref->actm.max_hold_criteria_wired[0]; break;
+			case 5: ret = ref->actm.max_hold_criteria_wired[1]; break;
+			case 6: ret = ref->actm.max_hold_criteria_wired[2]; break;
+			case 7: ret = ref->actm.max_hold_criteria_wireless[0]; break;
+			case 8: ret = ref->actm.max_hold_criteria_wireless[1]; break;
+			case 9: ret = ref->actm.max_hold_criteria_wireless[2]; break;
+		}
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
+}
+
+static ssize_t actm_tempoffs_store(
+	struct device* dev, struct device_attribute* attr, const char* buf, size_t size)
+{
+	struct unified_nodes *ref = NULL;
+	int *ori = NULL;
+	int new = -9999;
+	int id = find_actm_attr_id(attr);
+
+	pr_uninode("id = %d, Storing %s\n", id, buf);
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+
+		switch (id) {
+			case 10: ori = &ref->actm.tempoffs_wired[0]; break;
+			case 11: ori = &ref->actm.tempoffs_wired[1]; break;
+			case 12: ori = &ref->actm.tempoffs_wired[2]; break;
+			case 13: ori = &ref->actm.tempoffs_wireless[0]; break;
+			case 14: ori = &ref->actm.tempoffs_wireless[1]; break;
+			case 15: ori = &ref->actm.tempoffs_wireless[2]; break;
+		}
+
+		sscanf(buf, "%d", &new);
+		if (*ori != new)
+			*ori = new;
+	}
+
+	return size;
+}
+
+static ssize_t actm_tempoffs_show(
+	struct device* dev, struct device_attribute* attr, char* buf)
+{
+	struct unified_nodes *ref = NULL;
+	int ret = -9999, id = find_actm_attr_id(attr);
+
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		switch (id) {
+			case 10: ret = ref->actm.tempoffs_wired[0]; break;
+			case 11: ret = ref->actm.tempoffs_wired[1]; break;
+			case 12: ret = ref->actm.tempoffs_wired[2]; break;
+			case 13: ret = ref->actm.tempoffs_wireless[0]; break;
+			case 14: ret = ref->actm.tempoffs_wireless[1]; break;
+			case 15: ret = ref->actm.tempoffs_wireless[2]; break;
+		}
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
+}
+
+static ssize_t actm_current_store(
+	struct device* dev, struct device_attribute* attr, const char* buf, size_t size)
+{
+	struct unified_nodes *ref = NULL;
+	int *ori = NULL;
+	int new = -9999;
+	int id = find_actm_attr_id(attr);
+
+	pr_uninode("id = %d, Storing %s\n", id, buf);
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+
+		switch (id) {
+			case 16: ori = &ref->actm.current_wired[0]; break;
+			case 17: ori = &ref->actm.current_wired[1]; break;
+			case 18: ori = &ref->actm.current_wired[2]; break;
+			case 19: ori = &ref->actm.power_epp[0]; break;
+			case 20: ori = &ref->actm.power_epp[1]; break;
+			case 21: ori = &ref->actm.power_epp[2]; break;
+			case 22: ori = &ref->actm.power_bpp[0]; break;
+			case 23: ori = &ref->actm.power_bpp[1]; break;
+			case 24: ori = &ref->actm.power_bpp[2]; break;
+			case 25: ori = &ref->actm.current_cp[0]; break;
+			case 26: ori = &ref->actm.current_cp[1]; break;
+			case 27: ori = &ref->actm.wired_max_fcc[0]; break;
+			case 28: ori = &ref->actm.wired_max_fcc[1]; break;
+			case 29: ori = &ref->actm.wired_max_fcc[2]; break;
+		}
+
+		sscanf(buf, "%d", &new);
+		if (*ori != new && new > 0)
+			*ori = new;
+	}
+
+	return size;
+}
+
+static ssize_t actm_current_show(
+	struct device* dev, struct device_attribute* attr, char* buf)
+{
+	struct unified_nodes *ref = NULL;
+	int ret = -9999, id = find_actm_attr_id(attr);
+
+	if (dev && dev->platform_data) {
+		ref = (struct unified_nodes*)dev->platform_data;
+		switch (id) {
+			case 16: ret = ref->actm.current_wired[0]; break;
+			case 17: ret = ref->actm.current_wired[1]; break;
+			case 18: ret = ref->actm.current_wired[2]; break;
+			case 19: ret = ref->actm.power_epp[0]; break;
+			case 20: ret = ref->actm.power_epp[1]; break;
+			case 21: ret = ref->actm.power_epp[2]; break;
+			case 22: ret = ref->actm.power_bpp[0]; break;
+			case 23: ret = ref->actm.power_bpp[1]; break;
+			case 24: ret = ref->actm.power_bpp[2]; break;
+			case 25: ret = ref->actm.current_cp[0]; break;
+			case 26: ret = ref->actm.current_cp[1]; break;
+			case 27: ret = ref->actm.wired_max_fcc[0]; break;
+			case 28: ret = ref->actm.wired_max_fcc[1]; break;
+			case 29: ret = ref->actm.wired_max_fcc[2]; break;
+		}
+	}
+
+	return snprintf(buf, PAGE_SIZE, "%d", ret);
+}
+
 static struct device_attribute unified_nodes_dattrs [] = {
+/*  0 */__ATTR(actm_mode,                0664, actm_mode_show,     actm_mode_store    ),
+/*  1 */__ATTR(actm_lcdon_offset,        0664, actm_lcdon_show,    actm_lcdon_store   ),
+/*  2 */__ATTR(actm_sensor_wired,        0664, actm_sensor_show,   actm_sensor_store  ),
+/*  3 */__ATTR(actm_sensor_wireless,     0664, actm_sensor_show,   actm_sensor_store  ),
+
+/*  4 */__ATTR(actm_holddeg_wired_0,     0664, actm_holddeg_show,  actm_holddeg_store ),
+/*  5 */__ATTR(actm_holddeg_wired_1,     0664, actm_holddeg_show,  actm_holddeg_store ),
+/*  6 */__ATTR(actm_holddeg_wired_2,     0664, actm_holddeg_show,  actm_holddeg_store ),
+/*  7 */__ATTR(actm_holddeg_wireless_0,  0664, actm_holddeg_show,  actm_holddeg_store ),
+/*  8 */__ATTR(actm_holddeg_wireless_1,  0664, actm_holddeg_show,  actm_holddeg_store ),
+/*  9 */__ATTR(actm_holddeg_wireless_2,  0664, actm_holddeg_show,  actm_holddeg_store ),
+
+/* 10 */__ATTR(actm_tempoffs_wired_0,    0664, actm_tempoffs_show, actm_tempoffs_store),
+/* 11 */__ATTR(actm_tempoffs_wired_1,    0664, actm_tempoffs_show, actm_tempoffs_store),
+/* 12 */__ATTR(actm_tempoffs_wired_2,    0664, actm_tempoffs_show, actm_tempoffs_store),
+/* 13 */__ATTR(actm_tempoffs_wireless_0, 0664, actm_tempoffs_show, actm_tempoffs_store),
+/* 14 */__ATTR(actm_tempoffs_wireless_1, 0664, actm_tempoffs_show, actm_tempoffs_store),
+/* 15 */__ATTR(actm_tempoffs_wireless_2, 0664, actm_tempoffs_show, actm_tempoffs_store),
+
+/* 16 */__ATTR(actm_current_wired_0,     0664, actm_current_show,  actm_current_store ),
+/* 17 */__ATTR(actm_current_wired_1,     0664, actm_current_show,  actm_current_store ),
+/* 18 */__ATTR(actm_current_wired_2,     0664, actm_current_show,  actm_current_store ),
+/* 19 */__ATTR(actm_power_epp_0,         0664, actm_current_show,  actm_current_store ),
+/* 20 */__ATTR(actm_power_epp_1,         0664, actm_current_show,  actm_current_store ),
+/* 21 */__ATTR(actm_power_epp_2,         0664, actm_current_show,  actm_current_store ),
+/* 22 */__ATTR(actm_power_bpp_0,         0664, actm_current_show,  actm_current_store ),
+/* 23 */__ATTR(actm_power_bpp_1,         0664, actm_current_show,  actm_current_store ),
+/* 24 */__ATTR(actm_power_bpp_2,         0664, actm_current_show,  actm_current_store ),
+/* 25 */__ATTR(actm_curr_cp_pps,         0664, actm_current_show,  actm_current_store ),
+/* 26 */__ATTR(actm_curr_cp_qc30,        0664, actm_current_show,  actm_current_store ),
+
+/* 27 */__ATTR(actm_max_fcc_pps,         0664, actm_current_show,  actm_current_store ),
+/* 28 */__ATTR(actm_max_fcc_qc3,         0664, actm_current_show,  actm_current_store ),
+/* 29 */__ATTR(actm_max_fcc_qc2,         0664, actm_current_show,  actm_current_store ),
+
+/* 30 ==> must check "#define MAX_UNIFIED_NODES_SIZE 30" */
+
 	__ATTR(thermald_iusb,		0664, thermald_iusb_show,		thermald_iusb_store),
 	__ATTR(thermald_ibat,		0664, thermald_ibat_show,		thermald_ibat_store),
 	__ATTR(thermald_idc,		0664, thermald_idc_show,		thermald_idc_store),
 	__ATTR(thermald_vdc,		0664, thermald_vdc_show,		thermald_vdc_store),
+	__ATTR(status_lcd,		0664, status_lcd_show,			status_lcd_store),
 	__ATTR(charging_restriction,	0664, charging_restriction_show,	charging_restriction_store),
 	__ATTR(charging_enable,		0664, charging_enable_show,		charging_enable_store),
 	__ATTR(charging_step,		0644, charging_step_show,		charging_step_store),
@@ -972,7 +1560,12 @@ bool unified_nodes_create(struct device_node* devnode) {
 		unified_nodes_device.dev.platform_data = uninodes;
 
 	if (!unified_nodes_devicetree(devnode, uninodes)) {
-		pr_uninode("Failed to parse restrictions\n");
+		pr_uninode("Failed to parse unified_nodes_devicetree\n");
+		goto failed;
+	}
+
+	if (!unified_nodes_actm_dt(devnode, uninodes)) {
+		pr_uninode("Failed to parse unified_nodes_actm_dt\n");
 		goto failed;
 	}
 	if (!voter_register(uninodes)) {

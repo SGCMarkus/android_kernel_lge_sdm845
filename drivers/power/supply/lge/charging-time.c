@@ -1,3 +1,6 @@
+#ifndef CONFIG_LGE_PM_TTF_V2
+#ifndef CONFIG_LGE_PM_TTF_V3
+
 #define pr_fmt(fmt) "CHGTIME: %s: " fmt, __func__
 #define pr_chgtime(reason, fmt, ...)			\
 do {							\
@@ -305,9 +308,14 @@ bool charging_time_create(struct device_node* dnode, int fullraw,
 	time_me.profile_remaining[PROFILE_SLOT_COUNT-1] = 0;
 	time_me.runtime_remained[PROFILE_SLOT_COUNT-1] = 0;
 
+	pr_chgtime(ERROR, "success to create charging time V1\n");
+
 	return true;
 
-fail:	pr_chgtime(ERROR, "Failed to create charging time\n");
+fail:
+	pr_chgtime(ERROR, "Failed to create charging time\n");
 	return false;
 }
 
+#endif  /* CONFIG_LGE_PM_TTF_V3 */
+#endif  /* CONFIG_LGE_PM_TTF_V2 */

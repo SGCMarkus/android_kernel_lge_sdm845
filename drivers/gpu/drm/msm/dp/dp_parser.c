@@ -585,6 +585,8 @@ static void lge_dp_parser_dp_use(struct dp_parser *parser)
 	parser->lge_dp_use  = of_property_read_bool(dev->of_node, "lge,dp-use");
 	pr_debug("lge,dp-use parsing successful. dp-use:%d\n", parser->lge_dp_use);
 }
+extern void lge_dp_parser_pre_emphasis_ovwr(struct dp_parser *parser);
+extern void lge_dp_parser_voltage_swing_ovwr(struct dp_parser *parser);
 #endif
 static int dp_parser_parse(struct dp_parser *parser)
 {
@@ -628,6 +630,8 @@ static int dp_parser_parse(struct dp_parser *parser)
 
 #ifdef CONFIG_LGE_DISPLAY_COMMON
 	lge_dp_parser_dp_use(parser);
+	lge_dp_parser_pre_emphasis_ovwr(parser);
+	lge_dp_parser_voltage_swing_ovwr(parser);
 #endif
 err:
 	return rc;

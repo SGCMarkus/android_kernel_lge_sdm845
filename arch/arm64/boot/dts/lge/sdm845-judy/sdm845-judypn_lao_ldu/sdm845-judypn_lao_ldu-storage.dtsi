@@ -22,15 +22,6 @@
 		compatible = "android,firmware";
 		fstab {
 			compatible = "android,fstab";
-			oem {
-				compatible = "android,oem";
-				dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/oem";
-				type = "ext4";
-				mnt_point = "/oem";
-				mnt_flags = "nosuid,nodev,barrier=1,data=ordered,noauto_da_alloc";
-				fsmgr_flags = "wait,slotselect";
-				status = "ok";
-			};
 			OP {
 				compatible = "android,op";
 				dev = "/dev/block/platform/soc/1d84000.ufshc/by-name/OP";

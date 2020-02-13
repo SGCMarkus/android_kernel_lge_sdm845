@@ -26,6 +26,7 @@
 
 #include <linux/power_supply.h>
 #include <linux/regulator/consumer.h>
+#include <linux/async.h>
 
 /* external function */
 extern int broadcast_fc8080_drv_if_isr(void);
@@ -836,20 +837,26 @@ static int tdmb_free_gpio_config(void)
     return 0;
 }
 
-int __broadcast_dev_init broadcast_tdmb_fc8080_drv_init(void)
+static void async_fc8080_drv_init(void *data, async_cookie_t cookie)
 {
     int rc;
 
+    rc = spi_register_driver(&broadcast_tdmb_driver);
+    printk("%s : spi_register_driver(%d)\n", __func__, rc);
+
+    return;
+}
+
+int __broadcast_dev_init broadcast_tdmb_fc8080_drv_init(void)
+{
+
     if(broadcast_tdmb_drv_check_module_init() != OK) {
-        rc = ERROR;
-        return rc;
+        return ERROR;
     }
 
-    rc = spi_register_driver(&broadcast_tdmb_driver);
+    async_schedule(async_fc8080_drv_init, NULL);
 
-    printk("%s!!! %d\n", __func__, rc);
-
-    return rc;
+    return OK;
 }
 
 static void __exit broadcast_tdmb_fc8080_drv_exit(void)

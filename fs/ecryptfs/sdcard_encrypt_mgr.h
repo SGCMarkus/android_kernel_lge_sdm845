@@ -14,7 +14,7 @@
 #include <linux/unistd.h>
 
 #define FEATURE_SDCARD_ENCRYPTION
-#define MAX_MEDIA_EXT_LENGTH 512
+#define MAX_MEDIA_EXT_LENGTH 1024
 #define ANDROID_SYSTEM_SERVER_UID KUIDT_INIT(1000)
 
 extern int ecryptfs_media_file_search(const unsigned char *filename);

@@ -5,7 +5,6 @@
 #include <linux/gpio.h>
 #include <linux/of_gpio.h>
 #include <video/mipi_display.h>
-#include <linux/kallsyms.h>
 #include <linux/lge_panel_notify.h>
 #include <soc/qcom/lge/board_lge.h>
 
@@ -1250,16 +1249,13 @@ void lge_mdss_panel_dead_work(struct work_struct *work)
 
 void lge_mdss_report_panel_dead(void)
 {
-	unsigned int **addr;
 	struct dsi_display *display = NULL;
 	struct sde_connector *conn = NULL;
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
+	display = primary_display;
 
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("primary_display not founded\n");
+	if (!display) {
+		pr_err("display is null\n");
 		return;
 	}
 
@@ -1451,7 +1447,7 @@ static void lge_dsi_panel_create_sysfs(struct dsi_panel *panel)
 		}
 	}
 
-	if (panel->lge.use_irc_ctrl || panel->lge.use_ace_ctrl)
+	if (panel->lge.use_irc_ctrl || panel->lge.use_ace_ctrl || panel->lge.use_hl_mode)
 		lge_brightness_create_sysfs(panel, class_panel);
 	if (panel->lge.use_ambient)
 		lge_ambient_create_sysfs(panel, class_panel);

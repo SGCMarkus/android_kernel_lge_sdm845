@@ -2336,7 +2336,7 @@ static int atmf04_probe(struct i2c_client *client,
   struct atmf04_platform_data *platform_data;
 #endif
   int err = 0;
-#if defined(CONFIG_MACH_SDM845_JUDYLN) && defined(CONFIG_LGE_ONE_BINARY_SKU)
+#if (defined(CONFIG_MACH_SDM845_JUDYLN) || defined(CONFIG_MACH_SDM845_CAYMANSLM)) && defined(CONFIG_LGE_ONE_BINARY_SKU)
   int sku_value = -1;
 #endif
 
@@ -2368,7 +2368,7 @@ static int atmf04_probe(struct i2c_client *client,
     platform_data = client->dev.platform_data;
   }
 #endif
-#if defined(CONFIG_MACH_SDM845_JUDYLN) && defined(CONFIG_LGE_ONE_BINARY_SKU)
+#if (defined(CONFIG_MACH_SDM845_JUDYLN) || defined(CONFIG_MACH_SDM845_CAYMANSLM)) && defined(CONFIG_LGE_ONE_BINARY_SKU)
   ///Check SKU///
   sku_value = lge_get_sku_carrier();
   PINFO("ATMF04 probe, sku_value: %d\n", sku_value);

@@ -83,6 +83,19 @@ bool unified_bootmode_fabproc(void) {
 	return false;
 }
 
+bool unified_bootmode_usermode(void) {
+	switch (bootmode_type) {
+	case BOOTMODE_ANDROID_NORMAL:
+	case BOOTMODE_ETC_CHARGERLOGO:
+	case BOOTMODE_ETC_RECOVERY:
+		return true;
+	default:
+		break;
+	}
+
+	return false;
+}
+
 void unified_bootmode_cable(char* arg) {
 	strncpy(bootmode_cable, arg, LENGTH_STRING_BUFFER-1);
 	unified_bootmode_setup();

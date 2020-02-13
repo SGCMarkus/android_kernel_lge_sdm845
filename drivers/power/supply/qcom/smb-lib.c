@@ -275,8 +275,9 @@ static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
 	int rc, i;
 	u8 apsd_stat, stat;
 	const struct apsd_result *result = &smblib_apsd_results[UNKNOWN];
-
 #ifdef CONFIG_LGE_PM
+	bool is_hvdcp_disabled = false;
+
 	if (workaround_usb_compliance_mode_enabled()) {
 		union power_supply_propval vbus = { 0, };
 
@@ -323,6 +324,17 @@ static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
 		if (result != &smblib_apsd_results[HVDCP3])
 			result = &smblib_apsd_results[HVDCP2];
 	}
+
+#ifdef CONFIG_LGE_PM
+	is_hvdcp_disabled = is_client_vote_enabled(
+		chg->hvdcp_disable_votable_indirect, "DEFAULT_VOTER");
+	if (is_hvdcp_disabled) {
+		if (result->pst == POWER_SUPPLY_TYPE_USB_HVDCP ||
+			result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3) {
+			result = &smblib_apsd_results[DCP];
+		}
+	}
+#endif
 
 	return result;
 }
@@ -2859,6 +2871,10 @@ static int smblib_handle_usb_current(struct smb_charger *chg,
 			if (rc < 0)
 				return rc;
 		}
+	} else if (chg->real_charger_type == POWER_SUPPLY_TYPE_USB &&
+		usb_current == -ETIMEDOUT) {
+		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
+					true, USBIN_100MA);
 	} else {
 		rc = vote(chg->usb_icl_votable, USB_PSY_VOTER,
 					true, usb_current);
@@ -3628,6 +3644,9 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 						false, 0);
 			}
 		}
+#ifdef CONFIG_LGE_PM
+		workaround_fake_pd_hard_reset_trigger();
+#endif
 	}
 
 	power_supply_changed(chg->usb_psy);
@@ -5580,7 +5599,13 @@ int smblib_deinit(struct smb_charger *chg)
 /************************
  * OVERRIDDEN CALLBACKS *
  ************************/
-irqreturn_t override_handle_chg_state_change(int irq, void *data) {
+irqreturn_t override_handle_chg_state_change(int irq, void *data)
+{
+	const char str_charger_status[8][12] = {
+		"inhibit", "trickle", "precharge", "fullon",
+		"taper", "termination", "chg pause", "invalid"
+	};
+
 	struct smb_irq_data* irq_data = data;
 	struct smb_charger*  chg = irq_data->parent_data;
 	u8 stat;
@@ -5598,7 +5623,8 @@ irqreturn_t override_handle_chg_state_change(int irq, void *data) {
 			(int)(stat & BATTERY_CHARGER_STATUS_MASK));
 
 		stat &= BATTERY_CHARGER_STATUS_MASK;
-		smblib_dbg(chg, PR_INTERRUPT, "chg_state_change to 0x%X\n", stat);
+		smblib_dbg(chg, PR_INTERRUPT, "chg_state_change to 0x%X, %s\n",
+			stat, str_charger_status[stat&0x7]);
 
 		if (stat == TERMINATE_CHARGE) {
 			if (smblib_masked_write(chg, WD_CFG_REG,

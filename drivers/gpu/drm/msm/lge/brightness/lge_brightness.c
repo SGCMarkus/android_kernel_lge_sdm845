@@ -6,7 +6,6 @@
 #include "sde_connector.h"
 #include "sde_encoder.h"
 #include <linux/backlight.h>
-#include <linux/kallsyms.h>
 #include <linux/leds.h>
 #include "dsi_drm.h"
 #include "dsi_display.h"
@@ -326,7 +325,7 @@ int dsi_panel_update_backlight(struct dsi_panel *panel,
 static ssize_t hl_mode_show(struct device *dev,
 		struct device_attribute *attr, char *buf)
 {
-	struct dsi_panel *panel;
+	struct dsi_panel *panel = NULL;
 	int ret = 0;
 
 	panel = dev_get_drvdata(dev);
@@ -347,7 +346,6 @@ static ssize_t hl_mode_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	unsigned int **addr;
 	struct dsi_panel *panel;
 	struct dsi_display *display;
 	int input;
@@ -370,13 +368,7 @@ static ssize_t hl_mode_store(struct device *dev,
 	}
 	mutex_unlock(&panel->panel_lock);
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("primary_display not founded.\n");
-		return -EINVAL;
-	}
+	display = primary_display;
 
 	if(!display) {
 		pr_err("display is null\n");
@@ -423,7 +415,6 @@ static ssize_t irc_brighter_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	unsigned int **addr;
 	struct dsi_panel *panel;
 	struct dsi_display *display;
 	int input;
@@ -448,13 +439,7 @@ static ssize_t irc_brighter_store(struct device *dev,
 	}
 	mutex_unlock(&panel->panel_lock);
 
-	addr = (unsigned int **)kallsyms_lookup_name("main_display");
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("main_display not founded.\n");
-		return -EINVAL;
-	}
+	display = primary_display;
 
 	if (!display) {
 		pr_err("display is null\n");

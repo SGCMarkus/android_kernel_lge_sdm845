@@ -258,6 +258,13 @@ config MACH_SDM845_JUDYP_SPR
 	help
 	  Support for the Qualcomm SDM845 JUDYP_SPR device.
 
+config MACH_SDM845_CAYMANSLM
+	bool "SDM845 CAYMANSLM"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 CAYMANSLM device.
+
 config MACH_SDM845_STYLE3LM_DCM_JP
 	bool "SDM845 STYLE3LM_DCM_JP"
 	depends on ARCH_SDM845

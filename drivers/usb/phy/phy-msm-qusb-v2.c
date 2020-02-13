@@ -52,6 +52,9 @@
 #define QUSB2PHY_PORT_TUNE3		0x248
 #define QUSB2PHY_PORT_TUNE4		0x24C
 #define QUSB2PHY_PORT_TUNE5		0x250
+#ifdef CONFIG_MACH_SDM845_STYLE3LM_DCM_JP
+#define QUSB2PHY_PORT_BIAS_CTRL2 0x198
+#endif
 #endif
 
 /* QUSB2PHY_PLL_CORE_INPUT_OVERRIDE register related bits */
@@ -178,8 +181,13 @@ struct qusb_phy {
 
 	struct hrtimer		timer;
 #ifdef CONFIG_LGE_USB_GADGET
+#ifdef CONFIG_MACH_SDM845_STYLE3LM_DCM_JP
+	uint32_t		qusb2phy_tune[6];			//add BIAS_CTRL2 value
+	uint32_t		qusb2phy_tune_host[6];
+#else
 	uint32_t		qusb2phy_tune[5];
 	uint32_t		qusb2phy_tune_host[5];
+#endif
 #endif
 	int			soc_min_rev;
 	bool			host_chirp_erratum;
@@ -507,6 +515,7 @@ static void qusb_phy_tune_init(struct qusb_phy *qphy)
 		  - tune[2] : TUNE3 (0x248)
 		  - tune[3] : TUNE4 (0x24c)
 		  - tune[4] : TUNE5 (0x250)
+		  - tune[5] : BIAS_CTRL2 (0x198)
 	*/
 	if (tune[0]) {
 		writel_relaxed(tune[0], qphy->base + QUSB2PHY_PORT_TUNE1);
@@ -543,7 +552,25 @@ static void qusb_phy_tune_init(struct qusb_phy *qphy)
 	} else
 		tune[4] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE5);
 
-        pr_debug("%s:(): qusb2phy_port_tune = 0x%02X,0x%02X,0x%02X,0x%02X,0x%02X (%s)\n",
+#ifdef CONFIG_MACH_SDM845_STYLE3LM_DCM_JP
+	if (tune[5]) {
+			writel_relaxed(tune[5], qphy->base + QUSB2PHY_PORT_BIAS_CTRL2);
+			pr_debug("%s(): Programming BIAS_CTRL2(0x198) parameter as:0x%02x\n",
+					__func__, tune[5]);
+	} else
+			tune[5] = readl_relaxed(qphy->base + QUSB2PHY_PORT_BIAS_CTRL2);
+
+	pr_debug("%s(): qusb2phy_port_tune = 0x%02X,0x%02X,0x%02X,0x%02X,0x%02X,[0x%02X] (%s)\n",
+                        __func__,
+                        tune[0],
+                        tune[1],
+                        tune[2],
+                        tune[3],
+                        tune[4],
+						tune[5],
+                        (is_dts) ? "by dts" : "by override");
+#else
+	pr_debug("%s(): qusb2phy_port_tune = 0x%02X,0x%02X,0x%02X,0x%02X,0x%02X (%s)\n",
                         __func__,
                         tune[0],
                         tune[1],
@@ -551,6 +578,7 @@ static void qusb_phy_tune_init(struct qusb_phy *qphy)
                         tune[3],
                         tune[4],
                         (is_dts) ? "by dts" : "by override");
+#endif
 }
 
 static void qusb_phy_tune_init_host(struct qusb_phy *qphy)
@@ -574,6 +602,7 @@ static void qusb_phy_tune_init_host(struct qusb_phy *qphy)
                   - tune[2] : TUNE3 (0x248)
                   - tune[3] : TUNE4 (0x24c)
                   - tune[4] : TUNE5 (0x250)
+				  - tune[5] : BIAS_CTRL2 (0x198)
         */
         if(tune[0]){
                 writel_relaxed(tune[0], qphy->base + QUSB2PHY_PORT_TUNE1);
@@ -609,8 +638,25 @@ static void qusb_phy_tune_init_host(struct qusb_phy *qphy)
                                         __func__, tune[4]);
         }else
                 tune[4] = readl_relaxed(qphy->base + QUSB2PHY_PORT_TUNE5);
+#ifdef CONFIG_MACH_SDM845_STYLE3LM_DCM_JP
+		if (tune[5]) {
+				writel_relaxed(tune[5], qphy->base + QUSB2PHY_PORT_BIAS_CTRL2);
+				pr_debug("%s(): Programming BIAS_CTRL2(0x198) parameter as:0x%02x\n",
+										__func__, tune[5]);
+		} else
+				tune[5] = readl_relaxed(qphy->base + QUSB2PHY_PORT_BIAS_CTRL2);
 
-        pr_debug("%s:(): qusb2phy_port_tune_host = 0x%02X,0x%02X,0x%02X,0x%02X, 0x%02X (%s)\n",
+        pr_debug("%s(): qusb2phy_port_tune_host = 0x%02X,0x%02X,0x%02X,0x%02X, 0x%02X, [0x%02X] (%s)\n",
+                        __func__,
+                        tune[0],
+                        tune[1],
+                        tune[2],
+                        tune[3],
+                        tune[4],
+						tune[5],
+                        (is_dts) ? "by dts" : "by override");
+#else
+        pr_debug("%s(): qusb2phy_port_tune_host = 0x%02X,0x%02X,0x%02X,0x%02X, 0x%02X (%s)\n",
                         __func__,
                         tune[0],
                         tune[1],
@@ -618,6 +664,7 @@ static void qusb_phy_tune_init_host(struct qusb_phy *qphy)
                         tune[3],
                         tune[4],
                         (is_dts) ? "by dts" : "by override");
+#endif
 }
 #endif
 
@@ -791,13 +838,6 @@ static int qusb_phy_init(struct usb_phy *phy)
 							(4 * p_index));
 	}
 
-#ifdef CONFIG_LGE_USB_GADGET
-        if (qphy->phy.flags & PHY_HOST_MODE)
-                qusb_phy_tune_init_host(qphy);
-        else
-                qusb_phy_tune_init(qphy);
-#endif
-
 	if (qphy->refgen_north_bg_reg && qphy->override_bias_ctrl2)
 		if (readl_relaxed(qphy->refgen_north_bg_reg) & BANDGAP_BYPASS)
 			writel_relaxed(BIAS_CTRL_2_OVERRIDE_VAL,
@@ -807,6 +847,12 @@ static int qusb_phy_init(struct usb_phy *phy)
 		writel_relaxed(qphy->bias_ctrl2,
 				qphy->base + qphy->phy_reg[BIAS_CTRL_2]);
 
+#ifdef CONFIG_LGE_USB_GADGET
+        if (qphy->phy.flags & PHY_HOST_MODE)
+                qusb_phy_tune_init_host(qphy);
+        else
+                qusb_phy_tune_init(qphy);
+#endif
 	/* ensure above writes are completed before re-enabling PHY */
 	wmb();
 

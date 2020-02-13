@@ -392,6 +392,15 @@ enum {
 };
 
 enum {
+	SWIPE_L = 0,
+	SWIPE_R = 1,
+	SWIPE_U = 2,
+	SWIPE_D = 3,
+	SWIPE_L2 = 4,
+	SWIPE_R2 = 5,
+};
+
+enum {
 	LCD_MODE_U0 = 0,
 	LCD_MODE_U2_UNBLANK,
 	LCD_MODE_U2,
@@ -414,6 +423,13 @@ enum {
 	SW42000_SWIPE2_L = 0,
 	SW42000_SWIPE2_R = 1,
 	SW42000_SWIPE2_NUM = 2,
+};
+
+enum {
+	PAY_TYPE_DISABLE = 0,
+	PAY_TYPE_SWIPE_U = 1,
+	PAY_TYPE_SWIPE_L = 2,
+	PAY_TYPE_SWIPE_R = 3,
 };
 
 enum {
@@ -703,6 +719,22 @@ struct sw42000_ai_pick_ctrl {
 	struct sw42000_active_area total_area;
 };
 
+struct sw42000_swipe_ctrl {
+	bool enable;
+	u8 distance;
+	u8 ratio_thres;
+	u16 min_time;
+	u16 max_time;
+	struct sw42000_active_area area;
+	struct sw42000_active_area start_area;
+	u8 wrong_dir_thres;
+	u8 init_ratio_chk_dist;
+	u8 init_ratio_thres;
+	struct sw42000_active_area border_area;
+	struct sw42000_active_area start_border_area;
+	bool debug_enable;
+};
+
 struct sw42000_data {
 	struct device *dev;
 	struct kobject kobj;
@@ -713,6 +745,7 @@ struct sw42000_data {
 	struct sw42000_touch_debug_info debug_info;
 	struct sw42000_ic_info ic_info;
 	struct sw42000_chip_info chip_info;
+	struct sw42000_swipe_ctrl swipe[6];	/* left, right, up, down */
 //	struct sw42000_reg_info reg_info;
 	struct workqueue_struct *wq_log;
 	struct sw42000_fb_blank fb_blank;

@@ -1,4 +1,5 @@
 #!/bin/bash
+# vim: ft=bash sw=4 sts=4 et
 
 # ================= NO CHANGE NEEDED BELOW! =====================
 
@@ -66,10 +67,6 @@ Usage: tuxera_update.sh [OPTION...]
         --use-curl
         --use-wget
           Force the use of 'curl' or 'wget' for remote communication.
-
-        --version SOFTWARE=VERSION[,...]
-          Example: --version NTFS=3012.4.2,EXFAT=3012.4.9
-          Specify the version of software component(s) to build.
 
   -u, --upgrade
 
@@ -151,6 +148,9 @@ detect_arch_dirs() {
 
     # Realtek RLX fix
     [ "$archdirs" == "mips" ] && grep -q '^#define CONFIG_CPU_RLX' "$ac" && archdirs="rlx"
+
+    # Realtek mips-ori fix
+    [ "$archdirs" == "mips" ] && grep -q 'Linux/mips-ori' "$ac" && archdirs="$archdirs mips-ori"
 
     # Only select existing directories.
     existing=''
@@ -275,21 +275,41 @@ build_package() {
     KERNEL_LINK="${LINK_DIR}"/kernel
     OUTPUT_LINK="${LINK_DIR}"/output
     MEDIATEK_LINK="${LINK_DIR}"/mediatek
+    MSTAR2_LINK="${LINK_DIR}"/mstar2
     EXTRA_SEARCH_NEW_MEDIATEK="${KERNEL_LINK}"/drivers/misc/mediatek/mach
     EXTRA_SEARCH_NEW_MEDIATEK_INCLUDE="${KERNEL_LINK}"/drivers/misc/mediatek/include
+    EXTRA_SEARCH_NEW_MEDIATEK_BASE="${KERNEL_LINK}"/drivers/misc/mediatek/base
+    EXTRA_SEARCH_AMLOGIC_DEBUG="${KERNEL_LINK}"/drivers/amlogic/debug
     [ -d "$source_dir"/../mediatek ] && have_mediatek=1
+    [ -d "$(readlink -f "$source_dir"/../mstar2)" ] && have_mstar2=1
+    [ -d "$(readlink -f "$source_dir"/mstar2)" ] && have_mstar2_inkernel=1
 
     # Create kernel and output links to LINK_DIR. Only create link to output
     # dir if output directory was specified. Note that absolute paths
     # must be used!
     ln -sf "$(readlink -f "$source_dir")" "${KERNEL_LINK}" && \
-	if [ -n "$output_dir" ]; then ln -sf "$(readlink -f "$output_dir")" "${OUTPUT_LINK}"; fi && \
-	if [ -n "$have_mediatek" ] ; then ln -sf "$(readlink -f "$source_dir")"/../mediatek "${MEDIATEK_LINK}"; fi
+    if [ -n "$output_dir" ]; then ln -sf "$(readlink -f "$output_dir")" "${OUTPUT_LINK}"; fi && \
+    if [ -n "$have_mediatek" ] ; then ln -sf "$(readlink -f "$source_dir")"/../mediatek "${MEDIATEK_LINK}"; fi
 
     if [ $? -ne 0 ] ; then
         echo "Symlinking (ln -s) failed. Unable to continue."
         rm -rf "${LINK_DIR}"
         exit 1
+    fi
+
+    if [ -e "${OUTPUT_LINK}" ] ; then dot_config="${OUTPUT_LINK}/.config"; else dot_config="${KERNEL_LINK}/.config"; fi
+    if [ -n "$have_mstar2" ] ; then
+        ln -sf "$(readlink -f "$source_dir")"/../mstar2 "${MSTAR2_LINK}"
+        if [ -n "$have_mstar2_inkernel" ] ; then
+            EXTRA_SEARCH_MSTAR2_INKERNEL="${KERNEL_LINK}"/mstar2/hal
+        fi
+    elif [ -n "$have_mstar2_inkernel" ] ; then
+        ln -sf "$(readlink -f "$source_dir")"/mstar2 "${MSTAR2_LINK}"
+    fi
+
+    if [ -d "$(readlink -f "${MSTAR2_LINK}")" ] && grep -q 'CONFIG_MSTAR_CHIP' "$dot_config"; then
+        MSTAR2_CHIP_NAME=$(awk -F= '/^CONFIG_MSTAR_CHIP_NAME=/{gsub(/[[:space:],\"]/,"",$2); print $2}' "$dot_config")
+        [ ! -d "${MSTAR2_LINK}/hal/${MSTAR2_CHIP_NAME}" ] && MSTAR2_CHIP_NAME=""
     fi
 
     if [ "$source_dir" = "$output_dir" ] ; then
@@ -303,6 +323,8 @@ build_package() {
 
     echo "Generating list of files to include..."
     INCLUDEFILE=$(mktemp)
+    echo "${script_version}" >> "${LINK_DIR}"/.version
+    echo "${LINK_DIR}"/.version >> "${INCLUDEFILE}"
 
     if [ $? -ne 0 ] ; then
         echo "mktemp failed. Unable to continue."
@@ -315,10 +337,10 @@ build_package() {
         exit 1
     fi
 
-    SEARCHPATHS="$(for d in $archdirs; do echo "${KERNEL_LINK}/arch/$d"; done) ${KERNEL_LINK}/include ${KERNEL_LINK}/scripts ${KERNEL_LINK}/mediatek/Makefile ${KERNEL_LINK}/mediatek/platform ${MEDIATEK_LINK}/config ${MEDIATEK_LINK}/platform ${MEDIATEK_LINK}/build/libs ${MEDIATEK_LINK}/build/Makefile ${MEDIATEK_LINK}/build/kernel ${MEDIATEK_LINK}/kernel/include/linux ${MEDIATEK_LINK}/kernel/Makefile ${KERNEL_LINK}/KMC ${KERNEL_LINK}/init/secureboot ${KERNEL_LINK}/mvl-avb-version ${EXTRA_SEARCH_NEW_MEDIATEK} ${EXTRA_SEARCH_NEW_MEDIATEK_INCLUDE} ${KERNEL_LINK}/tools/gcc"
+    SEARCHPATHS="$(for d in $archdirs; do echo "${KERNEL_LINK}/arch/$d"; done) ${KERNEL_LINK}/include ${KERNEL_LINK}/scripts ${KERNEL_LINK}/mediatek/Makefile ${KERNEL_LINK}/mediatek/platform ${MEDIATEK_LINK}/config ${MEDIATEK_LINK}/platform ${MEDIATEK_LINK}/build/libs ${MEDIATEK_LINK}/build/Makefile ${MEDIATEK_LINK}/build/kernel ${MEDIATEK_LINK}/kernel/include/linux ${MEDIATEK_LINK}/kernel/Makefile ${MSTAR2_LINK}/hal/${MSTAR2_CHIP_NAME} ${EXTRA_SEARCH_MSTAR2_INKERNEL} ${KERNEL_LINK}/KMC ${KERNEL_LINK}/init/secureboot ${KERNEL_LINK}/mvl-avb-version ${EXTRA_SEARCH_NEW_MEDIATEK} ${EXTRA_SEARCH_NEW_MEDIATEK_INCLUDE} ${EXTRA_SEARCH_NEW_MEDIATEK_BASE} ${EXTRA_SEARCH_AMLOGIC_DEBUG} ${KERNEL_LINK}/tools/gcc ${KERNEL_LINK}/tools/Makefile ${KERNEL_LINK}/tools/objtool ${KERNEL_LINK}/tools/scripts"
 
     if [ -L "${OUTPUT_LINK}" ] ; then
-        SEARCHPATHS="${SEARCHPATHS} $(for d in $archdirs; do echo "${OUTPUT_LINK}/arch/$d"; done) ${OUTPUT_LINK}/include ${OUTPUT_LINK}/scripts ${OUTPUT_LINK}/KMC ${OUTPUT_LINK}/init/secureboot ${OUTPUT_LINK}/mvl-avb-version ${OUTPUT_LINK}/tools/gcc"
+        SEARCHPATHS="${SEARCHPATHS} $(for d in $archdirs; do echo "${OUTPUT_LINK}/arch/$d"; done) ${OUTPUT_LINK}/include ${OUTPUT_LINK}/scripts ${OUTPUT_LINK}/KMC ${OUTPUT_LINK}/init/secureboot ${OUTPUT_LINK}/mvl-avb-version ${OUTPUT_LINK}/tools/gcc ${OUTPUT_LINK}/tools/Makefile ${OUTPUT_LINK}/tools/objtool ${OUTPUT_LINK}/tools/scripts"
     fi
 
     # Not all of the directories always exist, so check for them first to avoid an error message
@@ -329,7 +351,7 @@ build_package() {
             find -L "${P}" ! -type l >> "${INCLUDEFILE}"
         else
             find -L "${P}" \
-            \( ! -type l -a ! -name \*.c -a ! -name \*.o -a ! -name \*.S -a ! -path \*/arch/\*/boot/\* -a ! -path \*/.svn/\* -a ! -path \*/.git/\* ! -path \*mediatek/platform/Android.mk ! -path \*mediatek/platform/README ! -path \*mediatek/platform/common\* ! -path \*mediatek/platform/rules.mk ! -path \*mediatek/platform/\*/Trace\* ! -path \*mediatek/platform/\*/external\* ! -path \*mediatek/platform/\*/hardware\* ! -path \*mediatek/platform/\*/lk\* ! -path \*mediatek/platform/\*/preloader\* ! -path \*mediatek/platform/\*/uboot\* ! -path \*mediatek/platform/\*/kernel/core/Makefile ! -path \*mediatek/platform/\*/kernel/core/Makefile.boot  ! -path \*mediatek/platform/\*/kernel/core/modules.builtin ! -path \*mediatek/platform/\*/kernel/drivers\* ! -path \*mediatek/platform/\*/kernel/Kconfig\* ! -path \*mediatek/config/a830\* ! -path \*mediatek/config/banyan_addon\* ! -path \*mediatek/config/out\* ! -path \*mediatek/config/prada\* ! -path \*mediatek/config/s820\* ! -path \*mediatek/config/seine\* \) \
+            \( ! -type l -a ! -name \*.c -a ! -name \*.o -a ! -name \*.S -a ! -name \*.ko -a ! -name \*.dts -a ! -name \*.dtsi -a ! -path \*/scripts/dtc\* -a ! -path \*/arch/\*/boot/\* -a ! -path \*/.svn/\* -a ! -path \*/.git/\* ! -path \*mediatek/platform/Android.mk ! -path \*mediatek/platform/README ! -path \*mediatek/platform/common\* ! -path \*mediatek/platform/rules.mk ! -path \*mediatek/platform/\*/Trace\* ! -path \*mediatek/platform/\*/external\* ! -path \*mediatek/platform/\*/hardware\* ! -path \*mediatek/platform/\*/lk\* ! -path \*mediatek/platform/\*/preloader\* ! -path \*mediatek/platform/\*/uboot\* ! -path \*mediatek/platform/\*/kernel/core/Makefile ! -path \*mediatek/platform/\*/kernel/core/Makefile.boot  ! -path \*mediatek/platform/\*/kernel/core/modules.builtin ! -path \*mediatek/platform/\*/kernel/drivers\* ! -path \*mediatek/platform/\*/kernel/Kconfig\* ! -path \*mediatek/config/a830\* ! -path \*mediatek/config/banyan_addon\* ! -path \*mediatek/config/out\* ! -path \*mediatek/config/prada\* ! -path \*mediatek/config/s820\* ! -path \*mediatek/config/seine\* \) \
             >> ${INCLUDEFILE}
         fi
     done
@@ -399,26 +421,50 @@ do_retry() {
 # Upload kernel headers package using curl.
 #
 upload_package_curl() {
-    echo "Uploading the following package:"
-    ls -lh "${1}"
+    local retr=1
+    local delay=$conn_fail_retry_delay
+    local execution_status
+    while :
+    do
+        execution_status=0
+        echo "Uploading the following package:"
+        ls -lh "${1}"
 
-    reply=$(do_retry $curl -F "file=@${1}" https://${server}/upload.php)
+        reply=$(do_retry $curl -F "file=@${1}" https://${server}/upload.php)
 
-    if [ $? -ne 0 ] ; then
-        echo "curl failed. Unable to continue. Check connectivity and username/password."
-        exit 1
-    fi
+        if [ $? -ne 0 ] ; then
+            echo "curl failed. Unable to continue. Check connectivity and username/password." >&2
+            execution_status=1
+        fi
 
-    status=$(echo "$reply" | head -n 1)
+        if [ $execution_status -eq 0 ] ; then
+            status=$(echo "$reply" | head -n 1)
 
-    if [ "$status" != "OK" ] ; then
-        echo "Upload failed. Unable to continue."
-        exit 1
-    fi
+            if [ "$status" != "OK" ] ; then
+                echo "$reply" >&2
+                echo "Upload failed. Unable to continue." >&2
+                execution_status=1
+            fi
+        fi
 
-    remote_package=$(echo "$reply" | head -n 2 | tail -n 1)
+        if [ $execution_status -ne 0 ] ; then
+            if [ $retr -gt $conn_fail_retry ] || [ -z "$retry_on_conn_fail" ] ; then
+                exit 1
+            else
+                echo "Will try one more time $retr of $conn_fail_retry in "$delay" seconds..." >&2
+                sleep $delay
+                retr=$(($retr + 1))
+                delay=$(($delay * 2))
+                continue
+            fi
 
-    echo "Upload succeeded."
+        fi
+
+        remote_package=$(echo "$reply" | head -n 2 | tail -n 1)
+
+        echo "Upload succeeded."
+        break
+    done
 }
 
 #
@@ -436,28 +482,51 @@ upload_package_wget() {
         echo "urlencoding failed. Unable to continue."
         exit 1
     fi
+    local retr=1
+    local delay=$conn_fail_retry_delay
+    local execution_status
+    while :
+    do
+        execution_status=0
+        echo "Uploading package..."
 
-    echo "Uploading package..."
+        reply=$(do_retry $wget --post-file="$encoded" -O - https://${server}/upload.php)
 
-    reply=$(do_retry $wget --post-file="$encoded" -O - https://${server}/upload.php)
+        if [ $? -ne 0 ] ; then
+            echo "wget failed. Unable to continue. Check connectivity and username/password." >&2
+            execution_status=1
+        fi
 
-    if [ $? -ne 0 ] ; then
-        echo "wget failed. Unable to continue. Check connectivity and username/password."
-        rm "$encoded"; exit 1
-    fi
+        if [ $execution_status -eq 0 ] ; then
+            status=$(echo "$reply" | head -n 1)
 
-    status=$(echo "$reply" | head -n 1)
+            if [ "$status" != "OK" ] ; then
+                echo "$reply"
+                echo "Upload failed. Unable to continue." >&2
+                execution_status=1
+            fi
+        fi
 
-    if [ "$status" != "OK" ] ; then
-        echo "$reply"
-        echo "Upload failed. Unable to continue."
-        exit 1
-    fi
+        if [ $execution_status -ne 0 ] ; then
+            if [ $retr -gt $conn_fail_retry ] || [ -z "$retry_on_conn_fail" ] ; then
+                rm "$encoded"
+                exit 1
+            else
+                echo "Will try one more time $retr of $conn_fail_retry in "$delay" seconds..." >&2
+                sleep $delay
+                retr=$(($retr + 1))
+                delay=$(($delay * 2))
+                continue
+            fi
 
-    remote_package=$(echo "$reply" | head -n 2 | tail -n 1)
-    rm "$encoded"
+        fi
 
-    echo "Upload succeeded."
+        remote_package=$(echo "$reply" | head -n 2 | tail -n 1)
+        rm "$encoded"
+
+        echo "Upload succeeded."
+        break
+    done
 }
 
 #
@@ -540,16 +609,30 @@ gen_header_checksums() {
         return 1
     fi
 
-    if [ -n "${CROSS_COMPILE}" ] ; then
-        command -v ${CROSS_COMPILE}gcc > /dev/null 2>&1
-
-        if [ $? -ne 0 ] ; then
-            echo "${CROSS_COMPILE}gcc not found. Do you have the cross compiler in PATH?"
-            return 1
-        fi
+    if [ -z "${KERNEL_COMPILER}" ] ; then
+        KERNEL_COMPILER=${CROSS_COMPILE}gcc
     fi
 
-    make -C "$kernel" ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $CUST_KENV M="${cache_dir}/pkgtmp/dependency_mod" depmod.i > $dbgdev
+    mute env
+    mute command -v ${KERNEL_COMPILER}
+
+    if [ $? -ne 0 ] ; then
+        echo "${KERNEL_COMPILER} not found. Do you have the compiler in PATH?"
+        return 1
+    fi
+
+    if [ -z "${KERNEL_LINKER}" ] ; then
+        KERNEL_LINKER=${CROSS_COMPILE}ld
+    fi
+
+    mute command -v ${KERNEL_LINKER}
+
+    if [ $? -ne 0 ] ; then
+        echo "${KERNEL_LINKER} not found. Do you have the linker in PATH?"
+        return 1
+    fi
+
+    make -C "$kernel" ${CACHE_MAKE_FLAGS} M="${cache_dir}/pkgtmp/dependency_mod" depmod.i > $dbgdev
 
     if [ $? -ne 0 ] ; then
         echo "Compilation failed. Unable to compute header dependency tree."
@@ -647,7 +730,9 @@ lookup_cache() {
         fi
 
         # Build dependency module and compute header checksums.
-
+        if [ -z "${CACHE_MAKE_FLAGS}" ] ; then
+            CACHE_MAKE_FLAGS="ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $CUST_KENV"
+        fi
         tmpsums=$(mktemp)
         gen_header_checksums "$tmpsums"
         if [ $? -ne 0 ] ; then
@@ -677,6 +762,10 @@ lookup_cache() {
             require_relink="yes"
         fi
 
+        mute env
+        mute command -v ${KERNEL_COMPILER}
+        mute command -v ${KERNEL_LINKER}
+
         for driver_obj in "${cache_dir}/pkgtmp/"*/objects ; do
             driver=$(dirname "$driver_obj")
 
@@ -690,8 +779,12 @@ lookup_cache() {
             rm -f "${driver}/objects/Kbuild"
             mv "${driver}/objects/Makefile.autobuild" "${driver}/objects/Makefile"
 
-            make -C "$kernel" ARCH=$ARCH CROSS_COMPILE=$CROSS_COMPILE $CUST_KENV \
-                M="${driver}/objects" modules
+            if [ "${verbose}" = "yes" ] ; then
+                CACHE_MAKE_FLAGS="${CACHE_MAKE_FLAGS} V=1"
+            fi
+
+            echo Relinking $(basename "${driver}") ...
+            mute make -C "$kernel" ${CACHE_MAKE_FLAGS} M="${driver}/objects" modules
 
             if [ $? -ne 0 ] ; then
                 echo "Kernel module relinking failed - this usually shouldn't happen."
@@ -744,9 +837,9 @@ do_remote_build() {
 
     # Start build
     if [ "$http_client" = "wget" ] ; then
-        reply=$(do_retry $wget --post-data="terminal=1&filename=${remote_package}&target-config=${target}&tags=${tags}&extraargs=${extraargs}&use-cache=${using_cache}&script-version=${script_version}&cache-lookup-time=${cache_lookup_time}&suid=${suid}&start-build=1" -O - https://${server})
+        reply=$(do_retry $wget --post-data="terminal=1&filename=${remote_package}&target-config=${target}&extraargs=${extraargs}&use-cache=${using_cache}&script-version=${script_version}&cache-lookup-time=${cache_lookup_time}&suid=${suid}&start-build=1" -O - https://${server})
     else
-        reply=$(do_retry $curl -d terminal=1 -d filename="$remote_package" -d target-config="$target" -d tags="$tags" -d extraargs="$extraargs" -d use-cache="$using_cache" -d script-version="$script_version" -d cache-lookup-time="$cache_lookup_time" -d suid="$suid" -d start-build=1 https://${server})
+        reply=$(do_retry $curl -d terminal=1 -d filename="$remote_package" -d target-config="$target" -d extraargs="$extraargs" -d use-cache="$using_cache" -d script-version="$script_version" -d cache-lookup-time="$cache_lookup_time" -d suid="$suid" -d start-build=1 https://${server})
     fi
 
     if [ $? -ne 0 ] ; then
@@ -1101,6 +1194,8 @@ set_source_dir() {
             source_dir=$(sed -n 's/^\s*MAKEARGS\s*:=.*-C\s*\(\S\+\).*/\1/p' "${output_dir}/Makefile" 2>/dev/null)
             if [ -z "$source_dir" ]; then
                source_dir="$output_dir"
+            else
+               source_dir=$(cd "$output_dir" 2>/dev/null && readlink -f "$source_dir" || echo "$source_dir")
             fi
             if ! [ -e "$source_dir" ]; then
                 echo "Unable to parse kernel source directory from --output-dir Makefile."
@@ -1120,11 +1215,19 @@ set_source_dir() {
     fi
 }
 
+mute() {
+  if [ "${verbose}" = "yes" ] ; then
+    "$@"
+  else
+    "$@" >/dev/null 2>&1
+  fi
+}
+
 #
 # Script start
 #
 
-script_version="17.7.4"
+script_version="19.12.17"
 cache_dir=".tuxera_update_cache"
 dbgdev="/dev/null"
 cache_lookup_time="none"
@@ -1141,7 +1244,7 @@ conn_fail_retry_delay=4
 
 echo "tuxera_update.sh version $script_version"
 
-if ! options=$(getopt -o pahuv -l target:,user:,pass:,use-package:,source-dir:,output-dir:,version:,cache-dir:,server:,extraargs:,max-cache-entries:,admin:,upgrade,help,ignore-cert,no-check-certificate,use-curl,use-wget,no-excludes,use-cache,verbose,latest,retry-on-connection-fail,disable-kh-check,max_build_time_sec: -- "$@")
+if ! options=$(getopt -o pahuv -l target:,user:,pass:,use-package:,source-dir:,output-dir:,version:,cache-dir:,server:,extraargs:,max-cache-entries:,admin:,upgrade,help,ignore-cert,no-check-certificate,use-curl,use-wget,no-excludes,use-cache,verbose,latest,retry-on-connection-fail,disable-kh-check,max_build_time_sec,path-append:,path-prepend: -- "$@")
 then
     usage
 fi
@@ -1164,7 +1267,6 @@ do
     --no-check-certificate) ignore_certificates="yes" ;;
     --use-wget) http_client="wget" ;;
     --use-curl) http_client="curl" ;;
-    --version) tags="$2" ; shift;;
     --extraargs) extraargs="$2" ; shift;;
     --no-excludes) no_excludes="yes" ;;
     --use-cache) use_cache="yes" ;;
@@ -1182,6 +1284,8 @@ do
     --retry-on-connection-fail) retry_on_conn_fail="yes" ;;
     --max_build_time_sec) max_build_time_sec="$2" ; shift;;
     --disable-kh-check) disable_kernel_headers_check="yes" ;;
+    --path-append) path_append="$2"; shift;;
+    --path-prepend) path_prepend="$2"; shift;;
     (--) shift; break;;
     (-*) echo "$0: error - unrecognized option $1" 1>&2; usage;;
     (*) break;;
@@ -1215,8 +1319,20 @@ if [ -z "$target" ] ; then
     target="default"
 fi
 
-check_cmds tar find grep readlink cut sed
+if [ -n "$path_append" ] ; then
+	export PATH=${PATH}:"$path_append"
+    echo Using modified PATH: ${PATH}
+fi
 
+if [ -n "$path_prepend" ] ; then
+	export PATH="$path_prepend":${PATH}
+    echo Using modified PATH: ${PATH}
+fi
+
+# Temporary disable path restrictions on android
+export TEMPORARY_DISABLE_PATH_RESTRICTIONS=y
+
+check_cmds tar find grep readlink cut sed
 # Check specified output-dir exists
 if [ -n "$output_dir" ] && [ ! -d "$(readlink -f "$output_dir")" ]; then
     echo "Specified --output_dir '$output_dir' doesn't exist. Unable to continue."

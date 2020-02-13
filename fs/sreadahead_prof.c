@@ -139,7 +139,7 @@ static ssize_t sreadaheadflag_dbgfs_write(
 			mutex_unlock(&prof_buf.ulock);
 			return 0;
 		}
-		_DBG("PROF_DONE by user daemon(boot_completed)");
+		printk(KERN_DEBUG "PROF_DONE by user daemon(boot_completed)(file_cnt:%d)\n",prof_buf.file_cnt);
 		prof_buf.state = state;
 		wake_up_interruptible(&prof_state_wait);
 
@@ -240,6 +240,12 @@ static int is_system_partition(unsigned char *fn) {
 	return strncmp((const char*)fn, "/system/", 8) == 0 ? 1 : 0;
 }
 
+#if !defined (CONFIG_MACH_SDM845_JUDYLN) && !defined (CONFIG_MACH_SDM845_JUDYP) && !defined (CONFIG_MACH_SDM845_JUDYPN)
+static int is_product_partition(unsigned char *fn) {
+	return strncmp((const char*)fn, "/product/", 9) == 0 ? 1 : 0;
+}
+#endif
+
 #ifndef CONFIG_VM_EVENT_COUNTERS
 static int check_vm_pgsteal_events(void)
 {
@@ -289,8 +295,14 @@ static int sreadahead_prof_RUN(struct file *filp, size_t len, loff_t pos)
 		return -ENOENT;
 	strlcat(data.name, filp->f_path.dentry->d_name.name, buflen);
 
+#if defined (CONFIG_MACH_SDM845_JUDYLN) || defined (CONFIG_MACH_SDM845_JUDYP) || defined (CONFIG_MACH_SDM845_JUDYPN)
 	if (is_system_partition(data.name) == 0)
 		return 0;
+#else
+	if (is_system_partition(data.name) == 0 &&
+		is_product_partition(data.name) == 0)
+		return 0;
+#endif
 
 	mutex_lock(&prof_buf.ulock);
 
@@ -327,7 +339,7 @@ static int sreadahead_prof_RUN(struct file *filp, size_t len, loff_t pos)
 	}
 
 	if (prof_buf.file_cnt >= PROF_BUF_SIZE) {
-		_DBG("PROF_DONE by kernel(file_cnt) & del timer");
+		printk(KERN_DEBUG "PROF_DONE by kernel(file_cnt:%d)\n",PROF_BUF_SIZE);
 		prof_buf.state = PROF_DONE;
 		wake_up_interruptible(&prof_state_wait);
 		del_timer(&prof_buf.timer);
@@ -337,7 +349,7 @@ static int sreadahead_prof_RUN(struct file *filp, size_t len, loff_t pos)
 	if (time_after(jiffies, vm_chk_jiffies + VM_CHK_INTERVAL)) {
 		vm_chk_jiffies = jiffies;
 		if (check_vm_events()) {
-			_DBG("PROF_DONE by pgsteal");
+			printk(KERN_DEBUG "PROF_DONE by pgsteal(file_cnt:%d)\n",prof_buf.file_cnt);
 			prof_buf.state = PROF_DONE;
 			wake_up_interruptible(&prof_state_wait);
 			del_timer(&prof_buf.timer);

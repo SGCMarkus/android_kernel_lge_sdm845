@@ -15,6 +15,32 @@ config PRINTK_TIME
 	  The behavior is also controlled by the kernel command line
 	  parameter printk.time=1. See Documentation/kernel-parameters.txt
 
+config PRINTK_TIMESPEC
+	bool "Show timespec information on printks"
+	depends on PRINTK
+	help
+          Enable timespec information except year by using time_to_tm
+
+config PRINTK_PROCESS
+	bool "Show process information on printks"
+	depends on PRINTK
+	help
+          Enable process name, PID, core number and
+          context information in kernel log to be printed.
+
+config PRINTK_EXTRA_LOGBUF_SHIFT
+	int "PRINTK_PROCESS log buffer size contribution (20 => 1 MB)"
+	range 0 21
+	default 0
+	depends on PRINTK_PROCESS
+	help
+	  This option allows to increase the ring buffer size per CPUs
+	  by adding PRINTK_PROCESS not to truncate initial log.
+
+	  Examples shift values and their meaning:
+		     20 => add extra   1 MB to the ring buffer
+		     17 => add extra 128 KB to the ring buffer
+
 config MESSAGE_LOGLEVEL_DEFAULT
 	int "Default message log level (1-7)"
 	range 1 7

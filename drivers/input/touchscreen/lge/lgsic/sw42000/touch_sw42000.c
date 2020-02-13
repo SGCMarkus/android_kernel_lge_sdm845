@@ -1151,168 +1151,165 @@ static int sw42000_longpress_enable(struct device *dev, bool enable)
 
 static void sw42000_get_swipe_info(struct device *dev)
 {
-	/*
-
-	struct touch_core_data *ts = to_touch_core(dev);
+	struct sw42000_data *d = to_sw42000_data(dev);
 
 	TOUCH_TRACE();
 
-	ts->swipe[SWIPE_L].enable = false;
-	ts->swipe[SWIPE_L].debug_enable = false;
-	ts->swipe[SWIPE_L].distance = 7;
-	ts->swipe[SWIPE_L].ratio_thres = 100;
-	ts->swipe[SWIPE_L].min_time = 0;
-	ts->swipe[SWIPE_L].max_time = 150;
-	ts->swipe[SWIPE_L].wrong_dir_thres = 2;
-	ts->swipe[SWIPE_L].init_ratio_chk_dist = 2;
-	ts->swipe[SWIPE_L].init_ratio_thres = 100;
-	ts->swipe[SWIPE_L].area.x1 = 0;
-	ts->swipe[SWIPE_L].area.y1 = 0;
-	ts->swipe[SWIPE_L].area.x2 = 1439;
-	ts->swipe[SWIPE_L].area.y2 = 300;
-	ts->swipe[SWIPE_L].start_area.x1 = 0;
-	ts->swipe[SWIPE_L].start_area.y1 = 0;
-	ts->swipe[SWIPE_L].start_area.x2 = 1439;
-	ts->swipe[SWIPE_L].start_area.y2 = 300;
-	ts->swipe[SWIPE_L].border_area.x1 = 200;
-	ts->swipe[SWIPE_L].border_area.y1 = 100;
-	ts->swipe[SWIPE_L].border_area.x2 = 200;
-	ts->swipe[SWIPE_L].border_area.y2 = 400;
-	ts->swipe[SWIPE_L].start_border_area.x1 = 100;
-	ts->swipe[SWIPE_L].start_border_area.y1 = 100;
-	ts->swipe[SWIPE_L].start_border_area.x2 = 100;
-	ts->swipe[SWIPE_L].start_border_area.y2 = 200;
+	d->swipe[SWIPE_L].enable = false;
+	d->swipe[SWIPE_L].debug_enable = false;
+	d->swipe[SWIPE_L].distance = 7;
+	d->swipe[SWIPE_L].ratio_thres = 100;
+	d->swipe[SWIPE_L].min_time = 0;
+	d->swipe[SWIPE_L].max_time = 150;
+	d->swipe[SWIPE_L].wrong_dir_thres = 2;
+	d->swipe[SWIPE_L].init_ratio_chk_dist = 2;
+	d->swipe[SWIPE_L].init_ratio_thres = 100;
+	d->swipe[SWIPE_L].area.x1 = 0;
+	d->swipe[SWIPE_L].area.y1 = 0;
+	d->swipe[SWIPE_L].area.x2 = 1439;
+	d->swipe[SWIPE_L].area.y2 = 300;
+	d->swipe[SWIPE_L].start_area.x1 = 0;
+	d->swipe[SWIPE_L].start_area.y1 = 0;
+	d->swipe[SWIPE_L].start_area.x2 = 1439;
+	d->swipe[SWIPE_L].start_area.y2 = 300;
+	d->swipe[SWIPE_L].border_area.x1 = 200;
+	d->swipe[SWIPE_L].border_area.y1 = 100;
+	d->swipe[SWIPE_L].border_area.x2 = 200;
+	d->swipe[SWIPE_L].border_area.y2 = 400;
+	d->swipe[SWIPE_L].start_border_area.x1 = 100;
+	d->swipe[SWIPE_L].start_border_area.y1 = 100;
+	d->swipe[SWIPE_L].start_border_area.x2 = 100;
+	d->swipe[SWIPE_L].start_border_area.y2 = 200;
 
-	ts->swipe[SWIPE_R].enable = false;
-	ts->swipe[SWIPE_R].debug_enable = false;
-	ts->swipe[SWIPE_R].distance = 7;
-	ts->swipe[SWIPE_R].ratio_thres = 100;
-	ts->swipe[SWIPE_R].min_time = 0;
-	ts->swipe[SWIPE_R].max_time = 150;
-	ts->swipe[SWIPE_R].wrong_dir_thres = 2;
-	ts->swipe[SWIPE_R].init_ratio_chk_dist = 2;
-	ts->swipe[SWIPE_R].init_ratio_thres = 100;
-	ts->swipe[SWIPE_R].area.x1 = 0;
-	ts->swipe[SWIPE_R].area.y1 = 0;
-	ts->swipe[SWIPE_R].area.x2 = 1439;
-	ts->swipe[SWIPE_R].area.y2 = 300;
-	ts->swipe[SWIPE_R].start_area.x1 = 0;
-	ts->swipe[SWIPE_R].start_area.y1 = 0;
-	ts->swipe[SWIPE_R].start_area.x2 = 1439;
-	ts->swipe[SWIPE_R].start_area.y2 = 300;
-	ts->swipe[SWIPE_R].border_area.x1 = 200;
-	ts->swipe[SWIPE_R].border_area.y1 = 100;
-	ts->swipe[SWIPE_R].border_area.x2 = 200;
-	ts->swipe[SWIPE_R].border_area.y2 = 400;
-	ts->swipe[SWIPE_R].start_border_area.x1 = 100;
-	ts->swipe[SWIPE_R].start_border_area.y1 = 100;
-	ts->swipe[SWIPE_R].start_border_area.x2 = 100;
-	ts->swipe[SWIPE_R].start_border_area.y2 = 200;
+	d->swipe[SWIPE_R].enable = false;
+	d->swipe[SWIPE_R].debug_enable = false;
+	d->swipe[SWIPE_R].distance = 7;
+	d->swipe[SWIPE_R].ratio_thres = 100;
+	d->swipe[SWIPE_R].min_time = 0;
+	d->swipe[SWIPE_R].max_time = 150;
+	d->swipe[SWIPE_R].wrong_dir_thres = 2;
+	d->swipe[SWIPE_R].init_ratio_chk_dist = 2;
+	d->swipe[SWIPE_R].init_ratio_thres = 100;
+	d->swipe[SWIPE_R].area.x1 = 0;
+	d->swipe[SWIPE_R].area.y1 = 0;
+	d->swipe[SWIPE_R].area.x2 = 1439;
+	d->swipe[SWIPE_R].area.y2 = 300;
+	d->swipe[SWIPE_R].start_area.x1 = 0;
+	d->swipe[SWIPE_R].start_area.y1 = 0;
+	d->swipe[SWIPE_R].start_area.x2 = 1439;
+	d->swipe[SWIPE_R].start_area.y2 = 300;
+	d->swipe[SWIPE_R].border_area.x1 = 200;
+	d->swipe[SWIPE_R].border_area.y1 = 100;
+	d->swipe[SWIPE_R].border_area.x2 = 200;
+	d->swipe[SWIPE_R].border_area.y2 = 400;
+	d->swipe[SWIPE_R].start_border_area.x1 = 100;
+	d->swipe[SWIPE_R].start_border_area.y1 = 100;
+	d->swipe[SWIPE_R].start_border_area.x2 = 100;
+	d->swipe[SWIPE_R].start_border_area.y2 = 200;
 
-	ts->swipe[SWIPE_U].enable = false;
-	ts->swipe[SWIPE_U].debug_enable = false;
-	ts->swipe[SWIPE_U].distance = 20;
-	ts->swipe[SWIPE_U].ratio_thres = 150;
-	ts->swipe[SWIPE_U].min_time = 4;
-	ts->swipe[SWIPE_U].max_time = 150;
-	ts->swipe[SWIPE_U].wrong_dir_thres = 5;
-	ts->swipe[SWIPE_U].init_ratio_chk_dist = 4;
-	ts->swipe[SWIPE_U].init_ratio_thres = 100;
-	ts->swipe[SWIPE_U].area.x1 = 80;
-	ts->swipe[SWIPE_U].area.y1 = 0;
-	ts->swipe[SWIPE_U].area.x2 = 1359;
-	ts->swipe[SWIPE_U].area.y2 = 3119;
-	ts->swipe[SWIPE_U].start_area.x1 = 439;
-	ts->swipe[SWIPE_U].start_area.y1 = 2797;
-	ts->swipe[SWIPE_U].start_area.x2 = 1000;
-	ts->swipe[SWIPE_U].start_area.y2 = 3119;
-	ts->swipe[SWIPE_U].border_area.x1 = 0;
-	ts->swipe[SWIPE_U].border_area.y1 = 0;
-	ts->swipe[SWIPE_U].border_area.x2 = 0;
-	ts->swipe[SWIPE_U].border_area.y2 = 0;
-	ts->swipe[SWIPE_U].start_border_area.x1 = 0;
-	ts->swipe[SWIPE_U].start_border_area.y1 = 0;
-	ts->swipe[SWIPE_U].start_border_area.x2 = 0;
-	ts->swipe[SWIPE_U].start_border_area.y2 = 0;
+	d->swipe[SWIPE_U].enable = false;
+	d->swipe[SWIPE_U].debug_enable = false;
+	d->swipe[SWIPE_U].distance = 20;
+	d->swipe[SWIPE_U].ratio_thres = 150;
+	d->swipe[SWIPE_U].min_time = 4;
+	d->swipe[SWIPE_U].max_time = 150;
+	d->swipe[SWIPE_U].wrong_dir_thres = 5;
+	d->swipe[SWIPE_U].init_ratio_chk_dist = 4;
+	d->swipe[SWIPE_U].init_ratio_thres = 100;
+	d->swipe[SWIPE_U].area.x1 = 80;
+	d->swipe[SWIPE_U].area.y1 = 0;
+	d->swipe[SWIPE_U].area.x2 = 1359;
+	d->swipe[SWIPE_U].area.y2 = 3119;
+	d->swipe[SWIPE_U].start_area.x1 = 439;
+	d->swipe[SWIPE_U].start_area.y1 = 2797;
+	d->swipe[SWIPE_U].start_area.x2 = 1000;
+	d->swipe[SWIPE_U].start_area.y2 = 3119;
+	d->swipe[SWIPE_U].border_area.x1 = 0;
+	d->swipe[SWIPE_U].border_area.y1 = 0;
+	d->swipe[SWIPE_U].border_area.x2 = 0;
+	d->swipe[SWIPE_U].border_area.y2 = 0;
+	d->swipe[SWIPE_U].start_border_area.x1 = 0;
+	d->swipe[SWIPE_U].start_border_area.y1 = 0;
+	d->swipe[SWIPE_U].start_border_area.x2 = 0;
+	d->swipe[SWIPE_U].start_border_area.y2 = 0;
 
-	ts->swipe[SWIPE_D].enable = false;
-	ts->swipe[SWIPE_D].debug_enable = false;
-	ts->swipe[SWIPE_D].distance = 15;
-	ts->swipe[SWIPE_D].ratio_thres = 150;
-	ts->swipe[SWIPE_D].min_time = 0;
-	ts->swipe[SWIPE_D].max_time = 150;
-	ts->swipe[SWIPE_D].wrong_dir_thres = 5;
-	ts->swipe[SWIPE_D].init_ratio_chk_dist = 5;
-	ts->swipe[SWIPE_D].init_ratio_thres = 100;
-	ts->swipe[SWIPE_D].area.x1 = 80;
-	ts->swipe[SWIPE_D].area.y1 = 0;
-	ts->swipe[SWIPE_D].area.x2 = 1359;
-	ts->swipe[SWIPE_D].area.y2 = 3119;
-	ts->swipe[SWIPE_D].start_area.x1 = 80;
-	ts->swipe[SWIPE_D].start_area.y1 = 0;
-	ts->swipe[SWIPE_D].start_area.x2 = 1359;
-	ts->swipe[SWIPE_D].start_area.y2 = 300;
-	ts->swipe[SWIPE_D].border_area.x1 = 30;
-	ts->swipe[SWIPE_D].border_area.y1 = 30;
-	ts->swipe[SWIPE_D].border_area.x2 = 30;
-	ts->swipe[SWIPE_D].border_area.y2 = 30;
-	ts->swipe[SWIPE_D].start_border_area.x1 = 30;
-	ts->swipe[SWIPE_D].start_border_area.y1 = 30;
-	ts->swipe[SWIPE_D].start_border_area.x2 = 30;
-	ts->swipe[SWIPE_D].start_border_area.y2 = 30;
+	d->swipe[SWIPE_D].enable = false;
+	d->swipe[SWIPE_D].debug_enable = false;
+	d->swipe[SWIPE_D].distance = 15;
+	d->swipe[SWIPE_D].ratio_thres = 150;
+	d->swipe[SWIPE_D].min_time = 0;
+	d->swipe[SWIPE_D].max_time = 150;
+	d->swipe[SWIPE_D].wrong_dir_thres = 5;
+	d->swipe[SWIPE_D].init_ratio_chk_dist = 5;
+	d->swipe[SWIPE_D].init_ratio_thres = 100;
+	d->swipe[SWIPE_D].area.x1 = 80;
+	d->swipe[SWIPE_D].area.y1 = 0;
+	d->swipe[SWIPE_D].area.x2 = 1359;
+	d->swipe[SWIPE_D].area.y2 = 3119;
+	d->swipe[SWIPE_D].start_area.x1 = 80;
+	d->swipe[SWIPE_D].start_area.y1 = 0;
+	d->swipe[SWIPE_D].start_area.x2 = 1359;
+	d->swipe[SWIPE_D].start_area.y2 = 300;
+	d->swipe[SWIPE_D].border_area.x1 = 30;
+	d->swipe[SWIPE_D].border_area.y1 = 30;
+	d->swipe[SWIPE_D].border_area.x2 = 30;
+	d->swipe[SWIPE_D].border_area.y2 = 30;
+	d->swipe[SWIPE_D].start_border_area.x1 = 30;
+	d->swipe[SWIPE_D].start_border_area.y1 = 30;
+	d->swipe[SWIPE_D].start_border_area.x2 = 30;
+	d->swipe[SWIPE_D].start_border_area.y2 = 30;
 
-	ts->swipe[SWIPE_L2].enable = false;
-	ts->swipe[SWIPE_L2].debug_enable = false;
-	ts->swipe[SWIPE_L2].distance = 12;
-	ts->swipe[SWIPE_L2].ratio_thres = 150;
-	ts->swipe[SWIPE_L2].min_time = 4;
-	ts->swipe[SWIPE_L2].max_time = 150;
-	ts->swipe[SWIPE_L2].wrong_dir_thres = 5;
-	ts->swipe[SWIPE_L2].init_ratio_chk_dist = 4;
-	ts->swipe[SWIPE_L2].init_ratio_thres = 100;
-	ts->swipe[SWIPE_L2].area.x1 = 0;
-	ts->swipe[SWIPE_L2].area.y1 = 0;
-	ts->swipe[SWIPE_L2].area.x2 = 1439;
-	ts->swipe[SWIPE_L2].area.y2 = 3119;
-	ts->swipe[SWIPE_L2].start_area.x1 = 1190;
-	ts->swipe[SWIPE_L2].start_area.y1 = 408;
-	ts->swipe[SWIPE_L2].start_area.x2 = 1439;
-	ts->swipe[SWIPE_L2].start_area.y2 = 2207;
-	ts->swipe[SWIPE_L2].border_area.x1 = 0;
-	ts->swipe[SWIPE_L2].border_area.y1 = 0;
-	ts->swipe[SWIPE_L2].border_area.x2 = 0;
-	ts->swipe[SWIPE_L2].border_area.y2 = 0;
-	ts->swipe[SWIPE_L2].start_border_area.x1 = 0;
-	ts->swipe[SWIPE_L2].start_border_area.y1 = 0;
-	ts->swipe[SWIPE_L2].start_border_area.x2 = 0;
-	ts->swipe[SWIPE_L2].start_border_area.y2 = 0;
+	d->swipe[SWIPE_L2].enable = false;
+	d->swipe[SWIPE_L2].debug_enable = false;
+	d->swipe[SWIPE_L2].distance = 12;
+	d->swipe[SWIPE_L2].ratio_thres = 150;
+	d->swipe[SWIPE_L2].min_time = 4;
+	d->swipe[SWIPE_L2].max_time = 150;
+	d->swipe[SWIPE_L2].wrong_dir_thres = 5;
+	d->swipe[SWIPE_L2].init_ratio_chk_dist = 4;
+	d->swipe[SWIPE_L2].init_ratio_thres = 100;
+	d->swipe[SWIPE_L2].area.x1 = 0;
+	d->swipe[SWIPE_L2].area.y1 = 0;
+	d->swipe[SWIPE_L2].area.x2 = 1439;
+	d->swipe[SWIPE_L2].area.y2 = 3119;
+	d->swipe[SWIPE_L2].start_area.x1 = 1190;
+	d->swipe[SWIPE_L2].start_area.y1 = 408;
+	d->swipe[SWIPE_L2].start_area.x2 = 1439;
+	d->swipe[SWIPE_L2].start_area.y2 = 2207;
+	d->swipe[SWIPE_L2].border_area.x1 = 0;
+	d->swipe[SWIPE_L2].border_area.y1 = 0;
+	d->swipe[SWIPE_L2].border_area.x2 = 0;
+	d->swipe[SWIPE_L2].border_area.y2 = 0;
+	d->swipe[SWIPE_L2].start_border_area.x1 = 0;
+	d->swipe[SWIPE_L2].start_border_area.y1 = 0;
+	d->swipe[SWIPE_L2].start_border_area.x2 = 0;
+	d->swipe[SWIPE_L2].start_border_area.y2 = 0;
 
-	ts->swipe[SWIPE_R2].enable = false;
-	ts->swipe[SWIPE_R2].debug_enable = false;
-	ts->swipe[SWIPE_R2].distance = 12;
-	ts->swipe[SWIPE_R2].ratio_thres = 150;
-	ts->swipe[SWIPE_R2].min_time = 4;
-	ts->swipe[SWIPE_R2].max_time = 150;
-	ts->swipe[SWIPE_R2].wrong_dir_thres = 5;
-	ts->swipe[SWIPE_R2].init_ratio_chk_dist = 4;
-	ts->swipe[SWIPE_R2].init_ratio_thres = 100;
-	ts->swipe[SWIPE_R2].area.x1 = 0;
-	ts->swipe[SWIPE_R2].area.y1 = 0;
-	ts->swipe[SWIPE_R2].area.x2 = 1439;
-	ts->swipe[SWIPE_R2].area.y2 = 3119;
-	ts->swipe[SWIPE_R2].start_area.x1 = 0;
-	ts->swipe[SWIPE_R2].start_area.y1 = 408;
-	ts->swipe[SWIPE_R2].start_area.x2 = 249;
-	ts->swipe[SWIPE_R2].start_area.y2 = 2207;
-	ts->swipe[SWIPE_R2].border_area.x1 = 0;
-	ts->swipe[SWIPE_R2].border_area.y1 = 0;
-	ts->swipe[SWIPE_R2].border_area.x2 = 0;
-	ts->swipe[SWIPE_R2].border_area.y2 = 0;
-	ts->swipe[SWIPE_R2].start_border_area.x1 = 0;
-	ts->swipe[SWIPE_R2].start_border_area.y1 = 0;
-	ts->swipe[SWIPE_R2].start_border_area.x2 = 0;
-	ts->swipe[SWIPE_R2].start_border_area.y2 = 0;
-	*/
+	d->swipe[SWIPE_R2].enable = false;
+	d->swipe[SWIPE_R2].debug_enable = false;
+	d->swipe[SWIPE_R2].distance = 12;
+	d->swipe[SWIPE_R2].ratio_thres = 150;
+	d->swipe[SWIPE_R2].min_time = 4;
+	d->swipe[SWIPE_R2].max_time = 150;
+	d->swipe[SWIPE_R2].wrong_dir_thres = 5;
+	d->swipe[SWIPE_R2].init_ratio_chk_dist = 4;
+	d->swipe[SWIPE_R2].init_ratio_thres = 100;
+	d->swipe[SWIPE_R2].area.x1 = 0;
+	d->swipe[SWIPE_R2].area.y1 = 0;
+	d->swipe[SWIPE_R2].area.x2 = 1439;
+	d->swipe[SWIPE_R2].area.y2 = 3119;
+	d->swipe[SWIPE_R2].start_area.x1 = 0;
+	d->swipe[SWIPE_R2].start_area.y1 = 408;
+	d->swipe[SWIPE_R2].start_area.x2 = 249;
+	d->swipe[SWIPE_R2].start_area.y2 = 2207;
+	d->swipe[SWIPE_R2].border_area.x1 = 0;
+	d->swipe[SWIPE_R2].border_area.y1 = 0;
+	d->swipe[SWIPE_R2].border_area.x2 = 0;
+	d->swipe[SWIPE_R2].border_area.y2 = 0;
+	d->swipe[SWIPE_R2].start_border_area.x1 = 0;
+	d->swipe[SWIPE_R2].start_border_area.y1 = 0;
+	d->swipe[SWIPE_R2].start_border_area.x2 = 0;
+	d->swipe[SWIPE_R2].start_border_area.y2 = 0;
 }
 
 static int sw42000_lpwg_abs_enable(struct device *dev, bool enable)
@@ -1396,239 +1393,240 @@ static void sw42000_print_lpwg_abs_info(struct device *dev)
 
 static int sw42000_swipe_enable(struct device *dev, bool enable)
 {
-//	struct touch_core_data *ts = to_touch_core(dev);
-//
-//	struct swipe_ctrl *ctrl[SW42000_SWIPE_NUM] = {	/* L, R, U, D */
-//		&ts->swipe[SWIPE_L],
-//		&ts->swipe[SWIPE_R],
-//		&ts->swipe[SWIPE_U],
-//		&ts->swipe[SWIPE_D],
-//	};
-//	struct swipe_ctrl *ctrl2[SW42000_SWIPE2_NUM] = {	/* L2, R2 */
-//		&ts->swipe[SWIPE_L2],
-//		&ts->swipe[SWIPE_R2],
-//	};
-//	struct swipe_buf {
-//		u8 enable[4];
-//		u8 distance[4];
-//		u8 ratio_thres[4];
-//		u16 min_time[4];
-//		u16 max_time[4];
-//		u16 area_hori[8];
-//		u16 area_verti[8];
-//		u16 start_hori[8];
-//		u16 start_verti[8];
-//		u8 wrong_dir_thres[4];
-//		u8 init_ratio_chk_dist[4];
-//		u8 init_ratio_thres[4];
-//	} __packed;
-//	struct swipe_buf buf;
-//	struct swipe2_buf {
-//		u8 enable[4];
-//		u8 distance[4];
-//		u8 ratio_thres[4];
-//		u16 min_time[2];
-//		u16 max_time[2];
-//		u16 area[8];
-//		u16 start[8];
-//		u8 wrong_dir_thres[4];
-//		u8 init_ratio_chk_dist[4];
-//		u8 init_ratio_thres[4];
-//	} __packed;
-//	struct swipe2_buf buf2;
-//	struct swipe_active_area area[4];
-//	struct swipe_active_area start_area[4];
-//	int i = 0;
+	struct sw42000_data *d = to_sw42000_data(dev);
+	struct touch_core_data *ts = to_touch_core(dev);
+
+	struct sw42000_swipe_ctrl *ctrl[SW42000_SWIPE_NUM] = {	/* L, R, U, D */
+		&d->swipe[SWIPE_L],
+		&d->swipe[SWIPE_R],
+		&d->swipe[SWIPE_U],
+		&d->swipe[SWIPE_D],
+	};
+	struct sw42000_swipe_ctrl *ctrl2[SW42000_SWIPE2_NUM] = {	/* L2, R2 */
+		&d->swipe[SWIPE_L2],
+		&d->swipe[SWIPE_R2],
+	};
+	struct swipe_buf {
+		u8 enable[4];
+		u8 distance[4];
+		u8 ratio_thres[4];
+		u16 min_time[4];
+		u16 max_time[4];
+		u16 area_hori[8];
+		u16 area_verti[8];
+		u16 start_hori[8];
+		u16 start_verti[8];
+		u8 wrong_dir_thres[4];
+		u8 init_ratio_chk_dist[4];
+		u8 init_ratio_thres[4];
+	} __packed;
+	struct swipe_buf buf;
+	struct swipe2_buf {
+		u8 enable[4];
+		u8 distance[4];
+		u8 ratio_thres[4];
+		u16 min_time[2];
+		u16 max_time[2];
+		u16 area[8];
+		u16 start[8];
+		u8 wrong_dir_thres[4];
+		u8 init_ratio_chk_dist[4];
+		u8 init_ratio_thres[4];
+	} __packed;
+	struct swipe2_buf buf2;
+	struct sw42000_active_area area[4];
+	struct sw42000_active_area start_area[4];
+	int i = 0;
 	int ret = 0;
-//
-//	TOUCH_TRACE();
-//
-//	TOUCH_I("%s: SWIPE L(%d),R(%d),U(%d),D(%d),L2(%d),R2(%d)\n", __func__,
-//		ctrl[SW42000_SWIPE_L]->enable, ctrl[SW42000_SWIPE_R]->enable,
-//		ctrl[SW42000_SWIPE_U]->enable, ctrl[SW42000_SWIPE_D]->enable,
-//		ctrl2[SW42000_SWIPE2_L]->enable, ctrl2[SW42000_SWIPE2_R]->enable);
-//
-//	if (enable) {
-//		memset(&buf, 0, sizeof(buf));
-//
-//		for (i = 0; i < SW42000_SWIPE_NUM; i++) {	/* L, R, U, D  */
-//			buf.enable[i] = ctrl[i]->enable;
-//			buf.distance[i] = ctrl[i]->distance;
-//			buf.ratio_thres[i] = ctrl[i]->ratio_thres;
-//			buf.min_time[i] = ctrl[i]->min_time;
-//			buf.max_time[i] = ctrl[i]->max_time;
-//			buf.wrong_dir_thres[i] = ctrl[i]->wrong_dir_thres;
-//			buf.init_ratio_chk_dist[i] = ctrl[i]->init_ratio_chk_dist;
-//			buf.init_ratio_thres[i] = ctrl[i]->init_ratio_thres;
-//
-//			area[i].x1 = ctrl[i]->area.x1 - ctrl[i]->border_area.x1;
-//			if (area[i].x1 < 0)
-//				area[i].x1 = 0;
-//			area[i].y1 = ctrl[i]->area.y1 - ctrl[i]->border_area.y1;
-//			if (area[i].y1 < 0)
-//				area[i].y1 = 0;
-//			area[i].x2 = ctrl[i]->area.x2 + ctrl[i]->border_area.x2;
-//			if (area[i].x2 > ts->caps.max_x)
-//				area[i].x2 = ts->caps.max_x;
-//			area[i].y2 = ctrl[i]->area.y2 + ctrl[i]->border_area.y2;
-//			if (area[i].y2 > ts->caps.max_y)
-//				area[i].y2 = ts->caps.max_y;
-//
-//			start_area[i].x1 = ctrl[i]->start_area.x1 - ctrl[i]->start_border_area.x1;
-//			if (start_area[i].x1 < 0)
-//				start_area[i].x1 = 0;
-//			start_area[i].y1 = ctrl[i]->start_area.y1 - ctrl[i]->start_border_area.y1;
-//			if (start_area[i].y1 < 0)
-//				start_area[i].y1 = 0;
-//			start_area[i].x2 = ctrl[i]->start_area.x2 + ctrl[i]->start_border_area.x2;
-//			if (start_area[i].x2 > ts->caps.max_x)
-//				start_area[i].x2 = ts->caps.max_x;
-//			start_area[i].y2 = ctrl[i]->start_area.y2 + ctrl[i]->start_border_area.y2;
-//			if (start_area[i].y2 > ts->caps.max_y)
-//				start_area[i].y2 = ts->caps.max_y;
-//
-//			ctrl[i]->debug_enable = ctrl[i]->enable;
-//		}
-//
-//		buf.area_hori[0] = area[SW42000_SWIPE_L].x1;
-//		buf.area_hori[1] = area[SW42000_SWIPE_R].x1;
-//		buf.area_hori[2] = area[SW42000_SWIPE_L].y1;
-//		buf.area_hori[3] = area[SW42000_SWIPE_R].y1;
-//		buf.area_hori[4] = area[SW42000_SWIPE_L].x2;
-//		buf.area_hori[5] = area[SW42000_SWIPE_R].x2;
-//		buf.area_hori[6] = area[SW42000_SWIPE_L].y2;
-//		buf.area_hori[7] = area[SW42000_SWIPE_R].y2;
-//
-//		buf.area_verti[0] = area[SW42000_SWIPE_U].x1;
-//		buf.area_verti[1] = area[SW42000_SWIPE_D].x1;
-//		buf.area_verti[2] = area[SW42000_SWIPE_U].y1;
-//		buf.area_verti[3] = area[SW42000_SWIPE_D].y1;
-//		buf.area_verti[4] = area[SW42000_SWIPE_U].x2;
-//		buf.area_verti[5] = area[SW42000_SWIPE_D].x2;
-//		buf.area_verti[6] = area[SW42000_SWIPE_U].y2;
-//		buf.area_verti[7] = area[SW42000_SWIPE_D].y2;
-//
-//		buf.start_hori[0] = start_area[SW42000_SWIPE_L].x1;
-//		buf.start_hori[1] = start_area[SW42000_SWIPE_R].x1;
-//		buf.start_hori[2] = start_area[SW42000_SWIPE_L].y1;
-//		buf.start_hori[3] = start_area[SW42000_SWIPE_R].y1;
-//		buf.start_hori[4] = start_area[SW42000_SWIPE_L].x2;
-//		buf.start_hori[5] = start_area[SW42000_SWIPE_R].x2;
-//		buf.start_hori[6] = start_area[SW42000_SWIPE_L].y2;
-//		buf.start_hori[7] = start_area[SW42000_SWIPE_R].y2;
-//
-//		buf.start_verti[0] = start_area[SW42000_SWIPE_U].x1;
-//		buf.start_verti[1] = start_area[SW42000_SWIPE_D].x1;
-//		buf.start_verti[2] = start_area[SW42000_SWIPE_U].y1;
-//		buf.start_verti[3] = start_area[SW42000_SWIPE_D].y1;
-//		buf.start_verti[4] = start_area[SW42000_SWIPE_U].x2;
-//		buf.start_verti[5] = start_area[SW42000_SWIPE_D].x2;
-//		buf.start_verti[6] = start_area[SW42000_SWIPE_U].y2;
-//		buf.start_verti[7] = start_area[SW42000_SWIPE_D].y2;
-//
-//		memset(&buf2, 0, sizeof(buf2));
-//
-//		for (i = 0; i < SW42000_SWIPE2_NUM; i++) {	/* L2, R2 */
-//			buf2.enable[i] = ctrl2[i]->enable;
-//			buf2.distance[i] = ctrl2[i]->distance;
-//			buf2.ratio_thres[i] = ctrl2[i]->ratio_thres;
-//			buf2.min_time[i] = ctrl2[i]->min_time;
-//			buf2.max_time[i] = ctrl2[i]->max_time;
-//			buf2.wrong_dir_thres[i] = ctrl2[i]->wrong_dir_thres;
-//			buf2.init_ratio_chk_dist[i] = ctrl2[i]->init_ratio_chk_dist;
-//			buf2.init_ratio_thres[i] = ctrl2[i]->init_ratio_thres;
-//
-//			area[i].x1 = ctrl2[i]->area.x1 - ctrl2[i]->border_area.x1;
-//			if (area[i].x1 < 0)
-//				area[i].x1 = 0;
-//			area[i].y1 = ctrl2[i]->area.y1 - ctrl2[i]->border_area.y1;
-//			if (area[i].y1 < 0)
-//				area[i].y1 = 0;
-//			area[i].x2 = ctrl2[i]->area.x2 + ctrl2[i]->border_area.x2;
-//			if (area[i].x2 > ts->caps.max_x)
-//				area[i].x2 = ts->caps.max_x;
-//			area[i].y2 = ctrl2[i]->area.y2 + ctrl2[i]->border_area.y2;
-//			if (area[i].y2 > ts->caps.max_y)
-//				area[i].y2 = ts->caps.max_y;
-//
-//			start_area[i].x1 = ctrl2[i]->start_area.x1 - ctrl2[i]->start_border_area.x1;
-//			if (start_area[i].x1 < 0)
-//				start_area[i].x1 = 0;
-//			start_area[i].y1 = ctrl2[i]->start_area.y1 - ctrl2[i]->start_border_area.y1;
-//			if (start_area[i].y1 < 0)
-//				start_area[i].y1 = 0;
-//			start_area[i].x2 = ctrl2[i]->start_area.x2 + ctrl2[i]->start_border_area.x2;
-//			if (start_area[i].x2 > ts->caps.max_x)
-//				start_area[i].x2 = ts->caps.max_x;
-//			start_area[i].y2 = ctrl2[i]->start_area.y2 + ctrl2[i]->start_border_area.y2;
-//			if (start_area[i].y2 > ts->caps.max_y)
-//				start_area[i].y2 = ts->caps.max_y;
-//
-//			ctrl2[i]->debug_enable = ctrl2[i]->enable;
-//		}
-//
-//		buf2.area[0] = area[SW42000_SWIPE2_L].x1;
-//		buf2.area[1] = area[SW42000_SWIPE2_R].x1;
-//		buf2.area[2] = area[SW42000_SWIPE2_L].y1;
-//		buf2.area[3] = area[SW42000_SWIPE2_R].y1;
-//		buf2.area[4] = area[SW42000_SWIPE2_L].x2;
-//		buf2.area[5] = area[SW42000_SWIPE2_R].x2;
-//		buf2.area[6] = area[SW42000_SWIPE2_L].y2;
-//		buf2.area[7] = area[SW42000_SWIPE2_R].y2;
-//
-//		buf2.start[0] = start_area[SW42000_SWIPE2_L].x1;
-//		buf2.start[1] = start_area[SW42000_SWIPE2_R].x1;
-//		buf2.start[2] = start_area[SW42000_SWIPE2_L].y1;
-//		buf2.start[3] = start_area[SW42000_SWIPE2_R].y1;
-//		buf2.start[4] = start_area[SW42000_SWIPE2_L].x2;
-//		buf2.start[5] = start_area[SW42000_SWIPE2_R].x2;
-//		buf2.start[6] = start_area[SW42000_SWIPE2_L].y2;
-//		buf2.start[7] = start_area[SW42000_SWIPE2_R].y2;
-//
-//		if (atomic_read(&ts->state.sleep) == IC_NORMAL) {
-//			TOUCH_D(TRACE, "state.sleep : %d\n", atomic_read(&ts->state.sleep));
-//
-//			ret = sw42000_reg_write(dev, ABT_CMD + SWIPE_ON,
-//					&buf, sizeof(buf));
-//			if (ret < 0) {
-//				TOUCH_E("failed to write swipe registers (ret = %d)\n",
-//						ret);
-//			} else {
-//				set_debug_reason(dev, LPWG_DEBUG_SWIPE);
-//			}
-//
-//			ret = sw42000_reg_write(dev, ABT_CMD + SWIPE2_ON,
-//					&buf2, sizeof(buf2));
-//			if (ret < 0) {
-//				TOUCH_E("failed to write swipe2 registers (ret = %d)\n",
-//						ret);
-//			}
-//		} else {
-//			TOUCH_I("%s : not set(deep sleep)\n", __func__);
-//		}
-//	} else {
-//		for (i = 0; i < SW42000_SWIPE_NUM; i++)
-//			ctrl[i]->debug_enable = false;
-//
-//		memset(&(buf.enable), 0, sizeof(buf.enable));
-//
-//		ret = sw42000_reg_write(dev, ABT_CMD + SWIPE_ON,
-//				&(buf.enable), sizeof(buf.enable));
-//		if (ret < 0)
-//			TOUCH_E("failed to clear SWIPE_ENABLE register (ret = %d)\n",
-//					ret);
-//
-//		for (i = 0; i < SW42000_SWIPE2_NUM; i++)
-//			ctrl2[i]->debug_enable = false;
-//
-//		memset(&(buf2.enable), 0, sizeof(buf2.enable));
-//
-//		ret = sw42000_reg_write(dev, ABT_CMD + SWIPE2_ON,
-//				&(buf2.enable), sizeof(buf2.enable));
-//		if (ret < 0)
-//			TOUCH_E("failed to clear SWIPE2_ENABLE register (ret = %d)\n",
-//					ret);
-//	}
+
+	TOUCH_TRACE();
+
+	TOUCH_I("%s: SWIPE L(%d),R(%d),U(%d),D(%d),L2(%d),R2(%d)\n", __func__,
+		ctrl[SW42000_SWIPE_L]->enable, ctrl[SW42000_SWIPE_R]->enable,
+		ctrl[SW42000_SWIPE_U]->enable, ctrl[SW42000_SWIPE_D]->enable,
+		ctrl2[SW42000_SWIPE2_L]->enable, ctrl2[SW42000_SWIPE2_R]->enable);
+
+	if (enable) {
+		memset(&buf, 0, sizeof(buf));
+
+		for (i = 0; i < SW42000_SWIPE_NUM; i++) {	/* L, R, U, D  */
+			buf.enable[i] = ctrl[i]->enable;
+			buf.distance[i] = ctrl[i]->distance;
+			buf.ratio_thres[i] = ctrl[i]->ratio_thres;
+			buf.min_time[i] = ctrl[i]->min_time;
+			buf.max_time[i] = ctrl[i]->max_time;
+			buf.wrong_dir_thres[i] = ctrl[i]->wrong_dir_thres;
+			buf.init_ratio_chk_dist[i] = ctrl[i]->init_ratio_chk_dist;
+			buf.init_ratio_thres[i] = ctrl[i]->init_ratio_thres;
+
+			area[i].x1 = ctrl[i]->area.x1 - ctrl[i]->border_area.x1;
+			if (area[i].x1 < 0)
+				area[i].x1 = 0;
+			area[i].y1 = ctrl[i]->area.y1 - ctrl[i]->border_area.y1;
+			if (area[i].y1 < 0)
+				area[i].y1 = 0;
+			area[i].x2 = ctrl[i]->area.x2 + ctrl[i]->border_area.x2;
+			if (area[i].x2 > ts->caps.max_x)
+				area[i].x2 = ts->caps.max_x;
+			area[i].y2 = ctrl[i]->area.y2 + ctrl[i]->border_area.y2;
+			if (area[i].y2 > ts->caps.max_y)
+				area[i].y2 = ts->caps.max_y;
+
+			start_area[i].x1 = ctrl[i]->start_area.x1 - ctrl[i]->start_border_area.x1;
+			if (start_area[i].x1 < 0)
+				start_area[i].x1 = 0;
+			start_area[i].y1 = ctrl[i]->start_area.y1 - ctrl[i]->start_border_area.y1;
+			if (start_area[i].y1 < 0)
+				start_area[i].y1 = 0;
+			start_area[i].x2 = ctrl[i]->start_area.x2 + ctrl[i]->start_border_area.x2;
+			if (start_area[i].x2 > ts->caps.max_x)
+				start_area[i].x2 = ts->caps.max_x;
+			start_area[i].y2 = ctrl[i]->start_area.y2 + ctrl[i]->start_border_area.y2;
+			if (start_area[i].y2 > ts->caps.max_y)
+				start_area[i].y2 = ts->caps.max_y;
+
+			ctrl[i]->debug_enable = ctrl[i]->enable;
+		}
+
+		buf.area_hori[0] = area[SW42000_SWIPE_L].x1;
+		buf.area_hori[1] = area[SW42000_SWIPE_R].x1;
+		buf.area_hori[2] = area[SW42000_SWIPE_L].y1;
+		buf.area_hori[3] = area[SW42000_SWIPE_R].y1;
+		buf.area_hori[4] = area[SW42000_SWIPE_L].x2;
+		buf.area_hori[5] = area[SW42000_SWIPE_R].x2;
+		buf.area_hori[6] = area[SW42000_SWIPE_L].y2;
+		buf.area_hori[7] = area[SW42000_SWIPE_R].y2;
+
+		buf.area_verti[0] = area[SW42000_SWIPE_U].x1;
+		buf.area_verti[1] = area[SW42000_SWIPE_D].x1;
+		buf.area_verti[2] = area[SW42000_SWIPE_U].y1;
+		buf.area_verti[3] = area[SW42000_SWIPE_D].y1;
+		buf.area_verti[4] = area[SW42000_SWIPE_U].x2;
+		buf.area_verti[5] = area[SW42000_SWIPE_D].x2;
+		buf.area_verti[6] = area[SW42000_SWIPE_U].y2;
+		buf.area_verti[7] = area[SW42000_SWIPE_D].y2;
+
+		buf.start_hori[0] = start_area[SW42000_SWIPE_L].x1;
+		buf.start_hori[1] = start_area[SW42000_SWIPE_R].x1;
+		buf.start_hori[2] = start_area[SW42000_SWIPE_L].y1;
+		buf.start_hori[3] = start_area[SW42000_SWIPE_R].y1;
+		buf.start_hori[4] = start_area[SW42000_SWIPE_L].x2;
+		buf.start_hori[5] = start_area[SW42000_SWIPE_R].x2;
+		buf.start_hori[6] = start_area[SW42000_SWIPE_L].y2;
+		buf.start_hori[7] = start_area[SW42000_SWIPE_R].y2;
+
+		buf.start_verti[0] = start_area[SW42000_SWIPE_U].x1;
+		buf.start_verti[1] = start_area[SW42000_SWIPE_D].x1;
+		buf.start_verti[2] = start_area[SW42000_SWIPE_U].y1;
+		buf.start_verti[3] = start_area[SW42000_SWIPE_D].y1;
+		buf.start_verti[4] = start_area[SW42000_SWIPE_U].x2;
+		buf.start_verti[5] = start_area[SW42000_SWIPE_D].x2;
+		buf.start_verti[6] = start_area[SW42000_SWIPE_U].y2;
+		buf.start_verti[7] = start_area[SW42000_SWIPE_D].y2;
+
+		memset(&buf2, 0, sizeof(buf2));
+
+		for (i = 0; i < SW42000_SWIPE2_NUM; i++) {	/* L2, R2 */
+			buf2.enable[i] = ctrl2[i]->enable;
+			buf2.distance[i] = ctrl2[i]->distance;
+			buf2.ratio_thres[i] = ctrl2[i]->ratio_thres;
+			buf2.min_time[i] = ctrl2[i]->min_time;
+			buf2.max_time[i] = ctrl2[i]->max_time;
+			buf2.wrong_dir_thres[i] = ctrl2[i]->wrong_dir_thres;
+			buf2.init_ratio_chk_dist[i] = ctrl2[i]->init_ratio_chk_dist;
+			buf2.init_ratio_thres[i] = ctrl2[i]->init_ratio_thres;
+
+			area[i].x1 = ctrl2[i]->area.x1 - ctrl2[i]->border_area.x1;
+			if (area[i].x1 < 0)
+				area[i].x1 = 0;
+			area[i].y1 = ctrl2[i]->area.y1 - ctrl2[i]->border_area.y1;
+			if (area[i].y1 < 0)
+				area[i].y1 = 0;
+			area[i].x2 = ctrl2[i]->area.x2 + ctrl2[i]->border_area.x2;
+			if (area[i].x2 > ts->caps.max_x)
+				area[i].x2 = ts->caps.max_x;
+			area[i].y2 = ctrl2[i]->area.y2 + ctrl2[i]->border_area.y2;
+			if (area[i].y2 > ts->caps.max_y)
+				area[i].y2 = ts->caps.max_y;
+
+			start_area[i].x1 = ctrl2[i]->start_area.x1 - ctrl2[i]->start_border_area.x1;
+			if (start_area[i].x1 < 0)
+				start_area[i].x1 = 0;
+			start_area[i].y1 = ctrl2[i]->start_area.y1 - ctrl2[i]->start_border_area.y1;
+			if (start_area[i].y1 < 0)
+				start_area[i].y1 = 0;
+			start_area[i].x2 = ctrl2[i]->start_area.x2 + ctrl2[i]->start_border_area.x2;
+			if (start_area[i].x2 > ts->caps.max_x)
+				start_area[i].x2 = ts->caps.max_x;
+			start_area[i].y2 = ctrl2[i]->start_area.y2 + ctrl2[i]->start_border_area.y2;
+			if (start_area[i].y2 > ts->caps.max_y)
+				start_area[i].y2 = ts->caps.max_y;
+
+			ctrl2[i]->debug_enable = ctrl2[i]->enable;
+		}
+
+		buf2.area[0] = area[SW42000_SWIPE2_L].x1;
+		buf2.area[1] = area[SW42000_SWIPE2_R].x1;
+		buf2.area[2] = area[SW42000_SWIPE2_L].y1;
+		buf2.area[3] = area[SW42000_SWIPE2_R].y1;
+		buf2.area[4] = area[SW42000_SWIPE2_L].x2;
+		buf2.area[5] = area[SW42000_SWIPE2_R].x2;
+		buf2.area[6] = area[SW42000_SWIPE2_L].y2;
+		buf2.area[7] = area[SW42000_SWIPE2_R].y2;
+
+		buf2.start[0] = start_area[SW42000_SWIPE2_L].x1;
+		buf2.start[1] = start_area[SW42000_SWIPE2_R].x1;
+		buf2.start[2] = start_area[SW42000_SWIPE2_L].y1;
+		buf2.start[3] = start_area[SW42000_SWIPE2_R].y1;
+		buf2.start[4] = start_area[SW42000_SWIPE2_L].x2;
+		buf2.start[5] = start_area[SW42000_SWIPE2_R].x2;
+		buf2.start[6] = start_area[SW42000_SWIPE2_L].y2;
+		buf2.start[7] = start_area[SW42000_SWIPE2_R].y2;
+
+		if (atomic_read(&ts->state.sleep) == IC_NORMAL) {
+			TOUCH_D(TRACE, "state.sleep : %d\n", atomic_read(&ts->state.sleep));
+
+			ret = sw42000_reg_write(dev, ABT_CMD + SWIPE_ON,
+					&buf, sizeof(buf));
+			if (ret < 0) {
+				TOUCH_E("failed to write swipe registers (ret = %d)\n",
+						ret);
+			} else {
+				set_debug_reason(dev, LPWG_DEBUG_SWIPE);
+			}
+
+			ret = sw42000_reg_write(dev, ABT_CMD + SWIPE2_ON,
+					&buf2, sizeof(buf2));
+			if (ret < 0) {
+				TOUCH_E("failed to write swipe2 registers (ret = %d)\n",
+						ret);
+			}
+		} else {
+			TOUCH_I("%s : not set(deep sleep)\n", __func__);
+		}
+	} else {
+		for (i = 0; i < SW42000_SWIPE_NUM; i++)
+			ctrl[i]->debug_enable = false;
+
+		memset(&(buf.enable), 0, sizeof(buf.enable));
+
+		ret = sw42000_reg_write(dev, ABT_CMD + SWIPE_ON,
+				&(buf.enable), sizeof(buf.enable));
+		if (ret < 0)
+			TOUCH_E("failed to clear SWIPE_ENABLE register (ret = %d)\n",
+					ret);
+
+		for (i = 0; i < SW42000_SWIPE2_NUM; i++)
+			ctrl2[i]->debug_enable = false;
+
+		memset(&(buf2.enable), 0, sizeof(buf2.enable));
+
+		ret = sw42000_reg_write(dev, ABT_CMD + SWIPE2_ON,
+				&(buf2.enable), sizeof(buf2.enable));
+		if (ret < 0)
+			TOUCH_E("failed to clear SWIPE2_ENABLE register (ret = %d)\n",
+					ret);
+	}
 
 	return ret;
 }
@@ -2022,34 +2020,34 @@ static int sw42000_lpwg_mode(struct device *dev)
 					ts->lpwg.mode, ts->lpwg.screen,
 					ts->lpwg.sensor, ts->lpwg.qcover);
 
-//			if (ts->lpwg.mode == LPWG_NONE
-//					&& !ts->swipe[SWIPE_L].enable
-//					&& !ts->swipe[SWIPE_R].enable
-//					&& !ts->swipe[SWIPE_U].enable
-//					&& !ts->swipe[SWIPE_D].enable
-//					&& !ts->swipe[SWIPE_L2].enable
-//					&& !ts->swipe[SWIPE_R2].enable
-//					&& !d->ai_pick.enable) {
-//				/* knock on/code disable, swipe disable */
-//				TOUCH_I("LPWG_NONE & swipe disable - DeepSleep\n");
-//				sw42000_sleep_ctrl(dev, IC_DEEP_SLEEP);
-//			} else {
-//				sw42000_sleep_ctrl(dev, IC_NORMAL);
-//				ret = sw42000_lpwg_control(dev, ts->lpwg.mode);
-//				sw42000_swipe_enable(dev, true);
-//				sw42000_tc_driving(dev, LCD_MODE_U0);
-//				if (d->lpwg_abs.enable) {
-//					TOUCH_I("%s: enable lpwg_abs\n", __func__);
-//					sw42000_lpwg_abs_enable(dev, d->lpwg_abs.enable);
-//				}
-//				if (d->ai_pick.enable) {
-//					TOUCH_I("%s: enable ai pick\n", __func__);
-//					sw42000_ai_pick_enable(dev, d->ai_pick.enable);
-//				}
-//#if defined(__SUPPORT_LONGPRESS)
-//				sw42000_longpress_enable(dev, true);
-//#endif
-//			}
+			if (ts->lpwg.mode == LPWG_NONE
+					&& !d->swipe[SWIPE_L].enable
+					&& !d->swipe[SWIPE_R].enable
+					&& !d->swipe[SWIPE_U].enable
+					&& !d->swipe[SWIPE_D].enable
+					&& !d->swipe[SWIPE_L2].enable
+					&& !d->swipe[SWIPE_R2].enable
+					&& !d->ai_pick.enable) {
+				/* knock on/code disable, swipe disable */
+				TOUCH_I("LPWG_NONE & swipe disable - DeepSleep\n");
+				sw42000_sleep_ctrl(dev, IC_DEEP_SLEEP);
+			} else {
+				sw42000_sleep_ctrl(dev, IC_NORMAL);
+				ret = sw42000_lpwg_control(dev, ts->lpwg.mode);
+				sw42000_swipe_enable(dev, true);
+				sw42000_tc_driving(dev, LCD_MODE_U0);
+				if (d->lpwg_abs.enable) {
+					TOUCH_I("%s: enable lpwg_abs\n", __func__);
+					sw42000_lpwg_abs_enable(dev, d->lpwg_abs.enable);
+				}
+				if (d->ai_pick.enable) {
+					TOUCH_I("%s: enable ai pick\n", __func__);
+					sw42000_ai_pick_enable(dev, d->ai_pick.enable);
+				}
+#if defined(__SUPPORT_LONGPRESS)
+				sw42000_longpress_enable(dev, true);
+#endif
+			}
 		}
 		return ret;
 	}
@@ -3720,11 +3718,11 @@ static int sw42000_init(struct device *dev)
 	if (ret)
 		TOUCH_E("failed to write \'reg_ime_state\', ret:%d\n", ret);
 
-//	data = atomic_read(&ts->state.film);
-//	ret = sw42000_reg_write(dev, ABT_CMD +
-//			SPECIAL_SENSITIVE_INFO, &data, sizeof(data));
-//	if (ret)
-//		TOUCH_E("failed to write \'reg_film_state\', ret:%d\n", ret);
+	data = atomic_read(&ts->state.film);
+	ret = sw42000_reg_write(dev, ABT_CMD +
+			SPECIAL_SENSITIVE_INFO, &data, sizeof(data));
+	if (ret)
+		TOUCH_E("failed to write \'reg_film_state\', ret:%d\n", ret);
 
 	sw42000_setup_q_sensitivity(dev, d->q_sensitivity);
 
@@ -4510,6 +4508,191 @@ out:
 	return count;
 }
 
+static ssize_t show_film_state(struct device *dev, char *buf)
+{
+	struct touch_core_data *ts = to_touch_core(dev);
+	int value = 0;
+	int ret = 0;
+
+	TOUCH_TRACE();
+
+	value = atomic_read(&ts->state.film);
+
+	ret = snprintf(buf, PAGE_SIZE, "%d\n", value);
+
+	return ret;
+}
+
+static ssize_t store_film_state(struct device *dev,
+		const char *buf, size_t count)
+{
+	struct touch_core_data *ts = to_touch_core(dev);
+	int value = 0;
+	int ret = 0;
+
+	TOUCH_TRACE();
+
+	if (kstrtos32(buf, 10, &value) < 0)
+		return count;
+
+	if (value !=0 && value !=1) {
+		TOUCH_I("%s : Unknown %d\n", __func__, value);
+		return count;
+	}
+
+	if (atomic_read(&ts->state.film) == value)
+		return count;
+
+	atomic_set(&ts->state.film, value);
+	ret = touch_blocking_notifier_call(NOTIFY_FILM_STATE,
+		&ts->state.film);
+	TOUCH_I("%s : %d, ret = %d\n",
+			__func__, value, ret);
+
+	return count;
+}
+
+static ssize_t show_swipe_enable(struct device *dev, char *buf)
+{
+	struct sw42000_data *d = to_sw42000_data(dev);
+	int ret = 0;
+
+	TOUCH_TRACE();
+
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+			PAY_TYPE_SWIPE_U, d->swipe[SWIPE_U].enable);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+			PAY_TYPE_SWIPE_L, d->swipe[SWIPE_L2].enable);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+			PAY_TYPE_SWIPE_R, d->swipe[SWIPE_R2].enable);
+
+	TOUCH_I("%s: d->swipe[SWIPE_U].enable = %d\n", __func__,
+			d->swipe[SWIPE_U].enable);
+	TOUCH_I("%s: d->swipe[SWIPE_L2].enable = %d\n", __func__,
+			d->swipe[SWIPE_L2].enable);
+	TOUCH_I("%s: d->swipe[SWIPE_R2].enable = %d\n", __func__,
+			d->swipe[SWIPE_R2].enable);
+
+	return ret;
+}
+
+static ssize_t store_swipe_enable(struct device *dev, const char *buf, size_t count)
+{
+	struct sw42000_data *d = to_sw42000_data(dev);
+	int type = PAY_TYPE_DISABLE;
+
+	TOUCH_TRACE();
+
+	if (kstrtos32(buf, 10, &type) < 0)
+		return count;
+
+	TOUCH_I("%s: type = %d\n", __func__, type);
+
+	switch (type) {
+	case PAY_TYPE_DISABLE:
+		d->swipe[SWIPE_U].enable = false;
+		d->swipe[SWIPE_L2].enable = false;
+		d->swipe[SWIPE_R2].enable = false;
+		break;
+	case PAY_TYPE_SWIPE_U:
+		d->swipe[SWIPE_U].enable = true;
+		d->swipe[SWIPE_L2].enable = false;
+		d->swipe[SWIPE_R2].enable = false;
+		break;
+	case PAY_TYPE_SWIPE_L:
+		d->swipe[SWIPE_U].enable = false;
+		d->swipe[SWIPE_L2].enable = true;
+		d->swipe[SWIPE_R2].enable = false;
+		break;
+	case PAY_TYPE_SWIPE_R:
+		d->swipe[SWIPE_U].enable = false;
+		d->swipe[SWIPE_L2].enable = false;
+		d->swipe[SWIPE_R2].enable = true;
+		break;
+	default:
+		TOUCH_E("invalid type(%d)\n", type);
+		return count;
+	}
+
+	return count;
+}
+
+static ssize_t show_swipe_tool(struct device *dev, char *buf)
+{
+	struct sw42000_data *d = to_sw42000_data(dev);
+	int value = (d->swipe[SWIPE_R].enable) && (d->swipe[SWIPE_L].enable);
+	int ret = 0;
+
+	TOUCH_TRACE();
+
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
+	TOUCH_I("%s: value = %d\n", __func__, value);
+
+	return ret;
+}
+
+static ssize_t store_swipe_tool(struct device *dev,
+		const char *buf, size_t count)
+{
+	struct touch_core_data *ts = to_touch_core(dev);
+	struct sw42000_data *d = to_sw42000_data(dev);
+	int enable = 0;
+	int offset_y = 0;
+	int start_x = 0;
+	int start_y = 0;
+	int width = 0;
+	int height = 0;
+	int end_x = 0;
+	int end_y = 0;
+
+	TOUCH_TRACE();
+
+	if (sscanf(buf, "%d %d %d %d %d %d", &enable, &offset_y, &start_x,
+				&start_y, &width, &height) <= 0)
+		return count;
+
+	TOUCH_I("%s: enable = %d, offset_y = %d, start_x = %d, start_y = %d, width = %d, height = %d\n",
+			__func__, enable, offset_y,
+			start_x, start_y, width, height);
+
+	if ((enable > 1) || (enable < 0)) {
+		TOUCH_E("invalid enable(%d)\n", enable);
+		return count;
+	}
+
+	if (enable) {
+		end_x = start_x + width - 1;
+		end_y = start_y + height - 1;
+
+		d->swipe[SWIPE_R].area.x1 = start_x;
+		d->swipe[SWIPE_R].area.y1 = start_y;
+		d->swipe[SWIPE_R].area.x2 = end_x;
+		d->swipe[SWIPE_R].area.y2 = end_y;
+		d->swipe[SWIPE_R].start_area.x1 = start_x;
+		d->swipe[SWIPE_R].start_area.y1 = start_y;
+		d->swipe[SWIPE_R].start_area.x2 = end_x;
+		d->swipe[SWIPE_R].start_area.y2 = end_y;
+
+		d->swipe[SWIPE_L].area.x1 = start_x;
+		d->swipe[SWIPE_L].area.y1 = start_y;
+		d->swipe[SWIPE_L].area.x2 = end_x;
+		d->swipe[SWIPE_L].area.y2 = end_y;
+		d->swipe[SWIPE_L].start_area.x1 = start_x;
+		d->swipe[SWIPE_L].start_area.y1 = start_y;
+		d->swipe[SWIPE_L].start_area.x2 = end_x;
+		d->swipe[SWIPE_L].start_area.y2 = end_y;
+	}
+
+	d->swipe[SWIPE_R].enable = (bool)enable;
+	d->swipe[SWIPE_L].enable = (bool)enable;
+
+	mutex_lock(&ts->lock);
+	sw42000_swipe_enable(dev, true);
+	mutex_unlock(&ts->lock);
+
+	return count;
+}
+
 static TOUCH_ATTR(lpwg_abs, show_lpwg_abs, store_lpwg_abs);
 static TOUCH_ATTR(reg_ctrl, NULL, store_reg_ctrl);
 static TOUCH_ATTR(lpwg_failreason, show_lpwg_failreason, store_lpwg_failreason);
@@ -4519,6 +4702,9 @@ static TOUCH_ATTR(grip_suppression, show_grip_suppression, store_grip_suppressio
 static TOUCH_ATTR(q_sensitivity, NULL, store_q_sensitivity);
 static TOUCH_ATTR(ai_pick, show_ai_pick, store_ai_pick);
 static TOUCH_ATTR(ts_noise_log_enable, show_noise_log, store_noise_log);
+static TOUCH_ATTR(film_status, show_film_state, store_film_state);
+static TOUCH_ATTR(swipe_enable, show_swipe_enable, store_swipe_enable);
+static TOUCH_ATTR(swipe_tool, show_swipe_tool, store_swipe_tool);
 
 static struct attribute *sw42000_attribute_list[] = {
 	&touch_attr_reg_ctrl.attr,
@@ -4530,6 +4716,9 @@ static struct attribute *sw42000_attribute_list[] = {
 	&touch_attr_q_sensitivity.attr,
 	&touch_attr_ai_pick.attr,
 	&touch_attr_ts_noise_log_enable.attr,
+	&touch_attr_film_status.attr,
+	&touch_attr_swipe_enable.attr,
+	&touch_attr_swipe_tool.attr,
 	NULL,
 };
 

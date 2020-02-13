@@ -38,6 +38,7 @@
 #include <linux/miscdevice.h>
 #include <linux/platform_device.h>
 #include <asm/uaccess.h>
+#include <linux/async.h>
 #include <asm/atomic.h>
 #include "tspdrv.h"
 #if defined(CONFIG_MACH_SDM845_JUDYPN)
@@ -290,7 +291,7 @@ MODULE_AUTHOR("Immersion Corporation");
 MODULE_DESCRIPTION("TouchSense Kernel Module");
 MODULE_LICENSE("GPL v2");
 
-static int __init tspdrv_init(void)
+static void async_tspdrv_init(void *data, async_cookie_t cookie)
 {
     int nRet, i;   /* initialized below */
 
@@ -303,7 +304,7 @@ static int __init tspdrv_init(void)
     pr_err("hw_rev:%s id:%d\n", lge_get_board_revision(), revid);
     if( revid < HW_REV_B ) {
         pr_err("dw7800 tspdrv_init skip...\n");
-        return 0;
+        return;
     }
 #endif /* CONFIG_MACH_SDM845_JUDYPN */
 
@@ -320,14 +321,14 @@ static int __init tspdrv_init(void)
     if (g_nMajor < 0)
     {
         DbgOutErr(("tspdrv: can't get major number.\n"));
-        return g_nMajor;
+        return;
     }
 #else
     nRet = misc_register(&miscdev);
     if (nRet)
     {
         DbgOutErr(("tspdrv: misc_register failed.\n"));
-        return nRet;
+        return;
     }
 #endif
 
@@ -362,7 +363,13 @@ static int __init tspdrv_init(void)
 
     }
 
-    return 0;
+    return;
+}
+
+static int __init tspdrv_init(void)
+{
+	async_schedule(async_tspdrv_init, NULL);
+	return 0;
 }
 
 static void __exit tspdrv_exit(void)

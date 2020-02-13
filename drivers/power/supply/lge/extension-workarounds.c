@@ -1044,3 +1044,34 @@ void workaround_check_unknown_cable_clear(struct smb_charger *chg) {
 	vote(chg->apsd_disable_votable, WA_CUC_VOTER, false, 0);
 }
 
+
+////////////////////////////////////////////////////////////////////////////
+// LGE Workaround : Fake present for unofficial PD Charger
+////////////////////////////////////////////////////////////////////////////
+
+#define FAKE_DELAY_MS	500
+static bool workaround_fake_pd_hard_reset = false;
+
+static void workaround_fake_pd_hard_reset_main(struct work_struct *unused) {
+	struct smb_charger*  chg = workaround_helper_chg();
+
+	if (!chg) {
+		pr_info("[W/A] FHR) 'chg' is not ready\n");
+		return;
+	}
+	workaround_fake_pd_hard_reset = false;
+	power_supply_changed(chg->usb_psy);
+}
+
+static DECLARE_DELAYED_WORK(workaround_fake_pd_hard_reset_dwork, workaround_fake_pd_hard_reset_main);
+
+void workaround_fake_pd_hard_reset_trigger(void) {
+	workaround_fake_pd_hard_reset = true;
+	pr_info("[W/A] FHR) Start to faking present for pd_hard_reset\n");
+	schedule_delayed_work(&workaround_fake_pd_hard_reset_dwork,
+			round_jiffies_relative(msecs_to_jiffies(FAKE_DELAY_MS)));
+}
+
+bool workaround_fake_pd_hard_reset_show(void) {
+	return workaround_fake_pd_hard_reset;
+}

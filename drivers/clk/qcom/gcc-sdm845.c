@@ -4222,6 +4222,12 @@ static void gcc_sdm845_fixup_sdm845v2(void)
 		gcc_sdcc2_apps_clk_src.freq_tbl =
 			ftbl_gcc_sdcc2_apps_clk_src_limit_max;
 	}
+#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
+    if (lge_get_sku_carrier() == HW_SKU_KR) {
+        printk(KERN_INFO "fixup sdcc2 clock\n");
+        gcc_sdcc2_apps_clk_src.freq_tbl =
+            ftbl_gcc_sdcc2_apps_clk_src_limit_max;
+    }
 #endif
 #endif
 }

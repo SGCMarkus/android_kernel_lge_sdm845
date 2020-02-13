@@ -8,6 +8,7 @@
 #include "veneer-primitives.h"
 
 enum showcase_status {
+	SHOWCASE_CHARGING_NONE,
 	SHOWCASE_CHARGING_RELEASE,
 	SHOWCASE_CHARGING_BLOCK,
 	SHOWCASE_CHARGING_HOLD,
@@ -28,6 +29,8 @@ static struct showcase_charging {
 
 static const char* status_to_string(enum showcase_status status) {
 	switch (status) {
+	case SHOWCASE_CHARGING_NONE :
+		return "SHOWCASE_CHARGING_NONE";
 	case SHOWCASE_CHARGING_RELEASE :
 		return "SHOWCASE_CHARGING_RELEASE";
 	case SHOWCASE_CHARGING_BLOCK :
@@ -41,6 +44,7 @@ static const char* status_to_string(enum showcase_status status) {
 
 static void status_to_vote(enum showcase_status status) {
 	switch (status) {
+	case SHOWCASE_CHARGING_NONE :
 	case SHOWCASE_CHARGING_RELEASE :
 		veneer_voter_release(&showcase.voter_ibat);
 		veneer_voter_release(&showcase.voter_iusb);
@@ -62,22 +66,32 @@ static void status_to_vote(enum showcase_status status) {
 	}
 }
 
+#define SOC_MAX showcase.soc_max
+#define SOC_MIN showcase.soc_min
 static enum showcase_status showcase_charging_transit(bool enabled, bool charging, int capacity, enum showcase_status now) {
-	#define SOC_MAX showcase.soc_max
-	#define SOC_MIN showcase.soc_min
-
+	/* When the capacity is 35% or more, charging is disabled until 29% */
 	if (enabled && charging) {
+		/* Check capacity < SOC_MIN or capacity > SOC_MAX */
 		if (capacity < SOC_MIN)
 			return SHOWCASE_CHARGING_RELEASE;
 		else if (SOC_MAX < capacity)
 			return SHOWCASE_CHARGING_BLOCK;
-		else if (capacity == SOC_MAX || now == SHOWCASE_CHARGING_BLOCK) /* SOC_MIN<capacity<=SOC_MAX && DISCHARGING */
-			return SHOWCASE_CHARGING_HOLD;
-		else /* SOC_MIN<capacity<=SOC_MAX && ~DISCHARGING */
+
+		/* Check SOC_MIN <= capacity <= SOC_MAX */
+		if (capacity == SOC_MAX) {
+			if (now == SHOWCASE_CHARGING_NONE)
+				return SHOWCASE_CHARGING_BLOCK;
+			else if (now == SHOWCASE_CHARGING_RELEASE)
+				return SHOWCASE_CHARGING_HOLD;
+		}
+
+		if (now == SHOWCASE_CHARGING_NONE)
+			return SHOWCASE_CHARGING_RELEASE;
+		else
 			return now; // not changed
 	}
 	else
-		return SHOWCASE_CHARGING_RELEASE;
+		return SHOWCASE_CHARGING_NONE;
 }
 
 static bool showcase_create_parsedt(struct device_node* dnode) {

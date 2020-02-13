@@ -349,6 +349,7 @@ struct state_info {
 	atomic_t lockscreen;
 	atomic_t ime;
 	atomic_t quick_cover;
+	atomic_t film;
 	atomic_t incoming_call;
 	atomic_t mfts;
 	atomic_t sp_link;

@@ -2777,6 +2777,17 @@ static int smb2_probe(struct platform_device *pdev)
 
 	// Change cx min voltage level on chargerlogo boot
 	workaround_blocking_vddmin_chargerlogo(chg);
+
+	/* Disable HVDCP */
+	if (of_property_read_bool(chg->dev->of_node, "lge,hvdcp-disable-user")) {
+		extern bool unified_bootmode_usermode(void);
+		if (unified_bootmode_usermode()) {
+			pr_info("QPNP SMB2 Disable HVDCP by hvdcp-disable-user\n");
+			vote(chg->hvdcp_disable_votable_indirect, DEFAULT_VOTER, true, 0);
+		} else {
+			pr_info("QPNP SMB2 Enable HVDCP by hvdcp-disable-user\n");
+		}
+	}
 #endif
 	pr_info("QPNP SMB2 probed successfully usb:present=%d type=%d batt:present = %d health = %d charge = %d\n",
 		usb_present, chg->real_charger_type,

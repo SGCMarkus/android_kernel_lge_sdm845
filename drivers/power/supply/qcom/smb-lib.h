@@ -591,6 +591,8 @@ bool workaround_avoiding_mbg_fault_uart(bool enable);
 bool workaround_avoiding_mbg_fault_usbid(bool enable);
 void workaround_check_unknown_cable(struct smb_charger *chg);
 void workaround_check_unknown_cable_clear(struct smb_charger *chg);
+void workaround_fake_pd_hard_reset_trigger(void);
+bool workaround_fake_pd_hard_reset_show(void);
 
 // Override functions implemented in smb-lib.c
 irqreturn_t override_handle_chg_state_change(int irq, void *arg);

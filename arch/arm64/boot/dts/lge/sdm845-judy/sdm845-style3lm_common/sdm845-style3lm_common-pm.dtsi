@@ -15,14 +15,14 @@
 &vendor {
 	lge_batterydata: qcom,battery-data {
 		qcom,batt-id-range-pct = <15>;
-		#include "../../sdm845-battery/LGE_BLT41_DONGHWA_3500mAh.dtsi"
+		#include "../../sdm845-battery/LGE_BLT41_Tocad_3500mAh.dtsi"
 	};
 
 	lge-battery-supplement {
 		capacity-mah-min = <3400>;
-		capacity-raw-full = <246>;
+		capacity-raw-full = <247>;
 
-		default-battery-name = "LGE_BLT41_DONGHWA_3500mAh";
+		default-battery-name = "LGE_BLT41_Tocad_3500mAh";
 		default-battery-kohm = <120>;
 
 		/* format : (temp index) (temp delta) */
@@ -113,159 +113,27 @@
 			900    (-11)
 		>;
 
-		tempcomp-qnovo-charging;
+		//tempcomp-qnovo-charging;
 		lg-monotonic-soc-enable;
 
 		tempcomp-icoeff = <100>;
-		/* overriding by battery type */
-		LGE_BLT37_LGC_3300mAh {
-			tempcomp-icoeff = <80>;
-		};
-		LGE_BLT37_Tocad_3300mAh {
-			tempcomp-icoeff = <90>;
+		LGE_BLT41_Tocad_3500mAh {
+			tempcomp-icoeff = <85>;
 		};
 	};
 
 	lge-veneer-psy {
-		charging-time {
-			#address-cells = <1>;
-			#size-cells = <0>;
-
-			lge,maxcharging-mw-chargerlogo = <15000>;
-			lge,maxcharging-mw-normal = <12500>;
-
-			lge,charger@0 {		//  fast charger: 9000mV * 1660mA or 5000mV * 3000mA
-				charger-power = <15000>;
-				charger-profile = <
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  18  18  18  18  18
-					18  18  18  18  18  18  18  18  18  18  18  21  21  21  21  21
-					21  21  21  21  21  21  21  21  25  25  25  25  25  25  25  25
-					25  25  25  25  25  25  25  25  25  25  25  25  25  29  29  29
-					29  29  29  29  29  29  29  29  29  29  29  29  33  33  33  33
-					33  33  33  33  33  35  35  45  45  45  45  45  45  45  45  45
-					45  54  54  54  54  54  54  54  58  52  53  54  55  59  62  68
-					74  80  85  93  99 108 108 108 108 108 108 108 108 108 108 108
-				>;
-			};
-			lge,charger@1 {		//  power-on fast charger: 2.5A * 4.0V / 80% = 12.5W
-				charger-power = <12500>;
-				charger-profile = <
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  20  20  20  20  20  20  20  20
-					20  20  20  20  20  20  20  20  24  24  24  24  24  24  24  24
-					24  24  24  24  24  24  24  24  24  24  24  24  24  28  28  28
-					28  28  28  28  28  28  28  28  28  28  28  28  31  31  31  31
-					31  31  31  31  31  34  34  43  43  43  43  43  43  43  43  43
-					43  52  52  52  52  52  52  52  55  52  53  54  55  59  62  68
-					74  80  85  93  99 108 108 108 108 108 108 108 108 108 108 108
-				>;
-			};
-			lge,charger@2 {		//  dcp charger: 5000mV * 1800mA = 9W
-				charger-power = <9000>;
-				charger-profile = <
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  31  31  31  31  31  31  31  31  31  31  31  31
-					31  31  31  31  34  34  34  34  34  34  34  34  34  34  42  42
-					42  42  42  42  55  55  55  55  55  55  69  69  69  69  69  69
-					70  75  80  90 100 105 105 105 105 105 105 105 105 105 105 105
-				>;
-			};
-			lge,charger@3 {		// EPP wireless charger: 9000mV * 900mA = 8.1W
-				charger-power = <8100>;
-				charger-profile = <
-					36  36  36  36  36  36  36  36  36  36  36  36  37  37  37  37
-					37  37  37  37  37  37  37  37  37  37  38  38  38  38  38  38
-					38  38  38  38  38  38  38  38  39  39  39  39  39  39  39  39
-					39  39  39  39  40  40  40  40  40  40  40  40  40  40  40  40
-					41  41  41  41  41  41  41  41  41  41  41  41  42  42  42  42
-					42  42  42  42  42  42  42  43  43  43  43  43  43  43  43  43
-					43  44  44  44  44  44  44  44  44  44  44  45  45  45  45  45
-					45  45  45  45  46  46  46  46  46  46  46  46  46  47  47  47
-					47  47  47  47  47  47  48  48  48  48  48  48  48  48  49  49
-					49  49  49  49  49  49  50  50  50  50  50  50  50  50  51  51
-					51  51  51  51  51  52  52  52  52  52  52  52  53  53  53  53
-					53  53  53  54  54  54  54  54  54  54  55  55  55  55  55  55
-					56  56  56  56  56  56  57  57  57  57  57  57  58  58  58  58
-					58  58  59  59  59  59  59  60  60  60  60  60  61  61  61  61
-					61  61  62  62  62  62  60  60  60  60  60  60  60  60  60  60
-					70  75  80  90 100 105 105 105 105 105 105 105 105 105 105 105
-				>;
-			};
-			lge,charger@4 {		// BPP wireless charger: 5000mV * 850mA = 4.25W
-				charger-power = <4250>;
-				charger-profile = <
-					55  55  55  55  55  55  55  55  55  55  55  56  56  56  56  56
-					56  56  56  56  56  56  56  56  56  56  56  56  56  56  56  56
-					56  56  56  56  56  56  56  56  56  57  57  57  57  57  57  57
-					57  57  57  57  57  57  57  57  57  57  57  57  57  57  57  57
-					57  57  57  57  57  57  57  58  58  58  58  58  58  58  58  58
-					58  58  58  58  58  58  58  58  58  58  58  58  58  58  58  58
-					58  58  58  59  59  59  59  59  59  59  59  59  59  59  59  59
-					59  59  59  59  59  59  59  59  59  59  59  59  59  59  59  60
-					60  60  60  60  60  60  60  60  60  60  60  60  60  60  60  60
-					60  60  60  60  60  60  60  60  60  61  61  61  61  61  61  61
-					61  61  61  61  61  61  61  61  61  61  61  61  61  61  61  61
-					61  61  61  62  62  62  62  62  62  62  62  62  62  62  62  62
-					62  62  62  62  62  62  62  62  62  62  62  63  63  63  63  63
-					63  63  63  63  63  63  63  63  63  63  63  63  60  60  60  60
-					60  60  60  60  60  60  60  60  60  60  60  65  65  65  65  65
-					70  75  80  90 100 105 105 105 105 105 105 105 105 105 105 105
-				>;
-			};
-			lge,charger@5 {		// SDP: 5000mV * 500mA = 2.5W
-				charger-power = <2500>;
-				charger-profile = <
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98  98  98  98  98  98  98  98  98  98  98  98
-					98  98  98  98  98 110 110 110 110 110 110 110 110 110 110 110
-				>;
-			};
-		};
-
 		unified-nodes {
 			lge,feature-charging-parallel = <0>;
 
 			lge,restrict-charging {
+				lge,restrict@0 {
+					restrict-name = "LCD";
+					restrict-type = "ibat";
+					restrict-commands = "ON", "OFF";
+					restrict-values = <2000      0>;
+				};
+
 				lge,restrict@5 {
 					restrict-name = "LCD";
 					restrict-type = "idc";
@@ -274,22 +142,169 @@
 				};
 			};
 		};
+
+		protection-batvolt {
+			lge,threshold-vbat-limit = <4250>;
+			lge,threshold-vbat-clear = <4200>;
+			lge,threshold-ibat-pct = <60>;	// means 0.6C rate
+
+			lge,step-ibat-ma = <100>;
+			lge,step-poll-ms = <5000>;
+		};
+
+		adaptive-charging-thermal {
+			lge,actm-enable;
+			//lge,actm-enable-cp-charging;                   // whether cp charging is supported.
+			lge,actm-enable-on-chargerlogo;                // the actm operates charging first mode in chargerlogo
+			lge,actm-default-mode = <(-1)>;                // 0-thermal first, 1-balanced, 2-charging first, 3-auto
+			/*  actm auto mode description
+			 *                     48%            77%
+			 *    2-charging first  |  1-balacned  |  0-thermal first */
+			lge,actm-auto-mode-soc = <48 77>;              // those values are raw soc.
+			lge,actm-auto-mode-config = <2 1 0>;           // <2 1 0> means actm mode
+			lge,actm-lcdon-temp-offset = <0>;              // unit: 0.1 degree
+
+			lge,wired-therm-sensor-type = <3>;             // bit(0)-BATT, bit(1)-VTS
+			lge,wired-temp-offset = <(-30) 0 0>;   // thermal first, balanced, charging first
+			lge,wired-max-hold-criteria = <500 700 1000>;  // allow rising 1 degree per 20/14/10/min
+			lge,wired-stage-size = <3>;
+			lge,wired-target-temp = <300 340 380>;
+			lge,wired-current-limit-ma = <2300 1500 500>;
+			lge,wired-curr-cp-limit-ma = <4000 3000>;      // extension of lge,wired-current-limit-ma
+                                                           // 0-pps, 1-qc3.0
+			lge,wired-max-fcc-ma = <4850 3200 2600>;       // 0-pps ta, 1- qc3.0 ta, 2-qc2.0 ta
+			lge,wired-current-step-size = <3>;
+			lge,wired-current-step-temp = <5 15 30>;
+			lge,wired-current-step-ma = <100 200 400>;
+			lge,wired-timer-ms = <60000>;
+
+			lge,wireless-therm-sensor-type = <1>;           // bit(0)-BATT, bit(1)-VTS
+			lge,wireless-temp-offset = <(-25) 5 5>; // thermal first, balanced, charging first
+			lge,wireless-max-hold-criteria = <250 333 500>; // allow rising 1 degree per 40/30/20min
+			lge,wireless-stage-size = <3>;
+			lge,wireless-target-temp = <340 380 415>;
+			lge,wireless-epp-power-limit-mw = <6300 4050 3000>;
+			lge,wireless-bpp-power-limit-mw = <4200 3900 3000>;
+			lge,wireless-power-step-size = <3>;
+			lge,wireless-power-step-temp = <5 15 30>;
+			lge,wireless-epp-power-step-mw = <450 900 1350>;
+			lge,wireless-bpp-power-step-mw = <300 600 900>;
+			lge,wireless-timer-ms = <60000>;
+		};
+
+		charging-time-v3 {
+			lge,full-capacity-design = <3500>;
+			lge,fix-slot-time-ui-soc = <90>;
+
+			lge,charging-current-profile-raws = <17>;  /* max: 20 */
+			lge,charging-current-profile = <
+			/* format: raw_soc, raw_current(mA) */
+			/* | Thermal |  | Balanced | | Charging | */
+				140  3400    140  3400    140  3400
+				153  3100    153  3100    153  3100
+				160  2600    160  2600    160  2600
+				163  2500    163  2500    163  2500
+				170  2400    170  2400    170  2400
+				171  2300    171  2300    171  2300
+				174  2200    174  2200    174  2200
+				177  2100    177  2100    177  2100
+				192  2000    192  2000    192  2000
+				217  1850    217  1850    217  1850
+				225  1550    225  1550    225  1550
+				232  1300    232  1300    232  1300
+				237  1100    237  1100    237  1100
+				241   900    241   900    241   900
+				242   800    242   800    242   800
+				245   700    245   700    245   700
+				247   600    247   600    247   600   /* <- END -> */
+			>;
+
+			lge,charging-target-data = <
+	/* format : type, power(mW), current(mA), down(uA), target(min) */
+	/* cp pps  thermal  */    0    25000    4000       0    110
+	/*         balanced */  100    25000    4000       0    100
+	/*         charging */  200    25000    4850       0     90
+	/* CP QC3  thermal  */    1    16200    3000       0    125
+	/*         balanced */  101    16200    3000       0    115
+	/*         charging */  201    16200    3200       0    105
+	/*               >>>>> upper is for SMB1390 <<<<<               */
+	/* QC2     thermal  */    2    13000    2300       0    110
+	/*         balanced */  102    13000    2300       0    100
+	/*         charging */  202    15000    2600       0     90
+	/* DCP     thermal  */    2     7500    1650     881    150
+	/*         balanced */  102     7500    1650     881    150
+	/*         charging */  202     7500    1650     881    150
+	/* SDP     thermal  */    2     2500     500       0    425
+	/*         balanced */  102     2500     500       0    425
+	/*         charging */  202     2500     500       0    425
+	/* WLC EPP thermal  */    3     7200    1750    2224    200
+	/*         balanced */  103     7200    1750    2224    200
+	/*         charging */  203     7200    1750    1032    175
+	/* WLC BPP thermal  */    3     4500    1100     920    280
+	/*         balanced */  103     4500    1100     920    280
+	/*         charging */  203     4500    1100     640    265
+	/* BCC     thermal  */    4    12500    2500       0    125
+	/*         balanced */  104    12500    2500       0    125
+	/*         charging */  204    12500    2500       0    125
+			>;
+		};
+
+		charging-time-v2 {
+			lge,full-capacity-design = <3500>;
+			lge,fix-slot-time-ui-soc = <80>;
+			lge,charging-current-profile-raws = <17>;
+			lge,charging-current-profile = <
+				/* format: raw_soc, raw_current(mA) */
+				/* CC */
+				140  3400
+				153  3100
+				160  2600
+				163  2500
+				170  2400
+				171  2300
+				174  2200
+				177  2100
+				192  2000
+				217  1850
+				225  1550
+				232  1300
+				237  1100
+				241  900
+				242  800
+				245  700
+				247  600   /* <- END -> */
+			>;
+
+			lge,charging-target-data-raws = <7>;
+			lge,charging-target-data = <
+			/* format : type, power(mW), current(mA), down(uA), target(min), no_dd_decipct */
+			/* 0-type-wired: chargerlogo */   0    15000    2800       0     90    1000
+			/* 1-type-wired: power on    */   0    13000    2400       0    100    1000
+			/* 2-type-wired: DCP         */   0     7500    1650    1100    150    1000
+			/* 3-type-wired: SDP         */   0     2500     500       0    425    1000
+			/* 4-type-wireless: EPP      */   1     7200    1068     622    195    1000
+			/* 5-type-wireless: BPP      */   1     4500     992     527    215    1000
+			/* 6-type-BCC                */   2     7500    1500       0    140    1000
+			>;
+		};
 	};
 };
 
 &pmi8998_charger {
 	qcom,fv-max-uv = <4400000>;
+	lge,hvdcp-disable-user;
 };
 
 &pmi8998_qnovo {
-	lge,enable-qni-debounce;
+	status = "disabled";
+	//lge,enable-qni-debounce;
 	lge,qni-debounce-time = <900000>;
 	lge,qni-debounce-soc = <229>;
 	lge,qni-debounce-esr = <150000>;
 	lge,qni-debounce-voltage = <100000>;
 	lge,qni-debounce-therm = <150>;
 
-	lge,enable-qni-probation;
+	//lge,enable-qni-probation;
 	lge,qni-step-min-fcc = <700000>;
 	lge,qni-probation-min-fv = <4400000>;
 	lge,qni-probation-max-fcc = <950000>;

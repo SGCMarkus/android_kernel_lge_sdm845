@@ -14,7 +14,6 @@
 
 #define pr_fmt(fmt)     "[Display][lge-cm:%s:%d] " fmt, __func__, __LINE__
 
-#include <linux/kallsyms.h>
 #include "lge_color_manager.h"
 #include "lge_dsi_panel_def.h"
 #include "lge_dsi_panel.h"
@@ -166,7 +165,6 @@ static ssize_t image_enhance_set(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	unsigned int **addr;
 	struct dsi_panel *panel;
 	struct dsi_display *display;
 	int input;
@@ -185,13 +183,7 @@ static ssize_t image_enhance_set(struct device *dev,
 	}
 	mutex_unlock(&panel->panel_lock);
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("primary_display not founded.\n");
-		return -EINVAL;
-	}
+	display = primary_display;
 
 	if(!display) {
 		pr_err("display is null\n");
@@ -375,7 +367,7 @@ static ssize_t rgb_tune_set(struct device *dev,
 
 	mutex_lock(&panel->panel_lock);
 	if (!(panel->lge.screen_mode == screen_mode_auto ||
-			panel->lge.screen_mode == screen_mode_expert)) {
+			panel->lge.screen_mode == screen_mode_expert || panel->lge.use_mplus)) {
 		pr_info("skip rgb set with screen mode on\n");
 		mutex_unlock(&panel->panel_lock);
 		return ret;
@@ -821,7 +813,6 @@ static ssize_t high_temp_tune_set(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t size)
 {
 	ssize_t ret = strnlen(buf, PAGE_SIZE);
-	unsigned int **addr;
 	struct dsi_panel *panel;
 	struct dsi_display *display;
 	int tune_mode = 0;
@@ -841,13 +832,7 @@ static ssize_t high_temp_tune_set(struct device *dev,
 	}
 	mutex_unlock(&panel->panel_lock);
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr) {
-		display = (struct dsi_display *)*addr;
-	} else {
-		pr_err("primary_display not founded.\n");
-		return -EINVAL;
-	}
+	display = primary_display;
 
 	if(!display) {
 		pr_err("display is null\n");

@@ -2367,6 +2367,8 @@ XtalkCal :
 	pr_err("OffsetCalibration Step 7. set Xtalk Calibration\n");
 #ifdef CONFIG_MACH_SDM845_JUDYLN
 	XTalkCompMegaCps = 16;
+#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
+    XTalkCompMegaCps = 16;
 #else
 	XTalkCompMegaCps = 24;
 #endif
@@ -2639,6 +2641,8 @@ static int stmvl53l0_init_client(struct stmvl53l0_data *data)
 	vl53l0_dbgmsg("stmvl53l0_init_client Step 7. XtalkCalibration\n");
 #ifdef CONFIG_MACH_SDM845_JUDYLN
 	XTalkCompMegaCps = 16;
+#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
+    XTalkCompMegaCps = 16;
 #else
 	XTalkCompMegaCps = 24;
 #endif

@@ -21,7 +21,6 @@
 #include <linux/slab.h>
 #include <linux/list_sort.h>
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
-#include <linux/kallsyms.h>
 #include <linux/mutex.h>
 #include "dsi_display.h"
 #endif
@@ -2630,15 +2629,11 @@ static void _sde_dump_array(struct sde_dbg_reg_base *blk_arr[],
 {
 	int i;
 #if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
-	unsigned int **addr;
 	struct dsi_display *display = NULL;
 
-	addr = (unsigned int **)kallsyms_lookup_name("primary_display");
-	if (addr)
-		display = (struct dsi_display *)*addr;
+	display = primary_display;
 
-
-	if (display != NULL && display->panel->lge.panel_dead) {
+	if (display != NULL && display->panel != NULL && display->panel->lge.panel_dead) {
 		pr_debug("Do not dump sde when panel dead\n");
 		return;
 	}
