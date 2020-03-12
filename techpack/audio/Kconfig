@@ -1,0 +1,120 @@
+config DOLBY_DAP
+	tristate "DOLBY_DAP"
+config DOLBY_DS2
+	tristate "DOLBY_DS2"
+config DOLBY_LICENSE
+	tristate "DOLBY_LICENSE"
+config DTS_EAGLE
+	tristate "DTS_EAGLE"
+config DTS_SRS_TM
+	tristate "DTS_SRS_TM"
+config MSM_ADSP_LOADER
+	tristate "MSM_ADSP_LOADER"
+config MSM_AVTIMER
+	tristate "MSM_AVTIMER"
+config MSM_CDC_PINCTRL
+	tristate "MSM_CDC_PINCTRL"
+config MSM_GLINK_SPI_XPRT
+	tristate "MSM_GLINK_SPI_XPRT"
+config MSM_QDSP6_APRV2_GLINK
+	tristate "MSM_QDSP6_APRV2_GLINK"
+config MSM_QDSP6_NOTIFIER
+	tristate "MSM_QDSP6_NOTIFIER"
+config MSM_QDSP6_PDR
+	tristate "MSM_QDSP6_PDR"
+config MSM_QDSP6_SSR
+	tristate "MSM_QDSP6_SSR"
+config MSM_QDSP6V2_CODECS
+	tristate "MSM_QDSP6V2_CODECS"
+config MSM_ULTRASOUND
+	tristate "MSM_ULTRASOUND"
+config PINCTRL_WCD
+	tristate "PINCTRL_WCD"
+config PINMUX
+	tristate "PINMUX"
+config QTI_PP
+	tristate "QTI_PP"
+config REGMAP_SWR
+	tristate "REGMAP_SWR"
+config SMA6101_BATTERY_READING
+	tristate "SMA6101_BATTERY_READING"
+config SND_FM_RX_MI2S
+	tristate "SND_FM_RX_MI2S"
+config SND_HWDEP
+	tristate "SND_HWDEP"
+config SND_HWDEP_ROUTING
+	tristate "SND_HWDEP_ROUTING"
+config SND_LGE_CROSSTALK
+	tristate "SND_LGE_CROSSTALK"
+config SND_LGE_DSDP_DUAL_AUDIO
+	tristate "SND_LGE_DSDP_DUAL_AUDIO"
+config SND_LGE_DTS
+	tristate "SND_LGE_DTS"
+config SND_LGE_MABL
+	tristate "SND_LGE_MABL"
+config SND_LGE_STEREO_SPEAKER
+	tristate "SND_LGE_STEREO_SPEAKER"
+config SND_LGE_TX_NXP_LIB
+	tristate "SND_LGE_TX_NXP_LIB"
+config SND_LGE_WDSP_SSR
+	tristate "SND_LGE_WDSP_SSR"
+config SND_SOC_ES9218P
+	tristate "SND_SOC_ES9218P"
+config SND_SOC_LGE_ESS_DIGITAL_FILTER
+	tristate "SND_SOC_LGE_ESS_DIGITAL_FILTER"
+config SND_SOC_MACHINE_SDM845
+	tristate "SND_SOC_MACHINE_SDM845"
+config SND_SOC_MSM_HDMI_CODEC_RX
+	tristate "SND_SOC_MSM_HDMI_CODEC_RX"
+config SND_SOC_MSM_HOSTLESS_PCM
+	tristate "SND_SOC_MSM_HOSTLESS_PCM"
+config SND_SOC_MSM_QDSP6V2_INTF
+	tristate "SND_SOC_MSM_QDSP6V2_INTF"
+config SND_SOC_MSM_STUB
+	tristate "SND_SOC_MSM_STUB"
+config SND_SOC_QDSP6V2
+	tristate "SND_SOC_QDSP6V2"
+config SND_SOC_QDSP_DEBUG
+	tristate "SND_SOC_QDSP_DEBUG"
+config SND_SOC_SDM845
+	tristate "SND_SOC_SDM845"
+config SND_SOC_SMA6101
+	tristate "SND_SOC_SMA6101"
+config SND_SOC_TFA9872
+	tristate "SND_SOC_TFA9872"
+config SND_SOC_TFA9872_STEREO
+	tristate "SND_SOC_TFA9872_STEREO"
+config SND_SOC_WCD934X
+	tristate "SND_SOC_WCD934X"
+config SND_SOC_WCD934X_DSD
+	tristate "SND_SOC_WCD934X_DSD"
+config SND_SOC_WCD934X_MBHC
+	tristate "SND_SOC_WCD934X_MBHC"
+config SND_SOC_WCD9XXX_V2
+	tristate "SND_SOC_WCD9XXX_V2"
+config SND_SOC_WCD_MBHC
+	tristate "SND_SOC_WCD_MBHC"
+config SND_SOC_WCD_MBHC_ADC
+	tristate "SND_SOC_WCD_MBHC_ADC"
+config SND_SOC_WCD_MBHC_LEGACY
+	tristate "SND_SOC_WCD_MBHC_LEGACY"
+config SND_SOC_WCD_SPI
+	tristate "SND_SOC_WCD_SPI"
+config SND_SOC_WSA881X
+	tristate "SND_SOC_WSA881X"
+config SND_USE_MBHC_EXTN_CABLE
+	tristate "SND_USE_MBHC_EXTN_CABLE"
+config SND_USE_TERT_MI2S
+	tristate "SND_USE_TERT_MI2S"
+config SOUNDWIRE
+	tristate "SOUNDWIRE"
+config SOUNDWIRE_WCD_CTRL
+	tristate "SOUNDWIRE_WCD_CTRL"
+config USE_DEV_CTRL_VOLUME
+	tristate "USE_DEV_CTRL_VOLUME"
+config WCD9XXX_CODEC_CORE
+	tristate "WCD9XXX_CODEC_CORE"
+config WCD_DSP_GLINK
+	tristate "WCD_DSP_GLINK"
+config WCD_SPI_AC
+	tristate "WCD_SPI_AC"
