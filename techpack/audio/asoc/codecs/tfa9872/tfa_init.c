@@ -4,16 +4,16 @@
  *Licensed under the Apache License, Version 2.0 (the "License");
  *you may not use this file except in compliance with the License.
  *You may obtain a copy of the License at
- *
+ *            
  *http://www.apache.org/licenses/LICENSE-2.0
- *
+ *             
  *Unless required by applicable law or agreed to in writing, software
  *distributed under the License is distributed on an "AS IS" BASIS,
  *WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
  *See the License for the specific language governing permissions and
  *limitations under the License.
  */
-
+ 
 #include "inc/tfa_dsp_fw.h"
 #include "inc/tfa_service.h"
 #include "inc/tfa_internal.h"
@@ -169,7 +169,7 @@ static enum tfa98xx_error tfa9888_specific(tfa98xx_handle_t handle)
 	error = reg_write(handle, 0xA0, xor);
 
 	/* The optimal settings are different for 1c, 2c, 3b and 2b/1b */
-	if (handles_local[handle].rev == 0x2c88) {
+	if (handles_local[handle].rev == 0x2c88) {	
 		/* ----- generated code start ----- */
 		/* --------- Version v1 ---------- */
 		reg_write(handle, 0x00, 0x164d); //POR=0x064d
@@ -266,7 +266,7 @@ static enum tfa98xx_error tfa9872_specific(tfa98xx_handle_t handle)
 	error = reg_read(handle, 0xFB, &value);
 	xor = value ^ 0x005A;
 	error = reg_write(handle, 0xA0, xor);
-	tfa98xx_key2(handle, 0);
+	tfa98xx_key2(handle, 0); 
 
 	switch(handles_local[handle].rev) {
 		case 0x1a72:
@@ -372,7 +372,7 @@ static enum tfa98xx_error tfa9912_specific(tfa98xx_handle_t handle)
 		reg_write(handle, 0x76, 0x72ea); //POR=0x54a2
 		reg_write(handle, 0x82, 0x024d); //POR=0x000d
 		reg_write(handle, 0x89, 0x0013); //POR=0x0014
-		/* ----- generated code end   ----- */
+		/* ----- generated code end   ----- */	
 	}
 
 	return error;
@@ -561,9 +561,12 @@ enum tfa98xx_error tfa9896_dsp_write_cvfracdelay_table(tfa98xx_handle_t handle)
 }
 
 static enum tfa98xx_error
-tfa9896_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, __attribute__((unused)) int sample_rate)
+tfa9896_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
 {
 	enum tfa98xx_error error;
+
+	/* Not used for max1! */
+	sample_rate=sample_rate;
 
 	error = tfa9896_dsp_write_vsfwdelay_table(dev_idx);
 	if (error == TFA98XX_ERROR_OK)
@@ -670,9 +673,12 @@ tfa9897_dsp_write_cvfracdelay_table(tfa98xx_handle_t handle)
 }
 
 static enum tfa98xx_error
-tfa9897_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, __attribute__((unused)) int sample_rate)
+tfa9897_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
 {
 	enum tfa98xx_error error;
+
+	/* Not used for max1! */
+	sample_rate=sample_rate;
 
 	error = tfa9897_dsp_write_vsfwdelay_table(dev_idx);
 	if (error == TFA98XX_ERROR_OK)

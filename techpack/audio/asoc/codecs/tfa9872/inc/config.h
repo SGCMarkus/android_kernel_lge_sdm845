@@ -149,9 +149,6 @@ struct tfa98xx {
 
 	bool set_mtp_cal;
 	uint16_t cal_data;
-#if defined(CONFIG_SND_SOC_SMA6101)
-	bool status;
-#endif
 };
 
 

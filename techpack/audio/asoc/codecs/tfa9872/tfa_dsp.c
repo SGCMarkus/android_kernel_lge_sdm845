@@ -71,12 +71,9 @@ void tfa9895_ops(struct tfa_device_ops *ops);
 
 #if defined(TFADSP_DSP_MSG_APR_PACKET_STRATEGY)
 // in case of CONFIG_MSM_QDSP6_APRV2_GLINK/APRV3_GLINK, with smaller APR_MAX_BUF (512)
-// in other cases, with safe size (4096)
 #define APR_RESIDUAL_SIZE	60
-#define APR_MAX_BUF2 ((APR_MAX_BUF > 512) ? 4096 : APR_MAX_BUF)
-#define MAX_APR_MSG_SIZE	(APR_MAX_BUF2-APR_RESIDUAL_SIZE) // 452 or 4036
-// data size in packet by excluding header (packet_id:2, packet_size:2)
-// #define STANDARD_PACKET_SIZE	(MAX_APR_MSG_SIZE - 4) // 448 or 4032
+#define MAX_APR_MSG_SIZE	(APR_MAX_BUF-APR_RESIDUAL_SIZE) // 452
+// #define STANDARD_PACKET_SIZE	(MAX_APR_MSG_SIZE-4) // 448 (packet_id:2, packet_size:2)
 #endif
 
 // retry values
@@ -861,7 +858,7 @@ tfa98xx_filter_mem(tfa98xx_handle_t dev,
 		case 0x72:
 		default:
 			/* unsupported case, possibly intermediate version */
-			return TFA98XX_DMEM_ERR;
+			return TFA_ERROR;
 			_ASSERT(0);
 		}
 	}
@@ -985,7 +982,7 @@ enum tfa98xx_error tfa98xx_set_saam_use_case(int samstream)
 
 	if (devcount < 1) {
 		pr_err("No or wrong container file loaded\n");
-		return TFA98XX_ERROR_BAD_PARAMETER;
+		return tfa_error_bad_param;
 	}
 
 	for (dev = 0; dev < devcount; dev++)
@@ -1010,7 +1007,7 @@ enum tfa98xx_error tfa98xx_set_stream_state(int stream_state)
 
 	if (devcount < 1) {
 		pr_err("No or wrong container file loaded\n");
-		return TFA98XX_ERROR_BAD_PARAMETER;
+		return tfa_error_bad_param;
 	}
 
 	for (dev = 0; dev < devcount; dev++) {
@@ -4287,8 +4284,8 @@ tfa_run_wait_calibration(tfa98xx_handle_t handle, int *calibrate_done)
 		}
 
 		if (tries_mtp_busy < MTPBWAIT_TRIES) {
-			/* Because of the msleep TFA98XX_API_WAITRESULT_NTRIES is way to long!
-			 * Setting this to 25 will take it atleast 25*50ms = 1.25 sec
+			/* Because of the msleep TFA98XX_API_WAITRESULT_NTRIES is way to long! 
+			 * Setting this to 25 will take it atleast 25*50ms = 1.25 sec 
 			 */
 			while ((*calibrate_done == 0)
 				&& (tries < MTPEX_WAIT_NTRIES)) {
@@ -4456,19 +4453,13 @@ enum tfa_error tfa_start(int next_profile, int *vstep)
 #if defined(TFA_USE_DEVICE_SPECIFIC_CONTROL)
 		if (active_handle != -1) {
 			if (dev != active_handle) {
-				tfa_set_swprof(dev,
-					(unsigned short)next_profile);
-				tfa_set_swvstep(dev,
-					(unsigned short)
-					tfa_cont_get_current_vstep(dev));
-
 				err = _tfa_stop(dev); /* stop inactive handle */
 				continue;
 			}
 		}
 #endif
 
-		pr_debug("%s: device[%d] [%s] - tfa_run_speaker_boost profile=%d\n",
+		pr_debug("%s: device[%d] [%s] - tfa_run_speaker_boost profile=%d\n", 
 			__func__, dev, tfa_cont_device_name(dev), profile);
 
 		/* Check if we need coldstart or ACS is set */
@@ -4499,9 +4490,16 @@ enum tfa_error tfa_start(int next_profile, int *vstep)
 		}
 
 #if defined(TFA_USE_DEVICE_SPECIFIC_CONTROL)
-		if (active_handle != -1)
-			if (dev != active_handle)
+		if (active_handle != -1) {
+			if (dev != active_handle) {
+				tfa_set_swprof(dev,
+					(unsigned short)next_profile);
+				tfa_set_swvstep(dev,
+					(unsigned short)
+					tfa_cont_get_current_vstep(dev));
 				continue;
+			}
+		}
 #endif
 
 		/* check if the profile and steps are the one we want */
@@ -4540,7 +4538,7 @@ enum tfa_error tfa_start(int next_profile, int *vstep)
 			err = show_current_state(dev);
 
 #ifdef __KERNEL__
-		/* To write something in state 6 we need to be sure that SBSL is also set in IOMEM!
+		/* To write something in state 6 we need to be sure that SBSL is also set in IOMEM! 
 		 * More information can be found in the document about the powerswitch
 		 */
 		if (tfa98xx_dev_family(dev) == 2) {
@@ -5955,33 +5953,7 @@ wait_calibrate_done_error_exit:
 #define UPPER_LIMIT_CAL_S_N3B 7900
 #define LOWER_LIMIT_CAL_S_N1A 6900
 #define UPPER_LIMIT_CAL_S_N1A 8700
-#elif defined(CONFIG_MACH_SDM845_CAYMANSLM) // Cayman
-#define LOWER_LIMIT_CAL_N3B 5700
-#define UPPER_LIMIT_CAL_N3B 7900
-#define LOWER_LIMIT_CAL_N1A 6900
-#define UPPER_LIMIT_CAL_N1A 8700
-#define LOWER_LIMIT_CAL_P_N3B 0
-#define UPPER_LIMIT_CAL_P_N3B 32000
-#define LOWER_LIMIT_CAL_P_N1A 0
-#define UPPER_LIMIT_CAL_P_N1A 32000
-#define LOWER_LIMIT_CAL_S_N3B 5700
-#define UPPER_LIMIT_CAL_S_N3B 7900
-#define LOWER_LIMIT_CAL_S_N1A 6900
-#define UPPER_LIMIT_CAL_S_N1A 8700
 #elif defined(CONFIG_MACH_SDM845_JUDYPN) // Storm
-#define LOWER_LIMIT_CAL_N3B 0
-#define UPPER_LIMIT_CAL_N3B 8000
-#define LOWER_LIMIT_CAL_N1A 0
-#define UPPER_LIMIT_CAL_N1A 8000
-#define LOWER_LIMIT_CAL_P_N3B 0
-#define UPPER_LIMIT_CAL_P_N3B 32000
-#define LOWER_LIMIT_CAL_P_N1A 0
-#define UPPER_LIMIT_CAL_P_N1A 32000
-#define LOWER_LIMIT_CAL_S_N3B 0
-#define UPPER_LIMIT_CAL_S_N3B 8000
-#define LOWER_LIMIT_CAL_S_N1A 0
-#define UPPER_LIMIT_CAL_S_N1A 8000
-#elif defined(CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) // style3
 #define LOWER_LIMIT_CAL_N3B 0
 #define UPPER_LIMIT_CAL_N3B 8000
 #define LOWER_LIMIT_CAL_N1A 0

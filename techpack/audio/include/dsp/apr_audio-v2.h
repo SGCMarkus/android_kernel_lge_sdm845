@@ -3138,10 +3138,6 @@ struct afe_abr_enc_cfg_t {
 	 * Information to set up IMC between decoder and encoder.
 	 */
 	struct afe_imc_dec_enc_info imc_info;
-	/*
-	 * Flag to indicate whether ABR is enabled.
-	 */
-	bool is_abr_enabled;
 } __packed;
 
 #define AFE_PARAM_ID_APTX_SYNC_MODE  0x00013205
@@ -3227,14 +3223,6 @@ struct afe_param_id_aptx_sync_mode {
  */
 #define AFE_DECODER_PARAM_ID_DEPACKETIZER_ID        0x00013235
 
-#define CAPI_V2_PARAM_ID_APTX_ENC_SWITCH_TO_MONO    0x0001332A
-
-struct aptx_channel_mode_param_t {
-	struct apr_hdr hdr;
-	struct afe_port_cmd_set_param_v2 param;
-	struct afe_port_param_data_v2 pdata;
-	u32 channel_mode;
-} __packed;
 /*
  * Data format to send compressed data
  * is transmitted/received over Slimbus lines.
@@ -3638,7 +3626,6 @@ union afe_enc_config_data {
 struct afe_enc_config {
 	u32 format;
 	u32 scrambler_mode;
-	u32 mono_mode;
 	union afe_enc_config_data data;
 };
 
@@ -3677,18 +3664,6 @@ struct avs_enc_set_scrambler_param_t {
 	 *  0 : disable scrambler
 	 */
 	uint32_t enable_scrambler;
-};
-
-/*
- * Payload of the CAPI_V2_PARAM_ID_APTX_ENC_SWITCH_TO_MONO parameter.
- */
-struct afe_enc_set_channel_mode_param_t {
-	/*
-	*  Supported values:
-	*  1 : mono
-	*  2 : dual_mono
-	*/
-	u32 channel_mode;
 };
 
 /*
@@ -3747,7 +3722,6 @@ union afe_port_config {
 	struct avs_dec_depacketizer_id_param_t    dec_depkt_id_param;
 	struct afe_enc_level_to_bitrate_map_param_t    map_param;
 	struct afe_enc_dec_imc_info_param_t       imc_info_param;
-	struct afe_enc_set_channel_mode_param_t   channel_mode_param;
 } __packed;
 
 struct afe_audioif_config_command_no_payload {
@@ -4396,9 +4370,6 @@ struct asm_softvolume_params {
 #if defined(CONFIG_SND_LGE_MABL) || defined(CONFIG_SND_LGE_DTS)
 #define ASM_STREAM_POSTPROC_TOPO_ID_DEFAULT_LGE 0x10009009
 #define ASM_STREAM_POSTPROC_TOPO_ID_OFFLOAD_LGE 0x10009010
-#endif
-#if defined(CONFIG_SND_LGE_STEREO_SPEAKER)
-#define AUDIO_NONE_POPP_LGE 0x10009008
 #endif
 
 #define ASM_MEDIA_FMT_MULTI_CHANNEL_PCM_V2 0x00010DA5

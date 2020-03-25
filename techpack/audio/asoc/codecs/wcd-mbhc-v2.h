@@ -141,11 +141,7 @@ do {                                                    \
 #define HS_DETECT_PLUG_TIME_MS (3 * 1000)
 #define SPECIAL_HS_DETECT_TIME_MS (2 * 1000)
 #define MBHC_BUTTON_PRESS_THRESHOLD_MIN 250
-#ifdef CONFIG_SND_USE_MBHC_EXTN_CABLE
-#define GND_MIC_SWAP_THRESHOLD 2
-#else
 #define GND_MIC_SWAP_THRESHOLD 4
-#endif
 #define GND_MIC_USBC_SWAP_THRESHOLD 2
 #define WCD_FAKE_REMOVAL_MIN_PERIOD_MS 100
 #define HS_VREF_MIN_VAL 1400
@@ -603,10 +599,6 @@ struct wcd_mbhc {
 #if defined(CONFIG_SND_LGE_VOC_MUTE_DET)
     struct extcon_dev* edev_voc_mute;
 #endif /* CONFIG_SND_LGE_VOC_MUTE_DET */
-#ifdef CONFIG_SND_USE_MBHC_EXTN_CABLE
-	bool extn_cable;
-	bool extn_exception;
-#endif
 #endif
 };
 

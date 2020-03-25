@@ -39,7 +39,7 @@
 #endif
 
 #include    "es9218p.h"
-#include    "soc/qcom/lge/board_lge.h"
+#include    "../../include/soc/qcom/lge/board_lge.h"
 
 #define     ES9218P_SYSFS 0              // use this feature only for user debug, not release
 
@@ -48,9 +48,6 @@
 #define     WORKAROUND_FOR_CORNER_SAMPLES     // set ResetB high two times and send a cmd of soft reset
 #define     ENABLE_DOP_AUTO_MUTE
 #define     ENABLE_DOP_SOFT_MUTE
-#if defined(CONFIG_SND_SOC_ES9218P)
-#define     WORKAROUND_TICK_NOISE
-#endif
 
 static struct es9218_priv *g_es9218_priv = NULL;
 static int  es9218_write_reg(struct i2c_client *client, int reg, u8 value);
@@ -335,22 +332,12 @@ static int g_auto_mute_flag = 0;
 #ifdef ES9218P_DEBUG
 static int g_debug_delay = 500; // ESS pop-click debugging step time delay
 #endif
-
-#ifdef CONFIG_MACH_SDM845_JUDYPN
-static u8  normal_harmonic_comp_left[4] =   {0x78, 0x00, 0x90, 0xfc};
-static u8  normal_harmonic_comp_right[4] =  {0x3d, 0x00, 0xe0, 0xfc};
-static u8  advance_harmonic_comp_left[4] =  {0x53, 0x02, 0x46, 0x00};
-static u8  advance_harmonic_comp_right[4] = {0xfe, 0x01, 0x46, 0x00};
-static u8  aux_harmonic_comp_left[4] =      {0x8b, 0x01, 0xa7, 0xfe};
-static u8  aux_harmonic_comp_right[4] =     {0x4a, 0x01, 0xb6, 0xfe};
-#else /* original */
 static u8  normal_harmonic_comp_left[4] = {0x78, 0x00, 0x9a, 0xfc};
 static u8  normal_harmonic_comp_right[4] = {0x1e, 0x00, 0x12, 0xfd};
 static u8  advance_harmonic_comp_left[4] = {0xfe, 0x01, 0x32, 0x00};
 static u8  advance_harmonic_comp_right[4] = {0x9a, 0x01, 0x64, 0x00};
 static u8  aux_harmonic_comp_left[4] = {0x1b, 0x01, 0x0c, 0xfe};
 static u8  aux_harmonic_comp_right[4] = {0xd2, 0x00, 0x34, 0xfe};
-#endif /* CONFIG_MACH_SDM845_JUDYPN */
 
 enum {
     ESS_MODE_INIT,   // only for common register values before each mode init.
@@ -657,13 +644,6 @@ static void es9218_power_gpio_L(void)
     pr_info("%s(): pa_gpio_level = %d\n", __func__, __gpio_get_value(g_es9218_priv->es9218_data->power_gpio));
 }
 
-#ifdef CONFIG_SND_USE_MBHC_EXTN_CABLE
-int es9218_mode_get(void) {
-	pr_info("%s(): hifi power state [%d]\n", __func__, es9218_power_state);
-	return es9218_power_state;
-}
-EXPORT_SYMBOL(es9218_mode_get);
-#endif
 static void es9218_reset_gpio_H(void)
 {
 #ifdef USE_CONTROL_EXTERNAL_LDO_FOR_DVDD
@@ -1442,11 +1422,6 @@ static int  es9218p_lpb2standby(void)
     return  0;
 }
 
-#ifdef WORKAROUND_TICK_NOISE
-void wcd_set_clamp_on_mic(int value);
-static int force_set_clamper_by_sleep_work = 0;
-#endif /* WORKAROUND_TICK_NOISE */
-
 static int  es9218p_sabre_hifione2lpb(void)
 {
     pr_info("%s()\n", __func__);
@@ -1469,17 +1444,7 @@ static int  es9218p_sabre_hifione2lpb(void)
         msleep(100);
    }
 
-#if defined(WORKAROUND_TICK_NOISE)
-    if( force_set_clamper_by_sleep_work )
-        wcd_set_clamp_on_mic(0);
-#endif /* WORKAROUND_TICK_NOISE */
-
     es9218_reset_gpio_L();  // RESETb LOW move to Low Power Bypass mode
-#if defined(WORKAROUND_TICK_NOISE)
-
-    if( force_set_clamper_by_sleep_work )
-        wcd_set_clamp_on_mic(1);
-#endif /* WORKAROUND_TICK_NOISE */
 
     ///////////////////////////////
     // sabre is now in low power bypass mode
@@ -1511,18 +1476,7 @@ static int  es9218p_sabre_hifitwo2lpb(void)
         pr_debug("%s: add 300ms delay before reset gpio set for dop playback case.\n",__func__);
         msleep(300);
     }
-
-#if defined(WORKAROUND_TICK_NOISE)
-    if( force_set_clamper_by_sleep_work )
-        wcd_set_clamp_on_mic(0);
-#endif /* WORKAROUND_TICK_NOISE */
-
     es9218_reset_gpio_L();  // RESETb LOW move to Low Power Bypass mode
-
-#if defined(WORKAROUND_TICK_NOISE)
-    if( force_set_clamper_by_sleep_work )
-        wcd_set_clamp_on_mic(1);
-#endif /* WORKAROUND_TICK_NOISE */
 
     ///////////////////////////////
     // sabre is now in low power bypass mode
@@ -1743,10 +1697,6 @@ static int __es9218_sabre_headphone_off(void)
     // power off when ess chis becomes shutdown
     if( g_es9218_priv->es9218_data->always_power_on == false )
         es9218_power_gpio_L();
-
-    // set reset pin Low if reset gpio is high
-    if( __gpio_get_value(g_es9218_priv->es9218_data->reset_gpio) == 1 )
-        es9218_reset_gpio_L();
 
     es9218_power_state = ESS_PS_CLOSE;
     return 0;
@@ -1978,15 +1928,7 @@ static void es9218_sabre_sleep_work (struct work_struct *work)
     if (es9218_power_state == ESS_PS_IDLE) {
         pr_info("%s(): sleep_work state is %s running \n", __func__, power_state[es9218_power_state]);
 
-#if defined(WORKAROUND_TICK_NOISE)
-        force_set_clamper_by_sleep_work = 1;
-#endif /* WORKAROUND_TICK_NOISE */
-
         es9218p_sabre_hifi2lpb();
-
-#if defined(WORKAROUND_TICK_NOISE)
-        force_set_clamper_by_sleep_work = 0;
-#endif /* WORKAROUND_TICK_NOISE */
 
     }
     else {
@@ -2556,31 +2498,8 @@ static int es9218_chip_state_get(struct snd_kcontrol *kcontrol,
     mutex_lock(&g_es9218_priv->power_lock);
     es9218_power_gpio_H();
     mdelay(1);
-#ifdef WORKAROUND_FOR_CORNER_SAMPLES
     es9218_reset_gpio_H();
     mdelay(1);
-
-    /*
-     * workaround 1 : set RESETB high twice
-     * improvement for auto power on sequence inside ES921P chip
-     * it's expected to prevent i2c failure
-     */
-    es9218_reset_gpio_L();
-    mdelay(1);
-    es9218_reset_gpio_H();
-    mdelay(2);
-
-    /*
-     * workaround 2 : send a I2C cmd of soft_reset
-     * improvement for auto power on sequence inside ES921P chip
-     * it's expected to read default values of registers WELL
-     */
-    i2c_smbus_write_byte_data(g_es9218_priv->i2c_client, ES9218P_REG_00, 0x01);
-    mdelay(1);
-#else /* Original code. Finally, we MUST use code below if ESS confirms that chips have no problems */
-    es9218_reset_gpio_H();
-    mdelay(1);
-#endif
 
     if(!g_ess_rev_check) // ESS Revision check is one time during the booting.
     {
@@ -2588,15 +2507,15 @@ static int es9218_chip_state_get(struct snd_kcontrol *kcontrol,
             readChipStatus = es9218_read_reg(g_es9218_priv->i2c_client, ES9218P_CHIPSTATUS);
             chipId = readChipStatus & 0xF0;
 
-            pr_err("%s: chipId:0x%x readCnt : %d \n", __func__, chipId , readCnt);
+            pr_info("%s: chipId:0x%x readCnt : %d \n", __func__, chipId , readCnt);
 
             if (chipId == 0xd0){
-                pr_err("%s: ESS revsion = ESS_9218p\n", __func__);
+                pr_info("%s: ESS revsion = ESS_9218p\n", __func__);
                 g_ess_rev_check = true;
                 break;
             }
             else if (chipId == 0xe0){
-                pr_err("%s: ESS revsion = ESS_9228\n", __func__);
+                pr_info("%s: ESS revsion = ESS_9228\n", __func__);
                 g_ess_rev_check = true;
                 break;
             }
@@ -2716,10 +2635,10 @@ static int chargerlogo_chipstate_get(void)
 static int es9218_sabre_wcdon2bypass_get(struct snd_kcontrol *kcontrol,
         struct snd_ctl_elem_value *ucontrol)
 {
-    pr_err("%s(): power state = %d\n", __func__, es9218_power_state);
+    pr_debug("%s(): power state = %d\n", __func__, es9218_power_state);
 
-    ucontrol->value.enumerated.item[0] = es9218_power_state;
-    pr_err("%s(): ucontrol = %d\n", __func__, ucontrol->value.enumerated.item[0]);
+    //ucontrol->value.enumerated.item[0] = es9218_power_state;
+    //pr_info("%s(): ucontrol = %d\n", __func__, ucontrol->value.enumerated.item[0]);
 
     return 0;
 }
@@ -2734,7 +2653,7 @@ static int es9218_sabre_wcdon2bypass_put(struct snd_kcontrol *kcontrol,
 
     ret = (int)ucontrol->value.integer.value[0];
 
-    pr_err("%s(): entry wcd on : %d \n ", __func__ , ret);
+    pr_debug("%s(): entry wcd on : %d \n ", __func__ , ret);
 
     if(ret == 0) {
         if(es9218_start) {
@@ -3314,7 +3233,6 @@ static int es9218_hw_free(struct snd_pcm_substream *substream,
 {
     struct snd_soc_codec *codec = dai->codec;
 
-    mdelay(20);
     dev_info(codec->dev, "%s(): entry\n", __func__);
 
     return 0;
@@ -3539,8 +3457,7 @@ static const struct i2c_device_id es9218_id[] = {
     { },
 };
 
-//MODULE_DEVICE_TABLE(i2c, isa1200_id);
-MODULE_DEVICE_TABLE(i2c, es9218_id);
+MODULE_DEVICE_TABLE(i2c, isa1200_id);
 
 static struct i2c_driver es9218_i2c_driver = {
     .driver = {

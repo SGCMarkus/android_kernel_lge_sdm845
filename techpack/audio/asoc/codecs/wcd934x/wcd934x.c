@@ -1,4 +1,4 @@
-/* Copyright (c) 2015-2019, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2018, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -50,8 +50,6 @@
 #include "../wcdcal-hwdep.h"
 #include "wcd934x-dsd.h"
 #ifdef CONFIG_MACH_SDM845_JUDYLN
-#include <soc/qcom/lge/lge_regulator_mode_change.h>
-#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
 #include <soc/qcom/lge/lge_regulator_mode_change.h>
 #endif
 #ifdef CONFIG_MACH_LGE // add extcon dev for SAR backoff
@@ -1728,7 +1726,7 @@ static int tavil_codec_set_i2s_tx_ch(struct snd_soc_dapm_widget *w,
 
 		snd_soc_update_bits(codec,
 				    WCD934X_DATA_HUB_I2S_TX0_CFG,
-				    0x0C, 0x04);
+				    0x0C, 0x01);
 
 		snd_soc_update_bits(codec,
 				    WCD934X_DATA_HUB_I2S_TX1_0_CFG,
@@ -2184,8 +2182,6 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 
 #ifdef CONFIG_MACH_SDM845_JUDYLN
  	bob_mode_enable();
-#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
-	bob_mode_enable();
 #endif
 
 		usleep_range(5000, 5500);
@@ -2211,8 +2207,6 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 #endif /* CONFIG_MACH_LGE */
 
 #ifdef CONFIG_MACH_SDM845_JUDYLN
-	bob_mode_disable();
-#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
 	bob_mode_disable();
 #endif
 		usleep_range(5000, 5500);
@@ -8762,13 +8756,6 @@ static int tavil_set_dai_fmt(struct snd_soc_dai *dai, unsigned int fmt)
 	return 0;
 }
 
-static int tavil_set_dai_sysclk(struct snd_soc_dai *dai,
-		int clk_id, unsigned int freq, int dir)
-{
-	pr_debug("%s\n", __func__);
-	return 0;
-}
-
 static struct snd_soc_dai_ops tavil_dai_ops = {
 	.startup = tavil_startup,
 	.shutdown = tavil_shutdown,
@@ -8783,7 +8770,6 @@ static struct snd_soc_dai_ops tavil_i2s_dai_ops = {
 	.shutdown = tavil_shutdown,
 	.hw_params = tavil_hw_params,
 	.prepare = tavil_prepare,
-	.set_sysclk = tavil_set_dai_sysclk,
 	.set_fmt = tavil_set_dai_fmt,
 };
 
@@ -9578,7 +9564,7 @@ static const struct tavil_reg_mask_val tavil_codec_reg_i2c_defaults[] = {
 	{WCD934X_DATA_HUB_RX2_CFG, 0x03, 0x01},
 	{WCD934X_DATA_HUB_RX3_CFG, 0x03, 0x01},
 	{WCD934X_DATA_HUB_I2S_TX0_CFG, 0x01, 0x01},
-	{WCD934X_DATA_HUB_I2S_TX0_CFG, 0x04, 0x04},
+	{WCD934X_DATA_HUB_I2S_TX0_CFG, 0x04, 0x01},
 	{WCD934X_DATA_HUB_I2S_TX1_0_CFG, 0x01, 0x01},
 	{WCD934X_DATA_HUB_I2S_TX1_1_CFG, 0x05, 0x05},
 	{WCD934X_CHIP_TIER_CTRL_ALT_FUNC_EN, 0x1, 0x1},

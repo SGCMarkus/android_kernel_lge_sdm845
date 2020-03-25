@@ -873,10 +873,6 @@ tfa_cont_write_file(int dev_idx,
 		size = hdr->size - sizeof(struct tfa_msg_file);
 		err = dsp_msg(dev_idx, size,
 			(const char *)((struct tfa_msg_file *)hdr)->data);
-
-		/* reset bypass flag after writing msg */
-		if (err == TFA98XX_ERROR_OK)
-			handles_local[dev_idx].is_bypass = 0;
 		break;
 	case volstep_hdr:
 		if (tfa98xx_dev_family(dev_idx) == 2)
@@ -890,7 +886,7 @@ tfa_cont_write_file(int dev_idx,
 				(struct tfa_volume_step2_file *)hdr,
 				vstep_idx);
 
-		/* reset bypass flag and set current vstep after writing vstep */
+		/* If writing the vstep was succesful, set new current vstep */
 		if (err == TFA98XX_ERROR_OK) {
 			handles_local[dev_idx].is_bypass = 0;
 			tfa_cont_set_current_vstep(dev_idx, vstep_idx);
@@ -1691,16 +1687,6 @@ unsigned int tfa98xx_get_profile_sr(int dev_idx, unsigned int prof_idx)
 	if (!dev)
 		return 0;
 
-	if (prof_idx == -1) { /* refer to prof in other device */
-		for (i = 0; i < tfa98xx_cnt_max_device(); i++) {
-			if (i == dev_idx)
-				continue;
-			if (handles_local[i].profile != -1) {
-				prof_idx = handles_local[i].profile;
-				break;
-			}
-		}
-	}
 	prof = tfa_cont_profile(dev_idx, prof_idx);
 	if (!prof)
 		return 0;
@@ -1772,16 +1758,6 @@ unsigned int tfa98xx_get_profile_chsa(int dev_idx, unsigned int prof_idx)
 	if (!dev)
 		return 0;
 
-	if (prof_idx == -1) { /* refer to prof in other device */
-		for (i = 0; i < tfa98xx_cnt_max_device(); i++) {
-			if (i == dev_idx)
-				continue;
-			if (handles_local[i].profile != -1) {
-				prof_idx = handles_local[i].profile;
-				break;
-			}
-		}
-	}
 	prof = tfa_cont_profile(dev_idx, prof_idx);
 	if (!prof)
 		return 0;
@@ -1854,16 +1830,6 @@ unsigned int tfa98xx_get_profile_tdmspks(int dev_idx, unsigned int prof_idx)
 	if (!dev)
 		return 0;
 
-	if (prof_idx == -1) { /* refer to prof in other device */
-		for (i = 0; i < tfa98xx_cnt_max_device(); i++) {
-			if (i == dev_idx)
-				continue;
-			if (handles_local[i].profile != -1) {
-				prof_idx = handles_local[i].profile;
-				break;
-			}
-		}
-	}
 	prof = tfa_cont_profile(dev_idx, prof_idx);
 	if (!prof)
 		return 0;
