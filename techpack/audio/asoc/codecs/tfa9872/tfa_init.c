@@ -565,9 +565,6 @@ tfa9896_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
 {
 	enum tfa98xx_error error;
 
-	/* Not used for max1! */
-	sample_rate=sample_rate;
-
 	error = tfa9896_dsp_write_vsfwdelay_table(dev_idx);
 	if (error == TFA98XX_ERROR_OK)
 		error = tfa9896_dsp_write_cvfracdelay_table(dev_idx);
@@ -676,9 +673,6 @@ static enum tfa98xx_error
 tfa9897_tfa_dsp_write_tables(tfa98xx_handle_t dev_idx, int sample_rate)
 {
 	enum tfa98xx_error error;
-
-	/* Not used for max1! */
-	sample_rate=sample_rate;
 
 	error = tfa9897_dsp_write_vsfwdelay_table(dev_idx);
 	if (error == TFA98XX_ERROR_OK)
