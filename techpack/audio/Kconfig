@@ -30,8 +30,6 @@ config MSM_ULTRASOUND
 	tristate "MSM_ULTRASOUND"
 config PINCTRL_WCD
 	tristate "PINCTRL_WCD"
-config PINMUX
-	tristate "PINMUX"
 config QTI_PP
 	tristate "QTI_PP"
 config REGMAP_SWR
