@@ -387,8 +387,8 @@
 				qcom,mdss-dsi-post-panel-on-command = [
 					/* Normal Display mode on */
 					05 01 00 00 00 00 01 13
-					/* Sleep Out + min 120ms */
-					05 01 00 00 80 00 01 11
+					/* Sleep Out + min 5ms */
+					05 01 00 00 05 00 01 11
 					/* Manufacture Protection */
 					15 01 00 00 00 00 02 B0 AC
 					/* MPLUS Control */
@@ -407,8 +407,8 @@
 				qcom,mdss-dsi-off-command = [
 					/* Display Off */
 					05 01 00 00 00 00 01 28
-					/* Sleep In + min 90ms */
-					05 01 00 00 5A 00 01 10
+					/* Sleep In + min 30ms */
+					05 01 00 00 1E 00 01 10
 				];
 
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";

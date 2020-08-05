@@ -392,8 +392,8 @@
 					39 01 00 00 00 00 0E FC 13 70 D0 26 30 7C 02 FF 12 22 22 10 00
 					/* Normal Display mode on */
 					05 01 00 00 00 00 01 13
-					/* Sleep Out + min 120ms */
-					05 01 00 00 80 00 01 11
+					/* Sleep Out + min 5ms */
+					05 01 00 00 05 00 01 11
 					/*Black Frame Setting*/
 					39 01 00 00 00 00 03 BD 01 05
 					05 01 00 00 05 00 01 29
@@ -484,8 +484,8 @@
 					39 01 00 00 00 00 0E FC 13 70 D0 26 30 7C 02 FF 12 22 22 10 00
 					/* Normal Display mode on */
 					05 01 00 00 00 00 01 13
-					/* Sleep Out + min 120ms */
-					05 01 00 00 80 00 01 11
+					/* Sleep Out + min 5ms */
+					05 01 00 00 05 00 01 11
 					/*GIP Setting - APO high*/
 					39 01 00 00 64 00 1B E5 0B 0A 1C 00 02 04 06 08 0F 1B 02 1A 1A 0B 0A 1C 01 03 05 07 09 10 1B 03 1A 1A
 					/*Power Sequence Option Configuration*/
@@ -500,8 +500,8 @@
 				qcom,mdss-dsi-off-command = [
 					/* Display Off */
 					05 01 00 00 00 00 01 28
-					/* Sleep In + min 120ms */
-					05 01 00 00 80 00 01 10
+					/* Sleep In + min 30ms */
+					05 01 00 00 1E 00 01 10
 				];
 
 				qcom,mdss-dsi-on-command-state = "dsi_lp_mode";
