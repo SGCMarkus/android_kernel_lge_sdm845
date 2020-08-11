@@ -37,6 +37,7 @@
 #include <touch_hwif.h>
 #include <linux/input/lge_touch_notify.h>
 #include <linux/lge_panel_notify.h>
+#include <linux/pm_qos.h>
 
 #if defined(CONFIG_SECURE_TOUCH)
 #include <linux/completion.h>
@@ -582,6 +583,7 @@ struct touch_core_data {
 
 	struct app_info app_data[3];
 	struct perf_test_info perf_test;
+	struct pm_qos_request pm_qos_req;
 };
 
 #define PROPERTY_GPIO(np, string, target)				\
