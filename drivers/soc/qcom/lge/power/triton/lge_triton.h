@@ -129,7 +129,6 @@ struct cpufreq_policy *sugov_get_policy(int cpu);
 void sugov_lock(int cpu, unsigned long lock);
 void sugov_unlock(int cpu, unsigned long lock);
 int sugov_get_stat(int cpu);
-unsigned int sugov_restore_freq(unsigned long data);
 
 int lge_triton_init(void);
 #endif

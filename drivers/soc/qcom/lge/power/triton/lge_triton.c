@@ -267,10 +267,6 @@ static int stop_kpolicy(void)
 	if (dest_cpu < 0)
 		return -EFAULT;
 
-	dev = get_cpu_device(dest_cpu);
-	if (dev && !cpu_is_offline(dev->id)) {
-		sugov_restore_freq(dest_cpu);
-	}
 
 	return 0;
 }
