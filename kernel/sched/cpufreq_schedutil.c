@@ -19,6 +19,11 @@
 #include "sched.h"
 #include "tune.h"
 
+
+#ifdef CONFIG_LGE_PM_PRM
+#include "triton/lge_triton.h"
+#endif
+
 #define SUGOV_KTHREAD_PRIORITY	50
 
 struct sugov_tunables {
@@ -498,8 +503,16 @@ static void sugov_work(struct kthread_work *work)
 	sugov_track_cycles(sg_policy, sg_policy->policy->cur,
 			   sched_ktime_clock());
 	raw_spin_unlock_irqrestore(&sg_policy->update_lock, flags);
+#ifdef CONFIG_LGE_PM_PRM
+	triton_notify(CPU_FREQ_TRANSITION, (int)sg_policy->policy->cpu, (void *)&sg_policy->next_freq);
+
+	if (triton_notify(CPU_OWNER_TRANSITION, (int)sg_policy->policy->cpu, (void *)0))
+		__cpufreq_driver_target(sg_policy->policy, sg_policy->next_freq,
+				CPUFREQ_RELATION_L);
+#else
 	__cpufreq_driver_target(sg_policy->policy, sg_policy->next_freq,
 				CPUFREQ_RELATION_L);
+#endif
 	mutex_unlock(&sg_policy->work_lock);
 
 	sg_policy->work_in_progress = false;
@@ -968,6 +981,10 @@ static int sugov_start(struct cpufreq_policy *policy)
 							sugov_update_shared :
 							sugov_update_single);
 	}
+
+#ifdef CONFIG_LGE_PM_PRM
+	triton_notify(CPU_UPDATE_TARGET_GOVERNOR_START, 0, NULL);
+#endif
 	return 0;
 }
 
@@ -975,6 +992,10 @@ static void sugov_stop(struct cpufreq_policy *policy)
 {
 	struct sugov_policy *sg_policy = policy->governor_data;
 	unsigned int cpu;
+
+#ifdef CONFIG_LGE_PM_PRM
+	triton_notify(CPU_UPDATE_TARGET_GOVERNOR_STOP, 0, NULL);
+#endif
 
 	for_each_cpu(cpu, policy->cpus)
 		cpufreq_remove_update_util_hook(cpu);
@@ -1004,6 +1025,58 @@ static void sugov_limits(struct cpufreq_policy *policy)
 
 	sg_policy->need_freq_update = true;
 }
+
+#ifdef CONFIG_LGE_PM_PRM
+struct cpufreq_policy *sugov_get_policy(int cpu)
+{
+	struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
+	return sg_cpu->sg_policy->policy;
+}
+
+void sugov_lock(int cpu, unsigned long lock)
+{
+	struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
+	mutex_lock(&sg_cpu->sg_policy->work_lock);
+	raw_spin_lock_irqsave(&sg_cpu->sg_policy->update_lock, lock);
+}
+
+void sugov_unlock(int cpu, unsigned long lock)
+{
+	struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
+	raw_spin_unlock_irqrestore(&sg_cpu->sg_policy->update_lock, lock);
+	mutex_unlock(&sg_cpu->sg_policy->work_lock);
+}
+
+int sugov_get_stat(int cpu)
+{
+	struct sugov_cpu *sg_cpu = &per_cpu(sugov_cpu, cpu);
+	struct sugov_policy *sg_policy = sg_cpu->sg_policy;
+	bool result = false;
+
+	if (!sg_policy) {
+		return -ENODEV;
+	}
+
+	if (sg_policy->thread == current) {
+		return -EBUSY;
+	}
+
+	if (sg_policy->work_in_progress == true) {
+		// return -EBUSY;
+		// temporary pass through
+	}
+
+	result = true;
+
+	/* OK : 0, NOK > 0 */
+	return !result;
+}
+
+unsigned int sugov_restore_freq(unsigned long data)
+{
+	return 0;
+}
+#endif
 
 static struct cpufreq_governor schedutil_gov = {
 	.name = "schedutil",

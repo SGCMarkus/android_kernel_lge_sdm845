@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012-2019, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2012-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -2722,6 +2722,7 @@ static int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
 	VERIFY(err, (fl && ud));
 	if (err)
 		goto bail;
+	mutex_lock(&fl->map_mutex);
 	mutex_lock(&fl->fl_map_mutex);
 	if (fastrpc_mmap_find(fl, ud->fd, ud->va, ud->len, 0, 0, &map)) {
 		pr_err("adsprpc: mapping not found to unmap %d va %llx %x\n",
@@ -2729,11 +2730,13 @@ static int fastrpc_internal_munmap_fd(struct fastrpc_file *fl,
 			(unsigned int)ud->len);
 		err = -1;
 		mutex_unlock(&fl->fl_map_mutex);
+		mutex_unlock(&fl->map_mutex);
 		goto bail;
 	}
 	if (map)
 		fastrpc_mmap_free(map, 0);
 	mutex_unlock(&fl->fl_map_mutex);
+	mutex_unlock(&fl->map_mutex);
 bail:
 	return err;
 }
@@ -3505,8 +3508,13 @@ static int fastrpc_device_open(struct inode *inode, struct file *filp)
 		return err;
 	snprintf(strpid, PID_SIZE, "%d", current->pid);
 	buf_size = strlen(current->comm) + strlen("_") + strlen(strpid) + 1;
+
+	/* kasan fix: using correct buf_size */
+	if(buf_size > UL_SIZE)
+		buf_size = UL_SIZE;
+
 	fl->debug_buf = kzalloc(buf_size, GFP_KERNEL);
-	snprintf(fl->debug_buf, UL_SIZE, "%.10s%s%d",
+	snprintf(fl->debug_buf, buf_size, "%.10s%s%d",
 	current->comm, "_", current->pid);
 	debugfs_file = debugfs_create_file(fl->debug_buf, 0644,
 	debugfs_root, fl, &debugfs_fops);

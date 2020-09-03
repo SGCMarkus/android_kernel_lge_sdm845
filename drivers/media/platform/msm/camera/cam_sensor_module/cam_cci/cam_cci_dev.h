@@ -26,7 +26,7 @@
 #include <linux/timer.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
-#include <linux/mutex.h>
+#include <linux/semaphore.h>
 #include <media/cam_sensor.h>
 #include <media/v4l2-event.h>
 #include <media/v4l2-ioctl.h>
@@ -46,7 +46,7 @@
 #define CYCLES_PER_MICRO_SEC_DEFAULT 4915
 #define CCI_MAX_DELAY 1000000
 
-#define CCI_TIMEOUT msecs_to_jiffies(1500)
+#define CCI_TIMEOUT msecs_to_jiffies(1000) //LGE, CST,  5000->1000
 
 #define NUM_MASTERS 2
 #define NUM_QUEUES 2
@@ -66,7 +66,11 @@
 #define MAX_LRME_V4l2_EVENTS 30
 
 /* Max bytes that can be read per CCI read transaction */
+#if 0 // QCT_ORI
 #define CCI_READ_MAX 256
+#else
+#define CCI_READ_MAX 12
+#endif
 #define CCI_I2C_READ_MAX_RETRIES 3
 #define CCI_I2C_MAX_READ 8192
 #define CCI_I2C_MAX_WRITE 8192
@@ -143,6 +147,9 @@ struct cam_cci_master_info {
 	struct completion report_q[NUM_QUEUES];
 	atomic_t done_pending[NUM_QUEUES];
 	spinlock_t lock_q[NUM_QUEUES];
+	struct semaphore master_sem;
+	bool is_first_req;
+	uint16_t freq_ref_cnt;
 };
 
 struct cam_cci_clk_params_t {
@@ -199,8 +206,7 @@ enum cam_cci_state_t {
  * @lock_status: to protect changes to irq_status1
  * @is_burst_read: Flag to determine if we are performing
  *                 a burst read operation or not
- * @init_mutex: Mutex for maintaining refcount for attached
- *              devices to cci during init/deinit.
+ * @irqs_disabled: Mask for IRQs that are disabled
  */
 struct cci_device {
 	struct v4l2_subdev subdev;
@@ -228,7 +234,8 @@ struct cci_device {
 	uint32_t irq_status1;
 	spinlock_t lock_status;
 	bool is_burst_read;
-	struct mutex init_mutex;
+	struct mutex global_mutex;
+	uint32_t irqs_disabled;
 };
 
 enum cam_cci_i2c_cmd_type {

@@ -1722,7 +1722,7 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 	} else if (region_id == CAM_SMMU_REGION_IO) {
 		rc = msm_dma_map_sg_lazy(iommu_cb_set.cb_info[idx].dev,
 		table->sgl, table->nents, dma_dir, buf);
-
+#if 0 /* qct orig*/
 		if (rc != table->nents) {
 			CAM_ERR(CAM_SMMU, "Error: msm_dma_map_sg_lazy failed");
 			rc = -ENOMEM;
@@ -1731,6 +1731,22 @@ static int cam_smmu_map_buffer_validate(struct dma_buf *buf,
 			*paddr_ptr = sg_dma_address(table->sgl);
 			*len_ptr = (size_t)sg_dma_len(table->sgl);
 		}
+#else /* LGE_CHANGE, CST retry dma map once again */
+		if (rc == table->nents) {
+			*paddr_ptr = sg_dma_address(table->sgl);
+			*len_ptr = (size_t)sg_dma_len(table->sgl);
+		} else {
+			CAM_ERR(CAM_SMMU, "Error: msm_dma_map_sg_lazy failed. Try once again");
+			rc = msm_dma_map_sg_lazy(iommu_cb_set.cb_info[idx].dev,
+				table->sgl, table->nents, dma_dir, buf);
+			if (rc != table->nents) {
+				rc = -ENOMEM;
+				goto err_unmap_sg;
+			}
+			*paddr_ptr = sg_dma_address(table->sgl);
+			*len_ptr = (size_t)sg_dma_len(table->sgl);
+		}
+#endif
 	} else {
 		CAM_ERR(CAM_SMMU, "Error: Wrong region id passed");
 		rc = -EINVAL;

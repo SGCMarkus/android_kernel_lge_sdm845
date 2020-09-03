@@ -1,0 +1,69 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common-sound.dtsi"
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common-sound_es9219p.dtsi"
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common-sound_tfa9878.dtsi"
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common-sound_vibrator.dtsi"
+
+&audio_apr {
+	sound-tavil {
+		pinctrl-names = "tert-mi2s-sleep", "tert-mi2s-active","tert-tdm-sleep", "tert-tdm-active", "quat-mi2s-sleep", "quat-mi2s-active";
+		pinctrl-0 = <&tert_mi2s_sleep &tert_mi2s_sd1_sleep>;
+		pinctrl-1 = <&tert_mi2s_active &tert_mi2s_sd1_active>;
+		pinctrl-2 = <&tert_tdm_sleep &tert_tdm_dout_sleep>;
+		pinctrl-3 = <&tert_tdm_active &tert_tdm_dout_active>;
+		pinctrl-4 = <&quat_mi2s_sleep &quat_mi2s_sd0_sleep &quat_mi2s_sd1_sleep>;
+		pinctrl-5 = <&quat_mi2s_active &quat_mi2s_sd0_active &quat_mi2s_sd1_active>;
+		asoc-codec = <&stub_codec>,  <&ext_disp_audio_codec>, <&tfa98xx_spk1> ,<&tfa98xx_spk2>;
+		asoc-codec-names = "msm-stub-codec.1",
+				"msm-ext-disp-audio-codec-rx",
+				"tfa98xx-codec.0-0034",
+				"tfa98xx-codec.0-0035";
+
+		lge,fmradio-lna-enable-gpio = <&tlmm 128 0x00>;
+		lna-supply = <&pm8998_l16>;
+	};
+};
+
+&soc {
+
+//Comparator for 2Vrms Hi-Fi
+//Enable VREG_BOB Regulator if ESS Chip is installed
+//enable L19 - wcd9340 vdd
+	 rpmh-regulator-bobb1 {
+		regulator-bob {
+				qcom,init-voltage = <3312000>;
+				regulator-always-on;
+				status = "okay";
+			};
+	};
+/* LNA */
+	rpmh-regulator-ldoa16 {
+		status = "ok";
+		pm8998_l16: regulator-l16 {
+				regulator-min-microvolt = <2700000>;
+				regulator-max-microvolt = <2700000>;
+				qcom,init-voltage = <2700000>;
+				qcom,vdd-voltage-level = <2700000 2700000>;
+				status = "okay";
+			};
+	};
+
+};
+
+&audio_apr {
+	sound-tavil {
+		/* to register multi codec dai for tfa9878 */
+		lge,ras-spk-amp = <1>;
+	};
+};

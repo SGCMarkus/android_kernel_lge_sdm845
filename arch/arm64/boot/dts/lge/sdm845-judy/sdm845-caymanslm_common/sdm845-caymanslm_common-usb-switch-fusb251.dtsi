@@ -1,0 +1,44 @@
+/* Copyright (c) 2020, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&qupv3_se12_i2c {
+	status = "ok";
+	qcom,clk-freq-out = <400000>;
+
+	fusb251@28 {
+		compatible = "lge,fusb251";
+		status = "ok";
+		reg = <0x28>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <79 IRQ_TYPE_EDGE_FALLING>;
+
+		fusb251,intb-gpio = <&tlmm 79 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&fusb251_intb_active>;
+
+	};
+};
+
+&tlmm {
+	fusb251_intb_active: fusb251_intb_active {
+	     mux {
+		     pins = "gpio79";
+		     function = "gpio";
+	     };
+
+	     config {
+		     pins = "gpio79";
+		     bias-pull-up;
+	     };
+	};
+};

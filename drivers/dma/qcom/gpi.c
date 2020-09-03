@@ -128,7 +128,7 @@ enum EV_PRIORITY {
 #define IPC_LOG_PAGES (2)
 #define GPI_DBG_LOG_SIZE (0) /* size must be power of 2 */
 #define DEFAULT_IPC_LOG_LVL (LOG_LVL_ERROR)
-#define CMD_TIMEOUT_MS (250)
+#define CMD_TIMEOUT_MS (500)
 /* verbose and register logging are disabled if !debug */
 #define GPII_REG(gpii, ch, fmt, ...)
 #define GPII_VERB(gpii, ch, fmt, ...)
@@ -940,7 +940,6 @@ static void gpi_generate_cb_event(struct gpii_chan *gpii_chan,
 /* process transfer completion interrupt */
 static void gpi_process_ieob(struct gpii *gpii)
 {
-
 	gpi_write_reg(gpii, gpii->ieob_clr_reg, BIT(0));
 
 	/* process events based on priority */

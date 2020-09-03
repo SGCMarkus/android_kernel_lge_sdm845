@@ -40,6 +40,10 @@
 #include "glink_private.h"
 #include "glink_xprt_if.h"
 
+#ifdef CONFIG_LGE_PM
+#include "linux/suspend.h"
+#endif
+
 #define XPRT_NAME "smem"
 #define FIFO_FULL_RESERVE 8
 #define FIFO_ALIGNMENT 8
@@ -693,6 +697,16 @@ static void send_tx_blocked_signal(struct edge_info *einfo)
  *
  * Return: Number of bytes transmitted.
  */
+struct debug_tx_q {
+	uint32_t read_index;
+	uint32_t write_index;
+	u64 ts;
+	struct task_struct *who;
+};
+
+struct debug_tx_q debug_last_tx_cond = {0,};
+struct debug_tx_q debug_last_tx = {0,};
+
 static int fifo_tx(struct edge_info *einfo, const void *data, int len)
 {
 	unsigned long flags;
@@ -701,6 +715,19 @@ static int fifo_tx(struct edge_info *einfo, const void *data, int len)
 	DEFINE_WAIT(wait);
 
 	spin_lock_irqsave(&einfo->write_lock, flags);
+	if (!strncmp(einfo->xprt_cfg.edge, "mpss", strlen("mpss"))) {
+		if (fifo_write_avail(einfo) < len) {
+			debug_last_tx_cond.read_index = einfo->tx_ch_desc->read_index;
+			debug_last_tx_cond.write_index = einfo->tx_ch_desc->write_index;
+			debug_last_tx_cond.ts = sched_clock();
+			debug_last_tx_cond.who = current;
+		} else {
+			debug_last_tx.read_index = einfo->tx_ch_desc->read_index;
+			debug_last_tx.write_index = einfo->tx_ch_desc->write_index;
+			debug_last_tx.ts = sched_clock();
+			debug_last_tx.who = current;
+		}
+	}
 	while (fifo_write_avail(einfo) < len) {
 		send_tx_blocked_signal(einfo);
 		prepare_to_wait(&einfo->tx_blocked_queue, &wait,
@@ -885,6 +912,17 @@ static bool get_rx_fifo(struct edge_info *einfo)
 	return true;
 }
 
+struct debug_tx_worker {
+	u64 ts;
+	struct task_struct *who;
+	uint32_t read_index;
+	uint32_t write_index;
+	bool trigger_wakeup;
+	bool active_wq;
+	wait_queue_head_t *tx_blocked_queue_backup;
+};
+
+struct debug_tx_worker debug_wakeup_tx = {0,};
 /**
  * tx_wakeup_worker() - worker function to wakeup tx blocked thread
  * @work:	kwork associated with the edge to process commands on.
@@ -900,6 +938,17 @@ static void tx_wakeup_worker(struct edge_info *einfo)
 		return;
 
 	spin_lock_irqsave(&einfo->write_lock, flags);
+
+	if (!strncmp(einfo->xprt_cfg.edge, "mpss", strlen("mpss"))) {
+		debug_wakeup_tx.ts = sched_clock();
+		debug_wakeup_tx.who = current;
+		debug_wakeup_tx.read_index = einfo->tx_ch_desc->read_index;
+		debug_wakeup_tx.write_index = einfo->tx_ch_desc->write_index;
+		debug_wakeup_tx.trigger_wakeup = trigger_wakeup;
+		debug_wakeup_tx.active_wq = false;
+		debug_wakeup_tx.tx_blocked_queue_backup = &einfo->tx_blocked_queue;
+	}
+
 	if (fifo_write_avail(einfo)) {
 		if (einfo->tx_blocked_signal_sent)
 			einfo->tx_blocked_signal_sent = false;
@@ -907,8 +956,14 @@ static void tx_wakeup_worker(struct edge_info *einfo)
 			einfo->tx_resume_needed = false;
 			trigger_resume = true;
 		}
-		if (waitqueue_active(&einfo->tx_blocked_queue))/* tx waiting ?*/
+		if (waitqueue_active(&einfo->tx_blocked_queue)) { /* tx waiting ?*/
 			trigger_wakeup = true;
+			if (!strncmp(einfo->xprt_cfg.edge, "mpss", strlen("mpss"))) {
+				debug_wakeup_tx.active_wq = true;
+				debug_wakeup_tx.trigger_wakeup = trigger_wakeup;
+				debug_wakeup_tx.tx_blocked_queue_backup = &einfo->tx_blocked_queue;
+			}
+		}
 	}
 	spin_unlock_irqrestore(&einfo->write_lock, flags);
 	if (trigger_wakeup)
@@ -1289,10 +1344,22 @@ static void rx_worker(struct kthread_work *work)
 irqreturn_t irq_handler(int irq, void *priv)
 {
 	struct edge_info *einfo = (struct edge_info *)priv;
-
+#ifdef CONFIG_LGE_PM
+	struct irq_desc *desc = irq_to_desc(irq);
+	const char *name = "null";
+#endif
 	if (einfo->rx_reset_reg)
 		writel_relaxed(einfo->out_irq_mask, einfo->rx_reset_reg);
+#ifdef CONFIG_LGE_PM
+	if(suspend_debug_irq_pin()){
+		if (desc == NULL)
+			name = "stray irq";
+		else if (desc->action && desc->action->name)
+			name = desc->action->name;
 
+		pr_err("glink_smem_native_xprt : irq = %d, name = %s\n", irq, name);
+	}
+#endif
 	__rx_worker(einfo, true);
 	einfo->rx_irq_count++;
 
@@ -1600,6 +1667,7 @@ static void subsys_up(struct glink_transport_if *if_ptr)
  *
  * Return: 0 on success or standard Linux error code.
  */
+u64 last_ssr_ts;
 static int ssr(struct glink_transport_if *if_ptr)
 {
 	struct edge_info *einfo;
@@ -1610,6 +1678,9 @@ static int ssr(struct glink_transport_if *if_ptr)
 	BUG_ON(einfo->remote_proc_id == SMEM_RPM);
 
 	einfo->in_ssr = true;
+	if (!strncmp(einfo->xprt_cfg.edge, "mpss", strlen("mpss")))
+		last_ssr_ts = sched_clock();
+
 	wake_up_all(&einfo->tx_blocked_queue);
 
 	synchronize_srcu(&einfo->use_ref);

@@ -135,6 +135,8 @@ static void i2c_pmic_sync_enable(struct i2c_pmic *chip,
 	en_clr = periph->synced[IRQ_EN_SET] & ~periph->cached[IRQ_EN_SET];
 	en_set = ~periph->synced[IRQ_EN_SET] & periph->cached[IRQ_EN_SET];
 
+	pr_err("SMB I2C i2c_pmic_sync_enable addr=%x en_clr=%x en_set=%x\n",
+			periph->addr, en_clr, en_set);
 	/* were any irqs disabled? */
 	if (en_clr) {
 		rc = regmap_write(chip->regmap,
@@ -334,6 +336,8 @@ static void i2c_pmic_irq_disable_now(struct i2c_pmic *chip, u16 hwirq)
 	mutex_lock(&periph->lock);
 	periph->cached[IRQ_EN_SET] &= ~hwirq & 0xFF;
 
+	pr_err("SMB I2C 2c_pmic_irq_disable_now hwirq=%x val=%x\n",
+			(hwirq & 0xFF00), hwirq & 0xFF);
 	rc = regmap_write(chip->regmap,
 			  (hwirq & 0xFF00) | INT_EN_CLR_OFFSET,
 			  hwirq & 0xFF);
@@ -397,12 +401,14 @@ static void i2c_pmic_summary_status_handler(struct i2c_pmic *chip,
 	}
 }
 
+extern void smb1355_bandgap_status(void);
 static irqreturn_t i2c_pmic_irq_handler(int irq, void *dev_id)
 {
 	struct i2c_pmic *chip = dev_id;
 	struct i2c_pmic_periph *periph;
 	unsigned int summary_status;
 	int rc, i;
+	bool found = false;
 
 	mutex_lock(&chip->irq_complete);
 	chip->irq_waiting = true;
@@ -426,8 +432,14 @@ static irqreturn_t i2c_pmic_irq_handler(int irq, void *dev_id)
 		if (summary_status == 0)
 			continue;
 
+		found = true;
 		periph = &chip->periph[i * 8];
 		i2c_pmic_summary_status_handler(chip, periph, summary_status);
+	}
+
+	if (!found) {
+		pr_err("IRQ fired but status empty\n");
+		smb1355_bandgap_status();
 	}
 
 	mutex_unlock(&chip->irq_complete);

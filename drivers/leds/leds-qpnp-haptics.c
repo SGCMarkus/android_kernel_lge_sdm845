@@ -1360,6 +1360,49 @@ irq_handled:
 	return IRQ_HANDLED;
 }
 
+#ifdef CONFIG_PMI8998_HAPTICS
+#define IMMVIBED_STEP_SIZE	125
+static struct hap_chip *g_chip = NULL;
+static int scale_factor = -1;
+
+int leds_haptic_timed_vmax(int value)
+{
+	struct hap_chip *chip = g_chip;
+
+	if( chip == NULL ) {
+		pr_err("%s : qti_hap_chip is NULL.\n", __func__);
+		return -1;
+	}
+
+	if( scale_factor == -1 ) {
+		scale_factor = chip->vmax_mv / IMMVIBED_STEP_SIZE;
+		dev_err(&chip->pdev->dev,"%s : scale_factor : %d, \n", __func__, scale_factor);
+		// disable auto-resonance mode
+		qpnp_haptics_auto_res_enable(chip, false);
+	}
+
+	//dev_err(&chip->pdev->dev, "%s : amplitude value : %d, set Vmax %d.\n", __func__, value, value*scale_factor);
+
+	// set Vmax
+	if(value > 0)
+		qpnp_haptics_vmax_config(chip, value*scale_factor, false);
+	
+	chip->play_time_ms = HAP_MAX_PLAY_TIME_MS;
+
+	if (value == 0) {
+		qpnp_haptics_play(chip, false);
+	//	qpnp_haptics_mod_enable(chip, false);
+	} else {
+	//	qpnp_haptics_mod_enable(chip, true);
+		qpnp_haptics_play(chip, true);
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL_GPL(leds_haptic_timed_vmax);
+#endif /* CONFIG_PMI8998_HAPTICS */
+
+
 #define SC_MAX_COUNT		5
 #define SC_COUNT_RST_DELAY_US	1000000
 static irqreturn_t qpnp_haptics_sc_irq_handler(int irq, void *data)
@@ -2479,6 +2522,11 @@ static int qpnp_haptics_probe(struct platform_device *pdev)
 			goto sysfs_fail;
 		}
 	}
+
+#ifdef CONFIG_PMI8998_HAPTICS
+	g_chip = chip;
+	dev_err(&pdev->dev, "DONE: Probing leds haptics \n");
+#endif /* CONFIG_PMI8998_HAPTICS */
 
 	return 0;
 

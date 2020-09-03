@@ -1121,6 +1121,9 @@ static struct dm_target_io *alloc_tio(struct clone_info *ci,
 	struct bio *clone;
 
 	clone = bio_alloc_bioset(GFP_NOIO, 0, ci->md->bs);
+	if (!clone)
+		return NULL;
+
 	tio = container_of(clone, struct dm_target_io, clone);
 
 	tio->io = ci->io;

@@ -83,6 +83,13 @@ static DEFINE_SEMAPHORE(console_sem);
 struct console *console_drivers;
 EXPORT_SYMBOL_GPL(console_drivers);
 
+#ifdef CONFIG_PRINTK_TIMESPEC
+static size_t print_time(u64 ts, struct timespec time,
+		struct tm tmresult, char *buf);
+#else
+static size_t print_time(u64 ts, char *buf);
+#endif
+
 #ifdef CONFIG_LOCKDEP
 static struct lockdep_map console_lock_dep_map = {
 	.name = "console_lock"
@@ -342,6 +349,16 @@ struct printk_log {
 	u8 facility;		/* syslog facility */
 	u8 flags:5;		/* internal record flags */
 	u8 level:3;		/* syslog level */
+#ifdef CONFIG_PRINTK_TIMESPEC
+	struct timespec time;
+	struct tm tmresult;
+#endif
+#ifdef CONFIG_PRINTK_PROCESS
+	char process[TASK_COMM_LEN];	/* process name */
+	pid_t pid;			/* process id */
+	unsigned int cpu;		/* cpu core number */
+	bool in_interrupt;		/* in interrupt */
+#endif
 }
 #ifdef CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS
 __packed __aligned(4)
@@ -533,6 +550,51 @@ static u32 truncate_msg(u16 *text_len, u16 *trunc_msg_len,
 	return msg_used_size(*text_len + *trunc_msg_len, 0, pad_len);
 }
 
+#ifdef CONFIG_PRINTK_TIMESPEC
+static void inline save_time(struct printk_log *msg)
+{
+	msg->time = __current_kernel_time();
+	time_to_tm(msg->time.tv_sec, sys_tz.tz_minuteswest * 60 * (-1),
+			&msg->tmresult);
+}
+#else
+static void inline save_time(struct printk_log *msg) { }
+#endif
+
+#ifdef CONFIG_PRINTK_PROCESS
+static __always_inline void debug_strcpy_task_comm(char *dst, char *src)
+{
+#if (TASK_COMM_LEN == 16)
+	*(unsigned __int128 *)dst = *(unsigned __int128 *)src;
+#else
+	memcpy(dst, src, TASK_COMM_LEN);
+#endif
+}
+
+static void inline save_process(struct printk_log *msg)
+{
+	debug_strcpy_task_comm(msg->process, current->comm);
+	msg->pid = task_pid_nr(current);
+	msg->cpu = smp_processor_id();
+	msg->in_interrupt = in_interrupt() ? true : false;
+}
+
+static size_t print_process(const struct printk_log *msg, char *buf)
+{
+	if (!buf)
+		return snprintf(NULL, 0, "%c[%1d:%15s:%5d] ", ' ', 0, " ", 0);
+
+	return sprintf(buf, "%c[%1d:%15s:%5d] ",
+					msg->in_interrupt ? 'I' : ' ',
+					msg->cpu,
+					msg->process,
+					msg->pid);
+}
+#else
+static void inline save_process(struct printk_log *msg) { }
+static size_t inline print_process(const struct printk_log *msg, char *buf) { return 0; }
+#endif
+
 /* insert record into the buffer, discard old ones, update heads */
 static int log_store(int facility, int level,
 		     enum log_flags flags, u64 ts_nsec,
@@ -582,6 +644,12 @@ static int log_store(int facility, int level,
 		msg->ts_nsec = ts_nsec;
 	else
 		msg->ts_nsec = local_clock();
+#ifdef CONFIG_PRINTK_TIMESPEC
+	save_time(msg);
+#endif
+#ifdef CONFIG_PRINTK_PROCESS
+	save_process(msg);
+#endif
 	memset(log_dict(msg) + dict_len, 0, pad_len);
 	msg->len = size;
 
@@ -648,6 +716,9 @@ static ssize_t msg_print_ext_header(char *buf, size_t size,
 {
 	u64 ts_usec = msg->ts_nsec;
 	char cont = '-';
+#if defined(CONFIG_PRINTK_TIMESPEC) || defined(CONFIG_PRINTK_PROCESS)
+	ssize_t len = 0;
+#endif
 
 	do_div(ts_usec, 1000);
 
@@ -662,8 +733,19 @@ static ssize_t msg_print_ext_header(char *buf, size_t size,
 	if (msg->flags & LOG_CONT)
 		cont = (prev_flags & LOG_CONT) ? '+' : 'c';
 
+#if defined(CONFIG_PRINTK_TIMESPEC) || defined(CONFIG_PRINTK_PROCESS)
+	len = scnprintf(buf, size, "<%u>", (msg->facility << 3) | msg->level);
+#ifdef CONFIG_PRINTK_TIMESPEC
+	len += print_time(msg->ts_nsec, msg->time, msg->tmresult, buf + len);
+#endif
+#ifdef CONFIG_PRINTK_PROCESS
+	len += print_process(msg, buf ? buf + len : NULL);
+#endif
+	return len;
+#else
 	return scnprintf(buf, size, "%u,%llu,%llu,%c;",
 		       (msg->facility << 3) | msg->level, seq, ts_usec, cont);
+#endif
 }
 
 static ssize_t msg_print_ext_body(char *buf, size_t size,
@@ -996,6 +1078,16 @@ void log_buf_kexec_setup(void)
 	VMCOREINFO_OFFSET(printk_log, len);
 	VMCOREINFO_OFFSET(printk_log, text_len);
 	VMCOREINFO_OFFSET(printk_log, dict_len);
+#ifdef CONFIG_PRINTK_TIMESPEC
+	VMCOREINFO_OFFSET(printk_log, time);
+	VMCOREINFO_OFFSET(printk_log, tmresult);
+#endif
+#ifdef CONFIG_PRINTK_PROCESS
+	VMCOREINFO_OFFSET(printk_log, process);
+	VMCOREINFO_OFFSET(printk_log, pid);
+	VMCOREINFO_OFFSET(printk_log, cpu);
+	VMCOREINFO_OFFSET(printk_log, in_interrupt);
+#endif
 }
 #endif
 
@@ -1053,8 +1145,12 @@ static void __init log_buf_add_cpu(void)
 	pr_info("log_buf_len total cpu_extra contributions: %d bytes\n",
 		cpu_extra);
 	pr_info("log_buf_len min size: %d bytes\n", __LOG_BUF_LEN);
-
+#ifdef CONFIG_PRINTK_PROCESS
+#define __PRINTK_EXTRA_LOGBUF_SIZE (1 << CONFIG_PRINTK_EXTRA_LOGBUF_SHIFT)
+	log_buf_len_update(cpu_extra + __LOG_BUF_LEN + __PRINTK_EXTRA_LOGBUF_SIZE);
+#else
 	log_buf_len_update(cpu_extra + __LOG_BUF_LEN);
+#endif
 }
 #else /* !CONFIG_SMP */
 static inline void log_buf_add_cpu(void) {}
@@ -1180,7 +1276,12 @@ static inline void boot_delay_msec(int level)
 static bool printk_time = IS_ENABLED(CONFIG_PRINTK_TIME);
 module_param_named(time, printk_time, bool, S_IRUGO | S_IWUSR);
 
+#ifdef CONFIG_PRINTK_TIMESPEC
+static size_t print_time(u64 ts, struct timespec time,
+		struct tm tmresult, char *buf)
+#else
 static size_t print_time(u64 ts, char *buf)
+#endif
 {
 	unsigned long rem_nsec;
 
@@ -1189,11 +1290,35 @@ static size_t print_time(u64 ts, char *buf)
 
 	rem_nsec = do_div(ts, 1000000000);
 
+#ifdef CONFIG_PRINTK_TIMESPEC
+	if (!buf)
+		return snprintf(NULL, 0,
+			"[%5lu.000000 %02d-%02d %02d:%02d:%02d.%03lu]",
+			(unsigned long)ts,
+			tmresult.tm_mon+1,
+			tmresult.tm_mday,
+			tmresult.tm_hour,
+			tmresult.tm_min,
+			tmresult.tm_sec,
+			(unsigned long) time.tv_nsec/1000000);
+
+	return sprintf(buf, "[%5lu.%06lu %02d-%02d %02d:%02d:%02d.%03lu]",
+		       (unsigned long)ts,
+			rem_nsec / 1000,
+			tmresult.tm_mon+1,
+			tmresult.tm_mday,
+			tmresult.tm_hour,
+			tmresult.tm_min,
+			tmresult.tm_sec,
+			(unsigned long) time.tv_nsec/1000000);
+
+#else
 	if (!buf)
 		return snprintf(NULL, 0, "[%5lu.000000] ", (unsigned long)ts);
 
 	return sprintf(buf, "[%5lu.%06lu] ",
 		       (unsigned long)ts, rem_nsec / 1000);
+#endif
 }
 
 static size_t print_prefix(const struct printk_log *msg, bool syslog, char *buf)
@@ -1215,7 +1340,15 @@ static size_t print_prefix(const struct printk_log *msg, bool syslog, char *buf)
 		}
 	}
 
+#ifdef CONFIG_PRINTK_TIMESPEC
+	len += print_time(msg->ts_nsec, msg->time, msg->tmresult,
+			buf ? buf + len : NULL);
+#else
 	len += print_time(msg->ts_nsec, buf ? buf + len : NULL);
+#endif
+#ifdef CONFIG_PRINTK_PROCESS
+	len += print_process(msg, buf ? buf + len : NULL);
+#endif
 	return len;
 }
 
@@ -1647,6 +1780,16 @@ static struct cont {
 	u8 facility;			/* log facility of first message */
 	enum log_flags flags;		/* prefix, newline flags */
 	bool flushed:1;			/* buffer sealed and committed */
+#ifdef CONFIG_PRINTK_TIMESPEC
+	struct timespec time;
+	struct tm tmresult;
+#endif
+#ifdef CONFIG_PRINTK_PROCESS
+	char process[16];	/* process Name */
+	u16 pid;		/* process id */
+	u16 cpu;		/* cpu core number */
+	u8 in_interrupt;	/* in interrupt */
+#endif
 } cont;
 
 static void cont_flush(void)
@@ -1695,6 +1838,17 @@ static bool cont_add(int facility, int level, enum log_flags flags, const char *
 		cont.level = level;
 		cont.owner = current;
 		cont.ts_nsec = local_clock();
+#ifdef CONFIG_PRINTK_TIMESPEC
+		cont.time = __current_kernel_time();
+		time_to_tm(cont.time.tv_sec, sys_tz.tz_minuteswest * 60 * (-1),
+				&cont.tmresult);
+#endif
+#ifdef CONFIG_PRINTK_PROCESS
+		debug_strcpy_task_comm(cont.process, current->comm);
+		cont.pid = task_pid_nr(current);
+		cont.cpu = smp_processor_id();
+		cont.in_interrupt = in_interrupt() ? true : false;
+#endif
 		cont.flags = flags;
 		cont.cons = 0;
 		cont.flushed = false;
@@ -1722,7 +1876,12 @@ static size_t cont_print_text(char *text, size_t size)
 	size_t len;
 
 	if (cont.cons == 0 && (console_prev & LOG_NEWLINE)) {
+#ifdef CONFIG_PRINTK_TIMESPEC
+		textlen += print_time(cont.ts_nsec, cont.time,
+					cont.tmresult, text);
+#else
 		textlen += print_time(cont.ts_nsec, text);
+#endif
 		size -= textlen;
 	}
 
@@ -1900,12 +2059,20 @@ asmlinkage int vprintk_emit(int facility, int level,
 	if (!in_sched) {
 		lockdep_off();
 		/*
+		 * Disable preemption to avoid being preempted while holding
+		 * console_sem which would prevent anyone from printing to
+		 * console
+		 */
+		preempt_disable();
+
+		/*
 		 * Try to acquire and then immediately release the console
 		 * semaphore.  The release will print out buffers and wake up
 		 * /dev/kmsg and syslog() users.
 		 */
 		if (console_trylock())
 			console_unlock();
+		preempt_enable();
 		lockdep_on();
 	}
 
@@ -2243,20 +2410,7 @@ int console_trylock(void)
 		return 0;
 	}
 	console_locked = 1;
-	/*
-	 * When PREEMPT_COUNT disabled we can't reliably detect if it's
-	 * safe to schedule (e.g. calling printk while holding a spin_lock),
-	 * because preempt_disable()/preempt_enable() are just barriers there
-	 * and preempt_count() is always 0.
-	 *
-	 * RCU read sections have a separate preemption counter when
-	 * PREEMPT_RCU enabled thus we must take extra care and check
-	 * rcu_preempt_depth(), otherwise RCU read sections modify
-	 * preempt_count().
-	 */
-	console_may_schedule = !oops_in_progress &&
-			preemptible() &&
-			!rcu_preempt_depth();
+	console_may_schedule = 0;
 	return 1;
 }
 EXPORT_SYMBOL(console_trylock);
@@ -2544,8 +2698,29 @@ void console_flush_on_panic(void)
 	 */
 	console_trylock();
 	console_may_schedule = 0;
+	console_suspended = 0;
 	console_unlock();
 }
+
+#ifdef CONFIG_MACH_LGE
+static atomic_t console_uart = ATOMIC_INIT(1);
+void console_uart_enable(void)
+{
+	console_flush_on_panic();
+	atomic_inc(&console_uart);
+}
+
+void console_uart_disable(void)
+{
+	atomic_dec(&console_uart);
+	console_flush_on_panic();
+}
+
+int console_uart_status(void)
+{
+	return (int)atomic_read(&console_uart);
+}
+#endif
 
 /*
  * Return the console tty driver structure and its associated index

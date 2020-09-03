@@ -55,6 +55,7 @@
 #include <asm/mmu_context.h>
 #include <asm/processor.h>
 #include <asm/stacktrace.h>
+#include <linux/console.h>
 
 #ifdef CONFIG_CC_STACKPROTECTOR
 #include <linux/stackprotector.h>
@@ -69,6 +70,11 @@ void (*pm_power_off)(void);
 EXPORT_SYMBOL_GPL(pm_power_off);
 
 void (*arm_pm_restart)(enum reboot_mode reboot_mode, const char *cmd);
+
+#ifdef CONFIG_LGE_POWEROFF_TIMEOUT
+void (*pm_power_off_timeout)(void);
+void (*arm_pm_restart_timeout)(enum reboot_mode reboot_mode, const char *cmd);
+#endif
 
 /*
  * This is our default idle handler.
@@ -142,6 +148,14 @@ void machine_power_off(void)
 		pm_power_off();
 }
 
+#ifdef CONFIG_LGE_POWEROFF_TIMEOUT
+void machine_power_off_timeout(void)
+{
+	if (pm_power_off_timeout)
+		pm_power_off_timeout();
+}
+#endif
+
 /*
  * Restart requires that the secondary CPUs stop performing any activity
  * while the primary CPU resets the system. Systems with multiple CPUs must
@@ -176,6 +190,14 @@ void machine_restart(char *cmd)
 	printk("Reboot failed -- System halted\n");
 	while (1);
 }
+
+#ifdef CONFIG_LGE_POWEROFF_TIMEOUT
+void machine_restart_timeout(char *cmd)
+{
+       if (arm_pm_restart_timeout)
+	      arm_pm_restart_timeout(reboot_mode, cmd);
+}
+#endif
 
 /*
  * dump a block of kernel memory from around the given address
@@ -223,16 +245,38 @@ static void show_data(unsigned long addr, int nbytes, const char *name)
 	}
 }
 
+static bool crash_core_cache_check = true;
+
 static void show_extra_register_data(struct pt_regs *regs, int nbytes)
 {
 	mm_segment_t fs;
 
+#ifdef CONFIG_MACH_LGE
+	console_uart_disable();
+#endif
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 	show_data(regs->pc - nbytes, nbytes * 2, "PC");
 	show_data(regs->regs[30] - nbytes, nbytes * 2, "LR");
 	show_data(regs->sp - nbytes, nbytes * 2, "SP");
+
+	// For cache corruption debugging
+	if(crash_core_cache_check && oops_in_progress) {
+		int i;
+		char reg[5];
+
+		for(i=30; i>=0; i--) {
+			sprintf(reg, "X%d", i);
+			show_data(regs->regs[i] - nbytes, nbytes * 8, reg);
+		}
+
+		crash_core_cache_check = false;
+	}
 	set_fs(fs);
+
+#ifdef CONFIG_MACH_LGE
+	console_uart_enable();
+#endif
 }
 
 void __show_regs(struct pt_regs *regs)

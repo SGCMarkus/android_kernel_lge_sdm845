@@ -111,6 +111,11 @@ struct ion_buffer {
 	int handle_count;
 	char task_comm[TASK_COMM_LEN];
 	pid_t pid;
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	size_t highorder_size;
+#endif
+	char thread_comm[TASK_COMM_LEN];
+	pid_t tid;
 };
 void ion_buffer_destroy(struct ion_buffer *buffer);
 
@@ -219,6 +224,11 @@ struct ion_heap {
 	int (*debug_show)(struct ion_heap *heap, struct seq_file *, void *);
 	atomic_long_t total_allocated;
 	atomic_long_t total_handles;
+
+#ifdef CONFIG_MIGRATE_HIGHORDER
+	size_t free_highorder_size;
+#endif
+	atomic_long_t total_allocated_peak;
 };
 
 /**
@@ -466,10 +476,10 @@ void ion_carveout_free(struct ion_heap *heap, ion_phys_addr_t addr,
  * on many systems
  */
 struct ion_page_pool {
-	int high_count;
-	int low_count;
-	struct list_head high_items;
-	struct list_head low_items;
+	atomic_t high_count;
+	atomic_t low_count;
+	struct llist_head high_items;
+	struct llist_head low_items;
 	struct mutex mutex;
 	struct device *dev;
 	gfp_t gfp_mask;

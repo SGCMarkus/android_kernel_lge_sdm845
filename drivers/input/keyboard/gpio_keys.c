@@ -32,6 +32,40 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
+#include <linux/hall_ic.h>
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
+#define CONFIG_LGE_SUPPORT_HALLIC
+
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+
+#include <soc/qcom/lge/board_lge.h>
+
+struct hallic_dev sdev = {
+	.name = "smartcover",
+	.state = 0,
+};
+
+struct hallic_dev ndev = {
+	.name = "nfccover",
+	.state = 0,
+};
+
+static bool hallic_check_hydra_name(void)
+{
+	int hydra_name = lge_get_hydra_name();
+	pr_info ("%s hydra_name = %d\n", __func__, hydra_name);
+
+	if (hydra_name == HYDRA_SIGNATURE)
+		return true;
+	else
+		return false;
+}
+
+#endif
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -374,6 +408,32 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 			input_event(input, type, button->code, button->value);
 	} else {
 		input_event(input, type, button->code, state);
+		pr_err("gpio_keys_report_event: code(%d), value(%d)\n",button->code, state);
+#ifdef CONFIG_LGE_HANDLE_PANIC
+		lge_gen_key_panic(button->code, state);
+#endif
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+		if (!strncmp(bdata->button->desc, "smart_cover", 11)){
+			if (sdev.state != !!state) {
+				hallic_set_state(&sdev, state);
+				pr_err("[Display] smart_cover state switched to %s \n", (state ? "CLOSE" : "OPEN"));
+			} else {
+				pr_err("%s: discard wrong smart_cover irq %s \n", __func__, (state ? "CLOSE" : "OPEN"));
+				return;
+			}
+		}
+
+		if (!strncmp(bdata->button->desc, "nfc_cover", 9)){
+			if (ndev.state != !!state) {
+				hallic_set_state(&ndev, state);
+				pr_err("[Display] nfc_cover state switched to %s \n", (state ? "CLOSE" : "OPEN"));
+			} else {
+				pr_err("%s: discard wrong nfc_cover irq %s \n", __func__, (state ? "CLOSE" : "OPEN"));
+				return;
+			}
+		}
+#endif
+
 	}
 	input_sync(input);
 }
@@ -511,6 +571,21 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 				bdata->software_debounce =
 						button->debounce_interval;
 		}
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+		if (bdata->button->desc != NULL) {
+			if (!strncmp(bdata->button->desc, "smart_cover", 11)) {
+				hallic_register(&sdev);
+				pr_err("smart_cover_dev switch registration success\n");
+			}
+		}
+
+		if (bdata->button->desc != NULL) {
+			if (!strncmp(bdata->button->desc, "nfc_cover", 9)) {
+				hallic_register(&ndev);
+				pr_err("hallic_dev switch registration success\n");
+			}
+		}
+#endif
 
 		if (button->irq) {
 			bdata->irq = button->irq;
@@ -709,6 +784,17 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 		if (of_property_read_u32(pp, "debounce-interval",
 					 &button->debounce_interval))
 			button->debounce_interval = 5;
+
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+		if (button->desc != NULL) {
+		    if (hallic_check_hydra_name()) {
+			    if (!strncmp(button->desc, "nfc_cover", 9)) {
+				    button->desc = "smart_cover";
+				    button->debounce_interval = 15;
+			    }
+		    }
+		}
+#endif
 	}
 
 	if (pdata->nbuttons == 0)

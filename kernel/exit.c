@@ -58,7 +58,6 @@
 #include "sched/tune.h"
 
 #include <asm/uaccess.h>
-#include <asm/unistd.h>
 #include <asm/pgtable.h>
 #include <asm/mmu_context.h>
 
@@ -171,6 +170,7 @@ void release_task(struct task_struct *p)
 {
 	struct task_struct *leader;
 	int zap_leader;
+
 repeat:
 	/* don't need to get the RCU readlock here - the process is dead and
 	 * can't be modifying its own credentials. But shut RCU-lockdep up */
@@ -839,6 +839,11 @@ void __noreturn do_exit(long code)
 
 	tsk->exit_code = code;
 	taskstats_exit(tsk, group_dead);
+
+	if (unlikely(task_pid_nr(tsk) == 1)) {
+		panic("Attempted to kill init? exitcode=0x%08x\n",
+			tsk->signal->group_exit_code ?: tsk->exit_code);
+	}
 
 	exit_mm(tsk);
 

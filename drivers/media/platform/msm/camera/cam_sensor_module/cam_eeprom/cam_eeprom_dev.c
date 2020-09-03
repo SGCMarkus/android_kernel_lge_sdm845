@@ -195,6 +195,12 @@ static int cam_eeprom_i2c_driver_probe(struct i2c_client *client,
 	e_ctrl->cal_data.map = NULL;
 	e_ctrl->userspace_probe = false;
 
+    /*LGE_CHANGE_S, WA, I2C Camera eeprom enable, hyunuk.park@lge.com*/
+    e_ctrl->cal_data.mapdata = NULL;
+    e_ctrl->cal_data.map = NULL;
+    e_ctrl->userspace_probe = false;
+    /*LGE_CHANGE_E, WA, I2C Camera eeprom enable, hyunuk.park@lge.com*/
+
 	rc = cam_eeprom_parse_dt(e_ctrl);
 	if (rc) {
 		CAM_ERR(CAM_EEPROM, "failed: soc init rc %d", rc);
@@ -211,10 +217,25 @@ static int cam_eeprom_i2c_driver_probe(struct i2c_client *client,
 	if (rc)
 		goto free_soc;
 
+/*LGE_CHANGE_S, WA, I2C Camera eeprom enable, hyunuk.park@lge.com*/
+#ifdef QCT_ORIGINAL
+	e_ctrl->cal_data.mapdata = NULL;
+	e_ctrl->cal_data.map = NULL;
+	e_ctrl->userspace_probe = false;
+#endif
+/*LGE_CHANGE_E, WA, I2C Camera eeprom enable, hyunuk.park@lge.com*/
+
 	if (soc_private->i2c_info.slave_addr != 0)
 		e_ctrl->io_master_info.client->addr =
 			soc_private->i2c_info.slave_addr;
 
+/*LGE_CHANGE_S, WA, I2C Camera eeprom enable, hyunuk.park@lge.com*/
+	if(e_ctrl->io_master_info.client->addr == 0x50) {
+		e_ctrl->io_master_info.client->addr = 0xA0; // sl846 only
+		soc_private->i2c_info.slave_addr = 0xA0;
+	}
+	CAM_ERR(CAM_EEPROM, "e_ctrl->io_master_info.client->addr = 0x%x", e_ctrl->io_master_info.client->addr);
+/*LGE_CHANGE_E, WA, I2C Camera eeprom enable, hyunuk.park@lge.com*/
 	e_ctrl->bridge_intf.device_hdl = -1;
 	e_ctrl->bridge_intf.ops.get_dev_info = NULL;
 	e_ctrl->bridge_intf.ops.link_setup = NULL;

@@ -1,0 +1,75 @@
+/* Copyright (c) 2014, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&qupv3_se14_i2c {
+	stm_ftm4@49 {
+		status = "disable";
+		compatible = "stm,ftm4";
+
+		reg = <0x49>;
+		interrupt-parent = <&tlmm>;
+		interrupts = <31 0x2008>;
+		irqflags = <0x00000002>;
+
+		vdd-gpio = <&tlmm 117 0x00>;
+		vio-gpio = <&tlmm 116 0x00>;
+		reset-gpio = <&tlmm 32 0x00>;
+		ta_detect-gpio = <&tlmm 119 0x00>;
+		irq-gpio = <&tlmm 31 0x2008>;
+
+		/* Caps */
+		max_x = <1439>;
+		max_y = <2879>;
+		max_pressure = <0xff>;
+		max_width_major = <2879>;
+		max_width_minor = <2879>;
+		max_orientation = <90>;
+		max_id = <10>;
+		hw_reset_delay = <10>;
+		sw_reset_delay = <10>;
+
+		/* role */
+		use_lpwg = <1>;
+		use_lpwg_test = <1>;
+		use_upgrade = <0>;
+		hide_coordinate = <1>;
+
+		/* Firmware */
+		fw_image = "touch/judyp/L0S59P1_2_10.ftb";
+		panel_spec = "touch/judyp/judyp_limit.txt";
+		panel_spec_mfts_folder = "touch/judyp/judyp_limit_mfts.txt";
+
+		/* EMMA product ID */
+		product_id0_0 = <0x51>;
+		product_id0_1 = <0x59>;
+		product_id0_2 = <0x01>;
+
+		product_id1_0 = <0x51>;
+		product_id1_1 = <0x59>;
+		product_id1_2 = <0x03>;
+
+		/* Performance Test */
+		use_perf_test = <1>;
+		test_delay = <8>;
+		test_pressure = <50>;
+		test_width = <100>;
+		click_test_x = <180>;
+		click_test_y = <696>;
+		v_drag_test_x = <144>;
+		v_drag_test_start_y = <1863>;
+		v_drag_test_end_y = <1016>;
+		h_drag_test_start_x = <1143>;
+		h_drag_test_end_x = <296>;
+		h_drag_test_y = <2015>;
+	};
+};
+

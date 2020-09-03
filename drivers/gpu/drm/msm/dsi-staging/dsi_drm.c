@@ -932,6 +932,13 @@ int dsi_conn_post_kickoff(struct drm_connector *connector)
 	/* ensure dynamic clk switch flag is reset */
 	c_bridge->dsi_mode.dsi_mode_flags &= ~DSI_MODE_FLAG_DYN_CLK;
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	rc = dsi_display_post_kickoff(display);
+	if (rc) {
+		pr_err("failed new post kickoff\n");
+	}
+#endif
+
 	return 0;
 }
 

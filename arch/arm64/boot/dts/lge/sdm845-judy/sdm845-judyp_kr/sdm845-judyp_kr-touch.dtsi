@@ -1,0 +1,33 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-judy_common/sdm845-judy_common-touch.dtsi"
+
+&qupv3_se14_i2c {
+	status = "okay";
+
+	stm_ftm4@49 {
+		status = "ok";
+
+		pinctrl-names = "touch_pin_active", "touch_pin_sleep";
+		pinctrl-0 = <&ts_ftm4_vdd_en_active &ts_ftm4_vio_en_active &ts_reset_active &ts_int_active>;
+		pinctrl-1 = <&ts_ftm4_vdd_en_suspend &ts_ftm4_vio_en_suspend &ts_reset_suspend &ts_int_suspend>;
+	};
+
+	synaptics_s3706@20 {
+		status = "disable";
+
+		pinctrl-names = "touch_pin_active", "touch_pin_sleep";
+		pinctrl-0 = <&ts_reset_active &ts_int_active>;
+		pinctrl-1 = <&ts_reset_suspend &ts_int_suspend>;
+	};
+};

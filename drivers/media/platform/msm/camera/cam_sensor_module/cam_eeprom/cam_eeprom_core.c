@@ -114,11 +114,29 @@ static int cam_eeprom_read_memory(struct cam_eeprom_ctrl_t *e_ctrl,
 				emap[j].mem.addr_type,
 				emap[j].mem.data_type,
 				emap[j].mem.valid_size);
-			if (rc) {
-				CAM_ERR(CAM_EEPROM, "read failed rc %d",
-					rc);
-				return rc;
-			}
+            /*LGE_CHANGE_S, I2C_Camera eeprom enable, hyunuk.park@lge.com*/
+            #ifdef QCT_ORIGINAL
+            if (rc) {
+                CAM_ERR(CAM_EEPROM, "read failed rc %d",
+                    rc);
+                return rc;
+            }
+            #else
+            if(e_ctrl->io_master_info.master_type == I2C_MASTER) {
+                if (rc < 0) {
+                    CAM_ERR(CAM_EEPROM, "I2C_MASTER read failed rc %d", rc);
+                    return rc;
+                }
+
+            } else {
+                if (rc) {
+                    CAM_ERR(CAM_EEPROM, "read failed rc %d",
+                        rc);
+                    return rc;
+                }
+            }
+            #endif
+            /*LGE_CHANGE_E, I2C_Camera eeprom enable, hyunuk.park@lge.com*/
 			memptr += emap[j].mem.valid_size;
 		}
 
@@ -304,11 +322,26 @@ int32_t cam_eeprom_parse_read_memory_map(struct device_node *of_node,
 		}
 	}
 	rc = cam_eeprom_read_memory(e_ctrl, &e_ctrl->cal_data);
+	/*LGE_CHANGE_S, I2C_Camera eeprom enable, hyunuk.park@lge.com*/
+	#ifdef QCT_ORIGINAL
 	if (rc) {
 		CAM_ERR(CAM_EEPROM, "read_eeprom_memory failed");
 		goto power_down;
 	}
-
+	#else
+	if(e_ctrl->io_master_info.master_type == I2C_MASTER) {
+        if (rc < 0) {
+			CAM_ERR(CAM_EEPROM, "I2C_MASTER read failed rc %d", rc);
+			return rc;
+		}
+	} else {
+		if (rc) {
+			CAM_ERR(CAM_EEPROM, "read_eeprom_memory failed");
+			goto power_down;
+		}
+	}
+	#endif
+	/*LGE_CHANGE_E, I2C_Camera eeprom enable, hyunuk.park@lge.com*/
 	rc = cam_eeprom_power_down(e_ctrl);
 	if (rc)
 		CAM_ERR(CAM_EEPROM, "failed: eeprom power down rc %d", rc);
@@ -589,6 +622,12 @@ static int32_t cam_eeprom_init_pkt_parser(struct cam_eeprom_ctrl_t *e_ctrl,
 		CAM_ERR(CAM_EEPROM, "failed");
 		return rc;
 	}
+
+	memset(e_ctrl->cal_data.map, 0,
+			(MSM_EEPROM_MEMORY_MAP_MAX_SIZE *
+			 MSM_EEPROM_MAX_MEM_MAP_CNT) *
+			(sizeof(struct cam_eeprom_memory_map_t)));
+
 	map = e_ctrl->cal_data.map;
 
 	offset = (uint32_t *)&csl_packet->payload;
@@ -860,12 +899,30 @@ static int32_t cam_eeprom_pkt_parse(struct cam_eeprom_ctrl_t *e_ctrl, void *arg)
 
 		e_ctrl->cam_eeprom_state = CAM_EEPROM_CONFIG;
 		rc = cam_eeprom_read_memory(e_ctrl, &e_ctrl->cal_data);
-		if (rc) {
-			CAM_ERR(CAM_EEPROM,
-				"read_eeprom_memory failed");
-			goto power_down;
-		}
 
+        /*LGE_CHANGE_S, I2C_Camera eeprom enable, hyunuk.park@lge.com*/
+        #ifdef QCT_ORIGINAL
+        if (rc) {
+            CAM_ERR(CAM_EEPROM,
+                "read_eeprom_memory failed rc = %d",rc);
+            goto power_down;
+        }
+        #else
+        if(e_ctrl->io_master_info.master_type == I2C_MASTER) {
+            CAM_DBG(CAM_EEPROM, "I2C_MASTER rc exception case log by LGE");
+            if (rc < 0) {
+                CAM_ERR(CAM_EEPROM, "I2C_MASTER read failed rc %d", rc);
+                return rc;
+            }
+        } else {
+            if (rc) {
+                CAM_ERR(CAM_EEPROM,
+                    "read_eeprom_memory failed rc = %d",rc);
+                goto power_down;
+            }
+        }
+        #endif
+        /*LGE_CHANGE_E, I2C_Camera eeprom enable, hyunuk.park@lge.com*/
 		rc = cam_eeprom_get_cal_data(e_ctrl, csl_packet);
 		rc = cam_eeprom_power_down(e_ctrl);
 		e_ctrl->cam_eeprom_state = CAM_EEPROM_ACQUIRE;

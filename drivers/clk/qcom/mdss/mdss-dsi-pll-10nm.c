@@ -1047,6 +1047,10 @@ error:
 
 static void dsi_pll_disable_sub(struct mdss_pll_resources *rsc)
 {
+	/* To avoid Repeating sleep and resume causes stuck.
+	* case : 03087369
+	dsi_pll_disable_global_clk(rsc);
+	* The above code is temporary code until merged from QCT. */
 	MDSS_PLL_REG_W(rsc->phy_base, PHY_CMN_RBUF_CTRL, 0);
 	dsi_pll_disable_pll_bias(rsc);
 }

@@ -14,6 +14,7 @@
 #include "cam_sensor_util.h"
 #include <cam_mem_mgr.h>
 #include "cam_res_mgr_api.h"
+#include <cam_cci_dev.h>
 
 #define CAM_SENSOR_PINCTRL_STATE_SLEEP "cam_suspend"
 #define CAM_SENSOR_PINCTRL_STATE_DEFAULT "cam_default"
@@ -371,7 +372,9 @@ int cam_sensor_i2c_command_parser(
 				if (tot_size > (remain_len - byte_cnt)) {
 					CAM_ERR(CAM_SENSOR,
 						"Not enough buffer provided");
+#ifndef CONFIG_MACH_LGE
 					return -EINVAL;
+#endif
 				}
 
 				rc = cam_sensor_handle_random_write(
@@ -1503,6 +1506,8 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 	int32_t vreg_idx = -1;
 	struct cam_sensor_power_setting *power_setting = NULL;
 	struct msm_camera_gpio_num_info *gpio_num_info = NULL;
+	struct v4l2_subdev *cci_subdev = cam_cci_get_subdev();
+	struct cci_device *cci_dev = v4l2_get_subdevdata(cci_subdev);
 
 	CAM_DBG(CAM_SENSOR, "Enter");
 	if (!ctrl) {
@@ -1648,10 +1653,12 @@ int cam_sensor_core_power_up(struct cam_sensor_power_ctrl_t *ctrl,
 				gpio_num_info->gpio_num
 				[power_setting->seq_type]);
 
+			mutex_lock(&cci_dev->global_mutex);
 			rc = msm_cam_sensor_handle_reg_gpio(
 				power_setting->seq_type,
 				gpio_num_info,
 				(int) power_setting->config_val);
+			mutex_unlock(&cci_dev->global_mutex); /* LGE_CHANGE, P-OS camera bring up 2018-07-05 sungmin.cho@lge.com */
 			if (rc < 0) {
 				CAM_ERR(CAM_SENSOR,
 					"Error in handling VREG GPIO");

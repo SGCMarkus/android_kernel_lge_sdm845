@@ -23,6 +23,16 @@
 #include <asm/tlbflush.h>
 #include "internal.h"
 
+#ifdef CONFIG_PROCESS_RECLAIM
+#include <linux/init.h>
+#include <linux/cred.h>
+#include <linux/proc_fs.h>
+#include <linux/module.h>
+#include <linux/uidgid.h>
+
+struct proc_dir_entry *reclaim_pid_file;
+#endif
+
 void task_mem(struct seq_file *m, struct mm_struct *mm)
 {
 	unsigned long text, lib, swap, ptes, pmds, anon, file, shmem;
@@ -1658,7 +1668,10 @@ cont:
 		if (!page)
 			continue;
 
-		if (isolate_lru_page(page))
+		if (PageTail(page))
+			continue;
+
+		if (isolate_evictable_lru_page(page))
 			continue;
 
 		list_add(&page->lru, &page_list);
@@ -1728,6 +1741,48 @@ struct reclaim_param reclaim_task_anon(struct task_struct *task,
 		rp.vma = vma;
 		walk_page_range(vma->vm_start, vma->vm_end,
 			&reclaim_walk);
+	}
+
+	flush_tlb_mm(mm);
+	up_read(&mm->mmap_sem);
+	mmput(mm);
+out:
+	put_task_struct(task);
+	return rp;
+}
+
+struct reclaim_param reclaim_task_file_anon(struct task_struct *task,
+		int nr_to_reclaim)
+{
+	struct mm_struct *mm;
+	struct vm_area_struct *vma;
+	struct mm_walk reclaim_walk = {};
+	struct reclaim_param rp;
+
+	rp.nr_reclaimed = 0;
+	rp.nr_scanned = 0;
+	get_task_struct(task);
+	mm = get_task_mm(task);
+	if (!mm)
+		goto out;
+
+	reclaim_walk.mm = mm;
+	reclaim_walk.pmd_entry = reclaim_pte_range;
+
+	rp.nr_to_reclaim = nr_to_reclaim;
+	reclaim_walk.private = &rp;
+
+	down_read(&mm->mmap_sem);
+	for (vma = mm->mmap; vma; vma = vma->vm_next) {
+		if (is_vm_hugetlb_page(vma))
+			continue;
+
+		if (!rp.nr_to_reclaim)
+			break;
+
+		rp.vma = vma;
+		walk_page_range(vma->vm_start, vma->vm_end,
+				&reclaim_walk);
 	}
 
 	flush_tlb_mm(mm);
@@ -1863,6 +1918,95 @@ const struct file_operations proc_reclaim_operations = {
 	.write		= reclaim_write,
 	.llseek		= noop_llseek,
 };
+
+static ssize_t reclaim_pid_write(struct file *file, const char __user *buf,
+				size_t count, loff_t *ppos)
+{
+	struct task_struct *task;
+	struct mm_struct *mm;
+	struct vm_area_struct *vma;
+	enum reclaim_type type;
+	struct mm_walk reclaim_walk = {};
+	struct reclaim_param rp;
+	unsigned int pid;
+
+	if (kstrtou32_from_user(buf, count, 10, &pid))
+		goto out_err;
+
+	type = RECLAIM_ALL;
+
+	task = find_task_by_vpid((pid_t)pid);
+	if (!task)
+		return -ESRCH;
+
+	get_task_struct(task);
+
+	mm = get_task_mm(task);
+	if (!mm)
+		goto out;
+
+	reclaim_walk.mm = mm;
+	reclaim_walk.pmd_entry = reclaim_pte_range;
+
+	rp.nr_to_reclaim = INT_MAX;
+	rp.nr_reclaimed = 0;
+	reclaim_walk.private = &rp;
+
+	down_read(&mm->mmap_sem);
+	for (vma = mm->mmap; vma; vma = vma->vm_next) {
+		if (is_vm_hugetlb_page(vma))
+			continue;
+
+		if (type == RECLAIM_ANON && vma->vm_file)
+			continue;
+
+		if (type == RECLAIM_FILE && !vma->vm_file)
+			continue;
+
+		rp.vma = vma;
+		walk_page_range(vma->vm_start, vma->vm_end,
+				&reclaim_walk);
+	}
+
+	flush_tlb_mm(mm);
+	up_read(&mm->mmap_sem);
+	mmput(mm);
+out:
+	put_task_struct(task);
+	return count;
+
+out_err:
+	return -EINVAL;
+}
+
+static const struct file_operations proc_reclaim_pid_operations = {
+	.write		= reclaim_pid_write,
+	.llseek		= noop_llseek,
+};
+
+void reclaim_pid_proc_set_ids(struct proc_dir_entry *proc_entry)
+{
+	uid_t uid = 1000;
+	gid_t gid = 1000;
+	proc_set_user(proc_entry,
+			make_kuid(current_user_ns(), uid),
+			make_kgid(current_user_ns(), gid));
+}
+
+static int __init reclaim_pid_init(void)
+{
+	reclaim_pid_file = proc_create("reclaim_pid",S_IRUSR|S_IWUSR,NULL,
+			&proc_reclaim_pid_operations);
+	if(reclaim_pid_file == NULL)
+		pr_err("Failed to register proc interface\n");
+
+	reclaim_pid_proc_set_ids(reclaim_pid_file);
+
+	return 0;
+}
+
+module_init(reclaim_pid_init);
+
 #endif
 
 #ifdef CONFIG_NUMA

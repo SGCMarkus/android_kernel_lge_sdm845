@@ -368,6 +368,10 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 	int i, count = 0;
 	struct extcon_dev *edev = dev_get_drvdata(dev);
 
+#ifdef CONFIG_MACH_LGE
+	if(!edev)
+		edev = container_of(dev,struct extcon_dev,dev);
+#endif
 	if (edev->max_supported == 0)
 		return sprintf(buf, "%u\n", edev->state);
 
@@ -386,6 +390,10 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 {
 	struct extcon_dev *edev = dev_get_drvdata(dev);
 
+#ifdef CONFIG_MACH_LGE
+	if(!edev)
+		edev = container_of(dev,struct extcon_dev,dev);
+#endif
 	return sprintf(buf, "%s\n", edev->name);
 }
 static DEVICE_ATTR_RO(name);
@@ -1103,14 +1111,33 @@ int extcon_dev_register(struct extcon_dev *edev)
 	edev->dev.class = extcon_class;
 	edev->dev.release = extcon_dev_release;
 
+#ifdef CONFIG_MACH_LGE
+	if (edev->name != NULL &&
+        (!strcmp(edev->name, "h2w") || !strcmp(edev->name, "sar_backoff") || !strcmp(edev->name, "ram_status") || !strcmp(edev->name, "voc_mute_status"))
+       )
+		dev_info(&edev->dev, "skip assign edev->dev.parent\n");
+	else
+		edev->name = dev_name(edev->dev.parent);
+#else
 	edev->name = dev_name(edev->dev.parent);
+#endif
 	if (IS_ERR_OR_NULL(edev->name)) {
 		dev_err(&edev->dev,
 			"extcon device name is null\n");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_MACH_LGE
+	if(edev->name != NULL && (!strcmp(edev->name, "h2w"))) {
+		dev_set_name(&edev->dev, "extcon%lu", (unsigned long)100);
+	} else {
+		dev_set_name(&edev->dev, "extcon%lu",
+				(unsigned long)atomic_inc_return(&edev_no));
+	}
+#else
 	dev_set_name(&edev->dev, "extcon%lu",
 			(unsigned long)atomic_inc_return(&edev_no));
+#endif
 
 	if (edev->max_supported) {
 		char buf[10];

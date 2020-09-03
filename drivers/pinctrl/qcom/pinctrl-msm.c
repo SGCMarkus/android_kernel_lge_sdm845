@@ -41,6 +41,10 @@
 #include "pinctrl-msm.h"
 #include "../pinctrl-utils.h"
 
+#ifdef CONFIG_LGE_PM
+#include "linux/suspend.h"
+#endif
+
 #define MAX_NR_GPIO 300
 #define PS_HOLD_OFFSET 0x820
 
@@ -78,6 +82,16 @@ struct msm_pinctrl {
 	phys_addr_t spi_cfg_end;
 };
 
+struct msm_pinctrl *pctrl;
+struct msm_pinctrl *get_pinctrl_data(void)
+{
+	return pctrl;
+}
+
+static inline struct msm_pinctrl *to_msm_pinctrl(struct gpio_chip *gc)
+{
+	return container_of(gc, struct msm_pinctrl, chip);
+}
 static struct msm_pinctrl *msm_pinctrl_data;
 
 static int msm_get_groups_count(struct pinctrl_dev *pctldev)
@@ -468,6 +482,10 @@ static void msm_gpio_set(struct gpio_chip *chip, unsigned offset, int value)
 #ifdef CONFIG_DEBUG_FS
 #include <linux/seq_file.h>
 
+#ifdef CONFIG_LGE_PM
+extern bool msm_gpio_check_access(int gpio);
+#endif
+
 static void msm_gpio_dbg_show_one(struct seq_file *s,
 				  struct pinctrl_dev *pctldev,
 				  struct gpio_chip *chip,
@@ -508,10 +526,51 @@ static void msm_gpio_dbg_show(struct seq_file *s, struct gpio_chip *chip)
 	unsigned i;
 
 	for (i = 0; i < chip->ngpio; i++, gpio++) {
+#ifdef CONFIG_LGE_PM
+		if(msm_gpio_check_access(gpio) == true) {
+			msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
+			seq_puts(s, "\n");
+		}
+#else
 		msm_gpio_dbg_show_one(s, NULL, chip, i, gpio);
 		seq_puts(s, "\n");
+#endif
 	}
 }
+
+u32 get_pin_status_10(void)
+{
+	const struct msm_pingroup *g;
+	unsigned func;
+	int is_out;
+	int drive;
+	int pull;
+	u32 ctl_reg;
+
+	static const char * const pulls[] = {
+		"no pull",
+		"pull down",
+		"keeper",
+		"pull up"
+	};
+
+	g = &pctrl->soc->groups[10];
+	ctl_reg = readl(pctrl->regs + g->ctl_reg);
+
+	is_out = !!(ctl_reg & BIT(g->oe_bit));
+	func = (ctl_reg >> g->mux_bit) & 7;
+	drive = (ctl_reg >> g->drv_bit) & 7;
+	pull = (ctl_reg >> g->pull_bit) & 3;
+
+	pr_err("**********************\n");
+	pr_err("reg value: %d\n", ctl_reg);
+	pr_err("%-8s: %-3s %d", g->name, is_out ? "out" : "in", func);
+	pr_err(" %dmA\n", msm_regval_to_drive(drive));
+	pr_err(" %s\n", pulls[pull]);
+
+	return ctl_reg;
+}
+EXPORT_SYMBOL(get_pin_status_10);
 
 #else
 #define msm_gpio_dbg_show NULL
@@ -1458,6 +1517,15 @@ static void msm_gpio_irq_handler(struct irq_desc *desc)
 		val = readl(pctrl->regs + g->intr_status_reg);
 		if (val & BIT(g->intr_status_bit)) {
 			irq_pin = irq_find_mapping(gc->irqdomain, i);
+#ifdef CONFIG_LGE_PM
+			if (suspend_debug_irq_pin())
+				printk("%s : irq_pin = %d, GPIO[%d], "
+					"g->intr_status_reg = %u, "
+					"g->intr_cfg_reg = %u\n",
+					__func__, irq_pin,
+					i, val,
+					readl(pctrl->regs + g->intr_cfg_reg));
+#endif
 			generic_handle_irq(irq_pin);
 			handled++;
 		}
@@ -1730,7 +1798,6 @@ static struct syscore_ops msm_pinctrl_pm_ops = {
 int msm_pinctrl_probe(struct platform_device *pdev,
 		      const struct msm_pinctrl_soc_data *soc_data)
 {
-	struct msm_pinctrl *pctrl;
 	struct resource *res;
 	int ret;
 	char *key;

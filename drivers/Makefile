@@ -181,3 +181,13 @@ obj-$(CONFIG_ESOC)              += esoc/
 obj-$(CONFIG_FPGA)		+= fpga/
 obj-$(CONFIG_SENSORS_SSC)		+= sensors/
 obj-$(CONFIG_TEE)		+= tee/
+
+#TDMB
+obj-$(CONFIG_LGE_BROADCAST_TDMB) += broadcast/
+
+obj-$(CONFIG_TSPDRV) += tspdrv/
+
+# Mobicore
+ifeq ($(TARGET_LGE_REGION), KR)
+obj-$(CONFIG_TRUSTONIC_TEE) += gud/
+endif
