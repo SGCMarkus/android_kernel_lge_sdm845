@@ -49,6 +49,19 @@
 #include "../wcd9xxx-resmgr-v2.h"
 #include "../wcdcal-hwdep.h"
 #include "wcd934x-dsd.h"
+#ifdef CONFIG_MACH_SDM845_JUDYLN
+#include <soc/qcom/lge/lge_regulator_mode_change.h>
+#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
+#include <soc/qcom/lge/lge_regulator_mode_change.h>
+#endif
+#ifdef CONFIG_MACH_LGE // add extcon dev for SAR backoff
+#include <linux/extcon.h>
+
+static const unsigned int extcon_sar_backoff[] = {
+	EXTCON_MECHANICAL,
+	EXTCON_NONE,
+};
+#endif /* CONFIG_MACH_LGE */
 
 #define WCD934X_RATES_MASK (SNDRV_PCM_RATE_8000 | SNDRV_PCM_RATE_16000 |\
 			    SNDRV_PCM_RATE_32000 | SNDRV_PCM_RATE_48000 |\
@@ -636,6 +649,10 @@ struct tavil_priv {
 	struct platform_device *pdev_child_devices
 		[WCD934X_CHILD_DEVICES_MAX];
 	int child_count;
+
+#ifdef CONFIG_MACH_LGE // add extcon dev for SAR backoff
+	struct extcon_dev* sar;
+#endif
 };
 
 static const struct tavil_reg_mask_val tavil_spkr_default[] = {
@@ -1467,6 +1484,33 @@ err:
 	return -EINVAL;
 }
 
+
+#ifdef CONFIG_SND_LGE_WDSP_SSR
+static int wdsp_ssr_get(struct snd_kcontrol *kcontrol,
+        struct snd_ctl_elem_value *ucontrol)
+{
+	pr_debug("%s(): \n", __func__);
+	return 0;
+}
+
+static int wdsp_ssr_put(struct snd_kcontrol *kcontrol,
+        struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+
+	int ret = 0;
+	ret = ucontrol->value.enumerated.item[0];
+	pr_err("%s():ret = %d\n", __func__ ,ret );
+
+	if(ret)
+	{
+		pr_err("%s(): WDSP SSR Irq\n", __func__);
+		snd_soc_write(codec,WCD934X_CPE_SS_BACKUP_INT,0x02);
+	}
+	return 0;
+}
+#endif
+
 static void tavil_codec_enable_slim_port_intr(
 					struct wcd9xxx_codec_dai_data *dai,
 					struct snd_soc_codec *codec)
@@ -2119,6 +2163,10 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 	int ret = 0;
 	struct snd_soc_codec *codec = snd_soc_dapm_to_codec(w->dapm);
 
+#ifdef CONFIG_MACH_LGE
+	struct tavil_priv *tavil = snd_soc_codec_get_drvdata(codec);
+#endif
+
 	dev_dbg(codec->dev, "%s %s %d\n", __func__, w->name, event);
 
 	switch (event) {
@@ -2127,6 +2175,19 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 		 * 5ms sleep is required after PA is enabled as per
 		 * HW requirement
 		 */
+#ifdef CONFIG_MACH_LGE  // SAR backoff
+        if( tavil->sar != NULL ) {
+            pr_info("%s : enable SAR backoff\n", __func__);
+            extcon_set_state_sync(tavil->sar, EXTCON_MECHANICAL, true);
+        }
+#endif /* CONFIG_MACH_LGE */
+
+#ifdef CONFIG_MACH_SDM845_JUDYLN
+ 	bob_mode_enable();
+#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
+	bob_mode_enable();
+#endif
+
 		usleep_range(5000, 5500);
 		snd_soc_update_bits(codec, WCD934X_CDC_RX0_RX_PATH_CTL,
 				    0x10, 0x00);
@@ -2142,6 +2203,18 @@ static int tavil_codec_enable_ear_pa(struct snd_soc_dapm_widget *w,
 		 * 5ms sleep is required after PA is disabled as per
 		 * HW requirement
 		 */
+#ifdef CONFIG_MACH_LGE  // SAR backoff
+        if( tavil->sar != NULL ) {
+            pr_info("%s : disable SAR backoff\n", __func__);
+            extcon_set_state_sync(tavil->sar, EXTCON_MECHANICAL, false);
+        }
+#endif /* CONFIG_MACH_LGE */
+
+#ifdef CONFIG_MACH_SDM845_JUDYLN
+	bob_mode_disable();
+#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
+	bob_mode_disable();
+#endif
 		usleep_range(5000, 5500);
 
 		if (!(strcmp(w->name, "ANC EAR PA"))) {
@@ -6241,8 +6314,13 @@ static const struct snd_kcontrol_new tavil_snd_controls[] = {
 	SOC_ENUM_EXT("SPKR Right Boost Max State", tavil_spkr_boost_stage_enum,
 		     tavil_spkr_right_boost_stage_get,
 		     tavil_spkr_right_boost_stage_put),
+#ifdef CONFIG_MACH_LGE
+	SOC_SINGLE_TLV("HPHL Volume", WCD934X_HPH_L_EN, 0, 20, 1, line_gain),
+	SOC_SINGLE_TLV("HPHR Volume", WCD934X_HPH_R_EN, 0, 20, 1, line_gain),
+#else /* P OS QC original */
 	SOC_SINGLE_TLV("HPHL Volume", WCD934X_HPH_L_EN, 0, 24, 1, line_gain),
 	SOC_SINGLE_TLV("HPHR Volume", WCD934X_HPH_R_EN, 0, 24, 1, line_gain),
+#endif
 	SOC_SINGLE_TLV("LINEOUT1 Volume", WCD934X_DIFF_LO_LO1_COMPANDER,
 		3, 16, 1, line_gain),
 	SOC_SINGLE_TLV("LINEOUT2 Volume", WCD934X_DIFF_LO_LO2_COMPANDER,
@@ -6332,6 +6410,11 @@ static const struct snd_kcontrol_new tavil_snd_controls[] = {
 
 	SOC_ENUM_EXT("CLK MODE", tavil_clkmode_enum, tavil_get_clkmode,
 		     tavil_put_clkmode),
+
+#ifdef CONFIG_SND_LGE_WDSP_SSR
+	SOC_SINGLE_EXT("wdsp ssr", SND_SOC_NOPM, 0, 1, 0,
+		     wdsp_ssr_get,wdsp_ssr_put),
+#endif
 
 	SOC_ENUM("TX0 HPF cut off", cf_dec0_enum),
 	SOC_ENUM("TX1 HPF cut off", cf_dec1_enum),
@@ -11009,6 +11092,23 @@ static int tavil_probe(struct platform_device *pdev)
 	}
 	schedule_work(&tavil->tavil_add_child_devices_work);
 
+#ifdef CONFIG_MACH_LGE
+    tavil->sar = devm_extcon_dev_allocate(&pdev->dev, extcon_sar_backoff);
+	if (IS_ERR(tavil->sar)) {
+		dev_err(&pdev->dev, "failed to allocate extcon device\n");
+		return -ENOMEM;
+	}
+
+	tavil->sar->name = "sar_backoff";
+	ret = devm_extcon_dev_register(&pdev->dev, tavil->sar);
+	if (ret < 0) {
+		dev_err(&pdev->dev, "extcon_dev_register() failed: %d\n",
+			ret);
+		return ret;
+	}
+	pr_info("%s register sar_backoff extcon device\n",__func__);
+#endif  /* CONFIG_MACH_LGE */
+
 	return ret;
 
 err_cdc_reg:
@@ -11035,6 +11135,10 @@ static int tavil_remove(struct platform_device *pdev)
 	tavil = platform_get_drvdata(pdev);
 	if (!tavil)
 		return -EINVAL;
+#ifdef CONFIG_MACH_LGE
+    if( tavil->sar != NULL )
+        devm_extcon_dev_unregister(&pdev->dev, tavil->sar);
+#endif /* CONFIG_MACH_LGE */
 
 	/* do dsd deinit before codec->component->regmap becomes freed */
 	if (tavil->dsd_config) {

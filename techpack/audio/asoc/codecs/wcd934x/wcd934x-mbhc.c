@@ -51,6 +51,11 @@
 #define TAVIL_MBHC_ZDET_CONST         (86 * 16384)
 #define TAVIL_MBHC_MOISTURE_RREF      R_24_KOHM
 
+#ifdef CONFIG_MACH_LGE
+static int micb_ena_status;
+static int micb_pullup_status;
+#endif
+
 static struct wcd_mbhc_register
 	wcd_mbhc_registers[WCD_MBHC_REG_FUNC_MAX] = {
 	WCD_MBHC_REGISTER("WCD_MBHC_L_DET_EN",
@@ -382,6 +387,23 @@ static int tavil_mbhc_request_micbias(struct snd_soc_codec *codec,
 				      int micb_num, int req)
 {
 	int ret;
+#ifdef CONFIG_MACH_LGE
+    pr_info("[LGE MBHC] enter en_status=%d, pullup_status=%d, req=%d \n", micb_ena_status, micb_pullup_status, req);
+    if((req == MICB_ENABLE) || (req == MICB_DISABLE)) {
+        if(micb_ena_status == req)
+        {
+            pr_info("[LGE MBHC] micb ena count=%d, req=%d is already applied \n", micb_ena_status, req);
+            return 0;
+        }
+    }
+    if((req == MICB_PULLUP_ENABLE) || (req == MICB_PULLUP_DISABLE)) {
+        if(micb_pullup_status == req)
+        {
+            pr_info("[LGE MBHC] pullup count=%d, req=%d is already applied \n", micb_pullup_status, req);
+            return 0;
+        }
+    }
+#endif
 
 	/*
 	 * If micbias is requested, make sure that there
@@ -398,6 +420,13 @@ static int tavil_mbhc_request_micbias(struct snd_soc_codec *codec,
 	 */
 	if (req == MICB_DISABLE)
 		tavil_cdc_mclk_enable(codec, false);
+#ifdef CONFIG_MACH_LGE
+    if((req == MICB_ENABLE) || (req == MICB_DISABLE))
+        micb_ena_status = req;//2, 3
+    else if((req == MICB_PULLUP_ENABLE) || (req == MICB_PULLUP_DISABLE))
+        micb_pullup_status = req;//0, 1
+    pr_info("[LGE MBHC] exit en_status=%d, pullup_status=%d \n", micb_ena_status, micb_pullup_status);
+#endif
 
 	return ret;
 }
@@ -1137,6 +1166,11 @@ int tavil_mbhc_init(struct wcd934x_mbhc **mbhc, struct snd_soc_codec *codec,
 		snd_soc_update_bits(codec, WCD934X_MBHC_NEW_CTL_1, 0x04, 0x04);
 		snd_soc_update_bits(codec, WCD934X_MBHC_CTL_BCS, 0x01, 0x01);
 	}
+
+#ifdef CONFIG_MACH_LGE
+    micb_ena_status = 3;
+    micb_pullup_status = 1;
+#endif
 
 	return 0;
 err:

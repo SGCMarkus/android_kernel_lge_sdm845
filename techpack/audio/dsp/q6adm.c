@@ -27,6 +27,24 @@
 #include <ipc/apr.h>
 #include "adsp_err.h"
 
+#if defined(CONFIG_SND_LGE_CROSSTALK)
+#include "lge_dsp_crosstalk.h"
+#endif
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+#include "lge_dsp_nxp_lib.h"
+
+enum {
+    RAM_INIT = 0,
+    RAM_ACTIVE = 1
+};
+
+struct mutex ram_lock;
+struct delayed_work ram_standby_work;
+
+static int ram_status;
+void tfa98xx_extcon_set_state( int ram_state);
+#endif
+
 #define TIMEOUT_MS 1000
 
 #define RESET_COPP_ID 99
@@ -1305,6 +1323,23 @@ int adm_get_multi_ch_map(char *channel_map, int path)
 	return 0;
 }
 
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+static void adm_ram_status_work(struct work_struct *work)
+{
+    mutex_lock(&ram_lock);
+    pr_info("%s : enter ram status = %d\n", __func__, ram_status);
+
+    if (ram_status == 0) {
+		tfa98xx_extcon_set_state(RAM_INIT);
+    } else {
+		tfa98xx_extcon_set_state(RAM_ACTIVE);
+    }
+
+    mutex_unlock(&ram_lock);
+    pr_info("%s : exit\n", __func__);
+}
+#endif
+
 static int32_t adm_callback(struct apr_client_data *data, void *priv)
 {
 	uint32_t *payload;
@@ -1588,6 +1623,10 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 				 */
 				pr_debug("%s: GET_PP PARAM:received parameter length: 0x%x\n",
 					__func__, adm_get_parameters[idx]);
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+                pr_info("%s: GET_PP PARAM:received data->payload_size: %d, copp_idx=%d, payload[0](status)=%d, payload[1](module id)=0x%x, payload[2](param id)=0x%x, payload[3](param size)=%d\n",
+                    __func__, data->payload_size, copp_idx, payload[0], payload[1], payload[2], payload[3]);
+#endif
 				/* storing param size then params */
 				for (i = 0; i < payload[3] /
 						sizeof(uint32_t); i++)
@@ -1654,6 +1693,14 @@ static int32_t adm_callback(struct apr_client_data *data, void *priv)
 			atomic_set(&this_adm.adm_stat, 0);
 			wake_up(&this_adm.adm_wait);
 			break;
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+        case ADM_RAM_STATUS:
+            pr_debug("%s, copp_idx %d, payload[0](status)=%d\n", __func__, copp_idx, payload[0]);
+
+            ram_status = payload[0];
+            schedule_delayed_work(&ram_standby_work, msecs_to_jiffies(10));
+            break;
+#endif
 		default:
 			pr_err("%s: Unknown cmd:0x%x\n", __func__,
 				data->opcode);
@@ -2440,6 +2487,11 @@ int adm_open(int port_id, int path, int rate, int channel_mode, int topology,
 		 __func__, port_id, path, rate, channel_mode, perf_mode,
 		 topology);
 
+#if defined(CONFIG_SND_SOC_TFA9872) || defined(CONFIG_SND_SOC_TFA9878)
+	if(port_id == AFE_PORT_ID_QUATERNARY_MI2S_RX) {
+		bit_width = 24;
+	}
+#endif
 	port_id = q6audio_convert_virtual_to_portid(port_id);
 	port_idx = adm_validate_and_get_port_index(port_id);
 	if (port_idx < 0) {
@@ -4863,6 +4915,181 @@ done:
 	return ret;
 }
 
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+int q6adm_set_tx_cfg_parms(int  port_id, struct tx_control_param_t *tx_control_param)
+{
+    int rc, sz;
+    int port_idx, copp_idx;
+    struct adm_tx_config_param adm_tx_config;
+
+    port_id = afe_convert_virtual_to_portid(port_id);
+    port_idx = adm_validate_and_get_port_index(port_id);
+    copp_idx = adm_get_default_copp_idx(port_id);
+
+    pr_info("%s : port_id %x, copp_idx %d, port_idx %d\n", __func__, port_id, copp_idx, port_idx);
+
+    if (port_idx < 0) {
+        pr_err("%s : Invalid port_id 0x%x\n", __func__, port_id);
+        return -EINVAL;
+    }
+
+    if (copp_idx < 0 || copp_idx >= MAX_COPPS_PER_PORT) {
+        pr_err("%s: Invalid copp_num: %d\n", __func__, copp_idx);
+        return -EINVAL;
+    }
+
+    sz = sizeof(struct adm_tx_config_param);
+
+    adm_tx_config.params.hdr.hdr_field =
+        APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+		APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+    adm_tx_config.params.hdr.pkt_size = sz;
+    adm_tx_config.params.hdr.src_svc = APR_SVC_ADM;
+    adm_tx_config.params.hdr.src_domain = APR_DOMAIN_APPS;
+    adm_tx_config.params.hdr.src_port = port_id;
+    adm_tx_config.params.hdr.dest_svc = APR_SVC_ADM;
+    adm_tx_config.params.hdr.dest_domain = APR_DOMAIN_ADSP;
+    adm_tx_config.params.hdr.dest_port = atomic_read(&this_adm.copp.id[port_idx][copp_idx]);
+    adm_tx_config.params.hdr.token = port_idx << 16 | copp_idx;
+    adm_tx_config.params.hdr.opcode = ADM_CMD_SET_PP_PARAMS_V5;
+
+    adm_tx_config.params.payload_addr_lsw = 0;
+    adm_tx_config.params.payload_addr_msw = 0;
+    adm_tx_config.params.mem_map_handle = 0;
+    adm_tx_config.params.payload_size = sizeof(struct adm_param_data_v5) +
+        sizeof(struct tx_control_param_t);
+
+    adm_tx_config.data.module_id = AUDIO_MODULE_AC;
+    adm_tx_config.data.param_id = AUDIO_PARAM_AC_CONTROL;
+    adm_tx_config.data.param_size = sizeof(struct tx_control_param_t);
+    adm_tx_config.data.reserved = 0;
+
+    adm_tx_config.tx_control_param = *tx_control_param;
+
+    pr_info("%s : param_size %d\n", __func__, adm_tx_config.data.param_size);
+
+    atomic_set(&this_adm.copp.stat[port_idx][copp_idx], -1);
+    rc = apr_send_pkt(this_adm.apr, (uint32_t *)&adm_tx_config);
+    if (rc < 0) {
+        pr_err("%s: Set params failed port = %#x\n", __func__, port_id);
+        rc = -EINVAL;
+
+        goto fail_cmd;
+    }
+
+	/* Wait for the callback */
+    rc = wait_event_timeout(this_adm.copp.wait[port_idx][copp_idx],
+        atomic_read(&this_adm.copp.stat[port_idx][copp_idx]) >=0,
+        msecs_to_jiffies(TIMEOUT_MS));
+    if (!rc) {
+        pr_err("%s: Manual Gain Set params timed cut port = %#x\n", __func__, port_id);
+        rc = -EINVAL;
+
+        goto fail_cmd;
+    } else if (atomic_read(&this_adm.copp.stat[port_idx][copp_idx]) > 0) {
+        pr_err("%s : DSP returned error[%s]\n", __func__,
+            adsp_err_get_err_str(atomic_read(&this_adm.copp.stat[port_idx][copp_idx])));
+        rc = adsp_err_get_lnx_err_code(atomic_read(&this_adm.copp.stat[port_idx][copp_idx]));
+
+        goto fail_cmd;
+    }
+
+    return 0;
+
+fail_cmd :
+    return rc;
+}
+#endif
+
+#if defined (CONFIG_SND_LGE_CROSSTALK)
+int q6adm_set_crosstalk_parms(int port_id, int copp_idx, int mode)
+{
+	struct adm_crosstalk_param crosstalk_cfg;
+	int port_idx;
+	int ret  = 0;
+
+	pr_debug("%s: Enter, port_id %d, copp_idx %d\n",
+		  __func__, port_id, copp_idx);
+	port_id = q6audio_convert_virtual_to_portid(port_id);
+	port_idx = adm_validate_and_get_port_index(port_id);
+	if (port_idx < 0 || port_idx >= AFE_MAX_PORTS) {
+		pr_err("%s: Invalid port_id %#x\n", __func__, port_id);
+		ret = -EINVAL;
+		goto done;
+	}
+
+	if (copp_idx < 0 || copp_idx >= MAX_COPPS_PER_PORT) {
+		pr_err("%s: Invalid copp_num: %d\n", __func__, copp_idx);
+		ret = -EINVAL;
+		goto done;
+	}
+
+	memset(&crosstalk_cfg, 0, sizeof(crosstalk_cfg));
+	crosstalk_cfg.params.hdr.hdr_field =
+				APR_HDR_FIELD(APR_MSG_TYPE_SEQ_CMD,
+				APR_HDR_LEN(APR_HDR_SIZE), APR_PKT_VER);
+	crosstalk_cfg.params.hdr.pkt_size =
+				sizeof(crosstalk_cfg);
+	crosstalk_cfg.params.hdr.src_svc = APR_SVC_ADM;
+	crosstalk_cfg.params.hdr.src_domain = APR_DOMAIN_APPS;
+	crosstalk_cfg.params.hdr.src_port = port_id;
+	crosstalk_cfg.params.hdr.dest_svc = APR_SVC_ADM;
+	crosstalk_cfg.params.hdr.dest_domain = APR_DOMAIN_ADSP;
+	crosstalk_cfg.params.hdr.dest_port =
+			atomic_read(&this_adm.copp.id[port_idx][copp_idx]);
+	crosstalk_cfg.params.hdr.token = port_idx << 16 | copp_idx;
+	crosstalk_cfg.params.hdr.opcode = ADM_CMD_SET_PP_PARAMS_V5;
+	crosstalk_cfg.params.payload_addr_lsw = 0;
+	crosstalk_cfg.params.payload_addr_msw = 0;
+	crosstalk_cfg.params.mem_map_handle = 0;
+	crosstalk_cfg.params.payload_size = sizeof(crosstalk_cfg) -
+				sizeof(crosstalk_cfg.params);
+	crosstalk_cfg.data.module_id = LGE_CROSSTALK_ANC;
+	crosstalk_cfg.data.param_id = LGE_CROSSTALK_ANC_HEADSET_MODE;
+	crosstalk_cfg.data.param_size = crosstalk_cfg.params.payload_size -
+				sizeof(crosstalk_cfg.data);
+	crosstalk_cfg.data.reserved = 0;
+	crosstalk_cfg.crosstalk_enable_mode = mode;
+
+	atomic_set(&this_adm.copp.stat[port_idx][copp_idx], -1);
+
+	ret = apr_send_pkt(this_adm.apr, (uint32_t *)&crosstalk_cfg);
+	if (ret < 0) {
+		pr_err("%s: port_id: for[0x%x] failed %d\n",
+		__func__, port_id, ret);
+		goto done;
+	}
+	/* Wait for the callback with copp id */
+	ret = wait_event_timeout(this_adm.copp.wait[port_idx][copp_idx],
+		atomic_read(&this_adm.copp.stat
+		[port_idx][copp_idx]) >= 0,
+		msecs_to_jiffies(TIMEOUT_MS));
+	if (!ret) {
+		pr_err("%s: crosstalk_cfg Set params timed out for port_id: for [0x%x]\n",
+					__func__, port_id);
+		ret = -ETIMEDOUT;
+		goto done;
+	}
+
+	if (atomic_read(&this_adm.copp.stat[port_idx][copp_idx]) > 0) {
+		pr_err("%s: DSP returned error[%s]\n",
+			__func__, adsp_err_get_err_str(
+			atomic_read(&this_adm.copp.stat
+			[port_idx][copp_idx])));
+		ret = adsp_err_get_lnx_err_code(
+			atomic_read(&this_adm.copp.stat
+				[port_idx][copp_idx]));
+		goto done;
+	}
+
+	pr_debug("%s: crosstalk_cfg Set params returned success", __func__);
+	ret = 0;
+
+done:
+	return ret;
+}
+#endif
+
 static int __init adm_init(void)
 {
 	int i = 0, j;
@@ -4912,11 +5139,19 @@ static int __init adm_init(void)
 	atomic_set(&this_adm.mem_map_handles[ADM_MEM_MAP_INDEX_SOURCE_TRACKING],
 		   0);
 
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+    mutex_init(&ram_lock);
+    INIT_DELAYED_WORK(&ram_standby_work, adm_ram_status_work);
+#endif
 	return 0;
 }
 
 static void __exit adm_exit(void)
 {
+#if defined(CONFIG_SND_LGE_TX_NXP_LIB)
+    cancel_delayed_work_sync(&ram_standby_work);
+    mutex_destroy(&ram_lock);
+#endif
 	adm_delete_cal_data();
 }
 
