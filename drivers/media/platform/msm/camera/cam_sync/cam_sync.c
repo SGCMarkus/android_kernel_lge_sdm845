@@ -1,4 +1,4 @@
-/* Copyright (c) 2017-2018, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -156,7 +156,7 @@ int cam_sync_deregister_callback(sync_callback cb_func,
 			"Error: accessing an uninitialized sync obj = %d",
 			sync_obj);
 		spin_unlock_bh(&sync_dev->row_spinlocks[sync_obj]);
-		return -EINVAL;
+		return 0;
 	}
 
 	CAM_DBG(CAM_SYNC, "deregistered callback for sync object:%d",
@@ -311,6 +311,7 @@ int cam_sync_merge(int32_t *sync_obj, uint32_t num_objs, int32_t *merged_obj)
 			return rc;
 		}
 	}
+
 	do {
 		idx = find_first_zero_bit(sync_dev->bitmap, CAM_SYNC_MAX_OBJS);
 		if (idx >= CAM_SYNC_MAX_OBJS)
@@ -403,8 +404,10 @@ int cam_sync_check_valid(int32_t sync_obj)
 			sync_obj);
 		return -EINVAL;
 	}
+
 	return 0;
 }
+
 int cam_sync_wait(int32_t sync_obj, uint64_t timeout_ms)
 {
 	unsigned long timeleft;
