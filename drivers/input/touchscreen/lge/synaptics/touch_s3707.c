@@ -3817,18 +3817,25 @@ static ssize_t store_lpwg_fail_reason(struct device *dev, const char *buf, size_
 static ssize_t show_swipe_enable(struct device *dev, char *buf)
 {
 	struct s3707_data *d = to_s3707_data(dev);
-
-	int value = 0;
-	u8 mask = SWIPE_UP_BIT;
 	int ret = 0;
 
-	TOUCH_TRACE();
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_U, d->swipe.mode & SWIPE_UP_BIT);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_D, d->swipe.mode & SWIPE_DOWN_BIT);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_L, d->swipe.mode & SWIPE_LEFT_BIT);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_R, d->swipe.mode & SWIPE_RIGHT_BIT);
 
-	if ((d->swipe.mode & mask) == mask)
-		value = 1;
-
-	ret += touch_snprintf(buf + ret, PAGE_SIZE, "%d\n", value);
-	TOUCH_I("%s: value = %d\n", __func__, value);
+	TOUCH_I("Swipe mode = %s\n",
+			d->swipe.mode & SWIPE_UP_BIT ? "SWIPE_UP Enabled" : "SWIPE_UP Disable");
+	TOUCH_I("Swipe mode = %s\n",
+			d->swipe.mode & SWIPE_DOWN_BIT ? "SWIPE_DOWN Enabled" : "SWIPE_DOWN Disable");
+	TOUCH_I("Swipe mode = %s\n",
+			d->swipe.mode & SWIPE_LEFT_BIT ? "SWIPE_LEFT Enabled" : "SWIPE_LEFT Disable");
+	TOUCH_I("Swipe mode = %s\n",
+			d->swipe.mode & SWIPE_RIGHT_BIT ? "SWIPE_RIGHT Enabled" : "SWIPE_RIGHT Disable");
 
 	s3707_print_swipe_info(dev);
 
@@ -3839,26 +3846,47 @@ static ssize_t store_swipe_enable(struct device *dev,
 		const char *buf, size_t count)
 {
 	struct s3707_data *d = to_s3707_data(dev);
+	int enable_swipe[2] = {-1, 0}; // { SWIPE_DIRECTION, 0 = disabled/1 = enabled }
 
-	int value = 0;
-	u8 mask = SWIPE_UP_BIT;
-
-	TOUCH_TRACE();
-
-	if (kstrtos32(buf, 10, &value) < 0)
-		return count;
-
-	if ((value > 1) || (value < 0)) {
-		TOUCH_E("Set Swipe mode wrong, 0, 1 only\n");
+	if (sscanf(buf, "%d %d", &enable_swipe[0], &enable_swipe[1]) <= 0) {
+		TOUCH_E("Failed to set enable_swipe\n");
 		return count;
 	}
 
-	TOUCH_I("%s: value = %d\n", __func__, value);
+	if(enable_swipe[0] < SWIPE_U || enable_swipe[0] > SWIPE_R) {
+		TOUCH_E("Not supported Swipe (%d)\n", enable_swipe[0]);
+		return count;
+	}
 
-	if (value)
-		d->swipe.mode |= mask;
-	else
-		d->swipe.mode &= (~mask);
+	switch(enable_swipe[0]) {
+		case SWIPE_R:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_RIGHT_BIT;
+			else
+				d->swipe.mode &= (~SWIPE_RIGHT_BIT);
+			break;
+		case SWIPE_D:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_DOWN_BIT;
+			else
+				d->swipe.mode &= (~SWIPE_DOWN_BIT);
+			break;
+		case SWIPE_L:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_LEFT_BIT;
+			else
+				d->swipe.mode &= (~SWIPE_LEFT_BIT);
+			break;
+		case SWIPE_U:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_UP_BIT;
+			else
+				d->swipe.mode &= (~SWIPE_UP_BIT);
+			break;
+		default: break;
+	}
+
+	TOUCH_I("%s: Set swipe %d to %d\n", __func__, enable_swipe[0], enable_swipe[1]);
 
 	return count;
 }

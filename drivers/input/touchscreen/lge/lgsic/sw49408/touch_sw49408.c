@@ -3266,11 +3266,23 @@ static ssize_t show_swipe_enable(struct device *dev, char *buf)
 	struct sw49408_data *d = to_sw49408_data(dev);
 	int ret = 0;
 
-	ret = snprintf(buf + ret, PAGE_SIZE, "SWIPE mode = 0x%X\n",
-			d->swipe.mode);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_R, d->swipe.mode & SWIPE_RIGHT_BIT);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_D, d->swipe.mode & SWIPE_DOWN_BIT);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_L, d->swipe.mode & SWIPE_LEFT_BIT);
+	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
+					SWIPE_U, d->swipe.mode & SWIPE_UP_BIT);
 
 	TOUCH_I("Swipe mode = %s\n",
-			d->swipe.mode & SWIPE_UP_BIT ? "SWIPE_UP" : "Disable");
+			d->swipe.mode & SWIPE_RIGHT_BIT ? "SWIPE_RIGHT Enabled" : "SWIPE_RIGHT Disable");
+	TOUCH_I("Swipe mode = %s\n",
+			d->swipe.mode & SWIPE_DOWN_BIT ? "SWIPE_DOWN Enabled" : "SWIPE_DOWN Disable");
+	TOUCH_I("Swipe mode = %s\n",
+			d->swipe.mode & SWIPE_LEFT_BIT ? "SWIPE_LEFT Enabled" : "SWIPE_LEFT Disable");
+	TOUCH_I("Swipe mode = %s\n",
+			d->swipe.mode & SWIPE_UP_BIT ? "SWIPE_UP Enabled" : "SWIPE_UP Disable");
 
 	return ret;
 }
@@ -3279,19 +3291,45 @@ static ssize_t store_swipe_enable(struct device *dev,
 						const char *buf, size_t count)
 {
 	struct sw49408_data *d = to_sw49408_data(dev);
-	int value = 0;
+	int enable_swipe[2] = {-1, 0}; // { SWIPE_DIRECTION, 0 = disabled/1 = enabled }
 
-	if (sscanf(buf, "%d", &value) <= 0)
-		return count;
-
-	if (value > 1 || value < 0) {
-		TOUCH_I("Set Swipe mode wrong, 0, 1 only\n");
+	if (sscanf(buf, "%d %d", &enable_swipe[0], &enable_swipe[1]) <= 0) {
+		TOUCH_E("Failed to set enable_swipe\n");
 		return count;
 	}
 
-	d->swipe.mode = value ? SWIPE_UP_BIT | SWIPE_UP_RELEASE_ENABLE : 0;
+	if(enable_swipe[0] < SWIPE_R || enable_swipe[0] > SWIPE_U) {
+		TOUCH_E("Not supported Swipe (%d)\n", enable_swipe[0]);
+		return count;
+	}
 
-	TOUCH_I("%s : %s\n", __func__, value ? "SWIPE_UP" : "Disable");
+	switch(enable_swipe[0]) {
+		case SWIPE_R:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_RIGHT_BIT | SWIPE_RIGHT_RELEASE_ENABLE;
+			else
+				d->swipe.mode &= (~(SWIPE_RIGHT_BIT | SWIPE_RIGHT_RELEASE_ENABLE));
+			break;
+		case SWIPE_D:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_DOWN_BIT | SWIPE_DOWN_RELEASE_ENABLE;
+			else
+				d->swipe.mode &= (~(SWIPE_DOWN_BIT | SWIPE_DOWN_RELEASE_ENABLE));
+			break;
+		case SWIPE_L:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_LEFT_BIT | SWIPE_RIGHT_RELEASE_ENABLE;
+			else
+				d->swipe.mode &= (~(SWIPE_LEFT_BIT | SWIPE_RIGHT_RELEASE_ENABLE));
+			break;
+		case SWIPE_U:
+			if(enable_swipe[1])
+				d->swipe.mode |= SWIPE_UP_BIT | SWIPE_UP_RELEASE_ENABLE;
+			else
+				d->swipe.mode &= (~(SWIPE_UP_BIT | SWIPE_UP_RELEASE_ENABLE));
+			break;
+		default: break;
+	}
 
 	return count;
 }
