@@ -469,15 +469,15 @@ static void sw49410_get_swipe_info(struct device *dev)
 	d->swipe[SWIPE_L].area.x1 = 0;
 	d->swipe[SWIPE_L].area.y1 = 0;
 	d->swipe[SWIPE_L].area.x2 = 1439;
-	d->swipe[SWIPE_L].area.y2 = 300;
+	d->swipe[SWIPE_L].area.y2 = 3119;
 	d->swipe[SWIPE_L].start.x1 = 0;
 	d->swipe[SWIPE_L].start.y1 = 0;
 	d->swipe[SWIPE_L].start.x2 = 1439;
-	d->swipe[SWIPE_L].start.y2 = 300;
-	d->swipe[SWIPE_L].border.x1 = 100;
-	d->swipe[SWIPE_L].border.y1 = 100;
-	d->swipe[SWIPE_L].border.x2 = 100;
-	d->swipe[SWIPE_L].border.y2 = 100;
+	d->swipe[SWIPE_L].start.y2 = 3119;
+	d->swipe[SWIPE_L].border.x1 = 0;
+	d->swipe[SWIPE_L].border.y1 = 0;
+	d->swipe[SWIPE_L].border.x2 = 0;
+	d->swipe[SWIPE_L].border.y2 = 0;
 	d->swipe[SWIPE_L].debug_enable = false;
 
 	d->swipe[SWIPE_R].enable = false;
@@ -491,15 +491,15 @@ static void sw49410_get_swipe_info(struct device *dev)
 	d->swipe[SWIPE_R].area.x1 = 0;
 	d->swipe[SWIPE_R].area.y1 = 0;
 	d->swipe[SWIPE_R].area.x2 = 1439;
-	d->swipe[SWIPE_R].area.y2 = 300;
+	d->swipe[SWIPE_R].area.y2 = 3119;
 	d->swipe[SWIPE_R].start.x1 = 0;
 	d->swipe[SWIPE_R].start.y1 = 0;
 	d->swipe[SWIPE_R].start.x2 = 1439;
-	d->swipe[SWIPE_R].start.y2 = 300;
-	d->swipe[SWIPE_R].border.x1 = 100;
-	d->swipe[SWIPE_R].border.y1 = 100;
-	d->swipe[SWIPE_R].border.x2 = 100;
-	d->swipe[SWIPE_R].border.y2 = 100;
+	d->swipe[SWIPE_R].start.y2 = 3119;
+	d->swipe[SWIPE_R].border.x1 = 0;
+	d->swipe[SWIPE_R].border.y1 = 0;
+	d->swipe[SWIPE_R].border.x2 = 0;
+	d->swipe[SWIPE_R].border.y2 = 0;
 	d->swipe[SWIPE_R].debug_enable = false;
 
 	d->swipe[SWIPE_U].enable = false;
@@ -515,7 +515,7 @@ static void sw49410_get_swipe_info(struct device *dev)
 	d->swipe[SWIPE_U].area.x2 = 1359;
 	d->swipe[SWIPE_U].area.y2 = 3119;
 	d->swipe[SWIPE_U].start.x1 = 439;
-	d->swipe[SWIPE_U].start.y1 = 2797;
+	d->swipe[SWIPE_U].start.y1 = 1561;
 	d->swipe[SWIPE_U].start.x2 = 1000;
 	d->swipe[SWIPE_U].start.y2 = 3119;
 	d->swipe[SWIPE_U].border.x1 = 0;
@@ -535,15 +535,15 @@ static void sw49410_get_swipe_info(struct device *dev)
 	d->swipe[SWIPE_D].area.x1 = 80;
 	d->swipe[SWIPE_D].area.y1 = 0;
 	d->swipe[SWIPE_D].area.x2 = 1359;
-	d->swipe[SWIPE_D].area.y2 = 2879;
+	d->swipe[SWIPE_D].area.y2 = 3119;
 	d->swipe[SWIPE_D].start.x1 = 80;
 	d->swipe[SWIPE_D].start.y1 = 0;
 	d->swipe[SWIPE_D].start.x2 = 1359;
-	d->swipe[SWIPE_D].start.y2 = 300;
-	d->swipe[SWIPE_D].border.x1 = 30;
-	d->swipe[SWIPE_D].border.y1 = 30;
-	d->swipe[SWIPE_D].border.x2 = 30;
-	d->swipe[SWIPE_D].border.y2 = 30;
+	d->swipe[SWIPE_D].start.y2 = 1559;
+	d->swipe[SWIPE_D].border.x1 = 0;
+	d->swipe[SWIPE_D].border.y1 = 0;
+	d->swipe[SWIPE_D].border.x2 = 0;
+	d->swipe[SWIPE_D].border.y2 = 0;
 	d->swipe[SWIPE_D].debug_enable = false;
 }
 
