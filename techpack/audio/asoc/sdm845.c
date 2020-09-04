@@ -4549,11 +4549,7 @@ static void *def_tavil_mbhc_cal(void)
 		return NULL;
 
 #define S(X, Y) ((WCD_MBHC_CAL_PLUG_TYPE_PTR(tavil_wcd_cal)->X) = (Y))
-#ifdef CONFIG_SND_SOC_ES9218P
 	S(v_hs_max, 1600);
-#else
-	S(v_hs_max, 1600);
-#endif
 #undef S
 #define S(X, Y) ((WCD_MBHC_CAL_BTN_DET_PTR(tavil_wcd_cal)->X) = (Y))
 	S(num_btn, WCD_MBHC_DEF_BUTTONS);
@@ -7016,7 +7012,6 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.ops = &msm_mi2s_be_ops,
 		.ignore_suspend = 1,
 	},
-#ifndef CONFIG_SND_SOC_ES9218P
 	{
 		.name = LPASS_BE_TERT_MI2S_RX,
 		.stream_name = "Tertiary MI2S Playback",
@@ -7032,7 +7027,6 @@ static struct snd_soc_dai_link msm_mi2s_be_dai_links[] = {
 		.ignore_suspend = 1,
 		.ignore_pmdown_time = 1,
 	},
-#endif
 	{
 		.name = LPASS_BE_TERT_MI2S_TX,
 		.stream_name = "Tertiary MI2S Capture",
@@ -7227,28 +7221,6 @@ static struct snd_soc_dai_link_component multi_codecs_tx[ARRAY_SIZE(multi_codecs
 /* Removed dummy dai. because of joan crash issue */
 
 static struct snd_soc_dai_link msm_lge_dai_links[] = {
-	/* DUMMY DAI Link 82 */
-#ifdef CONFIG_SND_SOC_ES9218P
-	{
-		.name = LPASS_BE_TERT_MI2S_RX,
-		.stream_name = "Tertiary MI2S Playback",
-		.cpu_dai_name = "msm-dai-q6-mi2s.2",
-		.platform_name = "msm-pcm-routing",
-#ifdef CONFIG_MACH_SDM845_JUDYPN
-		.codec_name = "es9218-codec.4-0048",
-#else
-		.codec_name = "es9218-codec.3-0048",
-#endif
-		.codec_dai_name = "es9218-hifi",
-		.no_pcm = 1,
-		.dpcm_playback = 1,
-		.id = MSM_BACKEND_DAI_TERTIARY_MI2S_RX,
-		.be_hw_params_fixup = msm_be_hw_params_fixup,
-		.ops = &msm_mi2s_be_ops,
-		.ignore_suspend = 1,
-		.ignore_pmdown_time = 1,
-	},
-#else
 	/* DUMMY DAI Link 82 */
 	{
 		.name = "Dummy DAI 82",

@@ -31,15 +31,11 @@
 #include <sound/jack.h>
 #include "msm-cdc-pinctrl.h"
 #include "wcdcal-hwdep.h"
-#ifdef CONFIG_SND_SOC_ES9218P
-int es9218_sabre_headphone_on(void);
-int es9218_sabre_headphone_off(void);
 #ifdef CONFIG_SND_SOC_HSDET_L_SWITCH
 void es9218_hsdet_l_switch_gpio_L(void);
 void es9218_headset_state(int detection);
 int es9218_hifi_exception_state_get(void);
 void es9218_hifi_exception_state_put(void);
-#endif
 #endif
 
 #include "wcd-mbhc-legacy.h"
@@ -53,14 +49,8 @@ void es9218_hifi_exception_state_put(void);
 static int lge_extn_cable_flag;
 #endif
 
-#if defined(CONFIG_SND_SOC_ES9218P)
-// temporary code before applying tunning values of MBHC
-#define LGE_NORMAL_HEADSET_THRESHOLD	50
-#define LGE_ADVANCED_HEADSET_THRESHOLD	600
-#else /* LGE original from ELSA*/
 #define LGE_NORMAL_HEADSET_THRESHOLD	100
 #define LGE_ADVANCED_HEADSET_THRESHOLD	400
-#endif
 
 #define EXTCON_JACK_NORMAL   30
 #define EXTCON_JACK_ADVANCED 31
@@ -111,47 +101,13 @@ static void lge_set_edev_name(struct wcd_mbhc *mbhc, int status)
 
 	pr_debug("%s: enter function with es9218p feature\n", __func__);
 
-#if defined(CONFIG_MACH_SDM845_JUDYLN)
-	advanced_threshold = 190;       // advanced type w/ DAC
-#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
-    advanced_threshold = 190;       // advanced type w/ DAC
-#else
-	advanced_threshold = 180;       // advanced type w/ DAC
-#endif
-	normal_threshold = 3;		// normal type w/ DAC
-
-#ifdef CONFIG_SND_USE_MBHC_EXTN_CABLE
-	if ((mbhc->mbhc_cfg->detect_extn_cable) && (status == SND_JACK_LINEOUT))
-		strcpy((char *)mbhc->edev->name,"h2w_aux_hidden");
-	else if (((mbhc->zl == 0) && (mbhc->zr == 0)) ||
-		((mbhc->zl > LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold) || (mbhc->zr > LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold)))
-		strcpy((char *)mbhc->edev->name,"h2w_aux");
-	else if (mbhc->zl < LGE_NORMAL_HEADSET_THRESHOLD-normal_threshold)
-		strcpy((char *)mbhc->edev->name,"h2w");
-	else if ( (mbhc->zr >= LGE_NORMAL_HEADSET_THRESHOLD-normal_threshold && mbhc->zr < LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold) ||
-		(mbhc->zl >= LGE_NORMAL_HEADSET_THRESHOLD-normal_threshold && mbhc->zl < LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold) )
-		strcpy((char *)mbhc->edev->name,"h2w_advanced");
-	else
-		strcpy((char *)mbhc->edev->name,"h2w_aux");
-#else
-	if (((mbhc->zl == 0) && (mbhc->zr == 0)) ||
-		((mbhc->zl > LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold) || (mbhc->zr > LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold)))
-		strcpy((char *)mbhc->edev->name,"h2w_aux");
-	else if (mbhc->zl < LGE_NORMAL_HEADSET_THRESHOLD-normal_threshold)
-		strcpy((char *)mbhc->edev->name,"h2w");
-	else if ( (mbhc->zr >= LGE_NORMAL_HEADSET_THRESHOLD-normal_threshold && mbhc->zr < LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold) ||
-		(mbhc->zl >= LGE_NORMAL_HEADSET_THRESHOLD-normal_threshold && mbhc->zl < LGE_ADVANCED_HEADSET_THRESHOLD-advanced_threshold) )
-		strcpy((char *)mbhc->edev->name,"h2w_advanced");
-	else
-		strcpy((char *)mbhc->edev->name,"h2w_aux");
-#endif
-
 #else
 	pr_debug("%s: enter function without es9218p feature\n", __func__);
 	// defensive code
 	if ( mbhc->zl == 0 ) mbhc->zl = LGE_TAVIL_ZDET_FLOATING_IMPEDANCE;
 	if ( mbhc->zr == 0 ) mbhc->zr = LGE_TAVIL_ZDET_FLOATING_IMPEDANCE;
 
+#endif
 	if ((mbhc->zl > LGE_ADVANCED_HEADSET_THRESHOLD) &&
 			(mbhc->zr > LGE_ADVANCED_HEADSET_THRESHOLD))
 		strcpy((char *)mbhc->edev->name,"h2w_aux");
@@ -162,7 +118,6 @@ static void lge_set_edev_name(struct wcd_mbhc *mbhc, int status)
 		strcpy((char *)mbhc->edev->name,"h2w_advanced");
 	else
 		strcpy((char *)mbhc->edev->name,"h2w_aux");
-#endif
 
 	pr_info("[LGE MBHC] edev.name: %s\n", mbhc->edev->name);
 	pr_debug("%s: leave\n", __func__);
@@ -241,18 +196,6 @@ void wcd_mbhc_jack_report(struct wcd_mbhc *mbhc,
 #endif
 	pr_info("[LGE MBHC] %s: status[0x%x], mask[0x%x]\n", __func__, status, mask);
 	snd_soc_jack_report(jack, status, mask);
-#if defined(CONFIG_SND_SOC_ES9218P)
-		if (status == 0 && mask == WCD_MBHC_JACK_MASK)
-			es9218_sabre_headphone_off();
-		else if (status == SND_JACK_HEADPHONE
-			|| status == SND_JACK_HEADSET
-			|| status == SND_JACK_LINEOUT) {
-			pr_info("[LGE MBHC] %s: call #1 es9218_sabre_headphone_on()\n", __func__);
-			es9218_sabre_headphone_on();
-        }
-		else
-			pr_debug("%s: not reported to extcon_dev\n", __func__);
-#endif
 }
 EXPORT_SYMBOL(wcd_mbhc_jack_report);
 
@@ -890,13 +833,6 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			pr_info("[LGE MBHC] %s: Reporting removal (%x)\n", __func__, mbhc->hph_status);
 			wcd_mbhc_jack_report(mbhc, &mbhc->headset_jack,
 					    0, WCD_MBHC_JACK_MASK);
-#if defined(CONFIG_SND_SOC_ES9218P)
-                if( mbhc->hph_status & WCD_MBHC_JACK_MASK ) {
-                    pr_info("[LGE MBHC] %s: call #2 es9218_sabre_headphone_on().\n", __func__);
-                    pr_info("[LGE MBHC] %s: remove jack(%d) and report insertion of another jack.\n", __func__, mbhc->hph_status);
-                    es9218_sabre_headphone_on();
-                }
-#endif
 #endif
 
 			if (mbhc->hph_status == SND_JACK_LINEOUT) {
@@ -923,10 +859,6 @@ void wcd_mbhc_report_plug(struct wcd_mbhc *mbhc, int insertion,
 			jack_type == SND_JACK_HEADPHONE)
 			mbhc->hph_status &= ~SND_JACK_HEADSET;
 
-#if defined(CONFIG_SND_SOC_ES9218P)
-		pr_info("[LGE MBHC] %s: call #3 es9218_sabre_headphone_on()\n", __func__);
-		es9218_sabre_headphone_on();
-#endif
 		/* Report insertion */
 		if (jack_type == SND_JACK_HEADPHONE)
 			mbhc->current_plug = MBHC_PLUG_TYPE_HEADPHONE;
@@ -1328,10 +1260,6 @@ static irqreturn_t wcd_mbhc_mech_plug_detect_irq(int irq, void *data)
 		r = IRQ_NONE;
 	} else {
 		/* Call handler */
-#if defined(CONFIG_SND_SOC_ES9218P)
-        pr_info("[LGE MBHC] %s: call #4 es9218_sabre_headphone_on()\n", __func__);
-        es9218_sabre_headphone_on();
-#endif
 		wcd_mbhc_swch_irq_handler(mbhc);
 		mbhc->mbhc_cb->lock_sleep(mbhc, false);
 	}
