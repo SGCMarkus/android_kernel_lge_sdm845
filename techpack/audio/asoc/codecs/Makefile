@@ -14,6 +14,9 @@ snd-soc-wcd-spi-objs := wcd-spi.o
 snd-soc-wcd9335-objs := wcd9335.o
 snd-soc-wcd-cpe-objs := wcd_cpe_services.o wcd_cpe_core.o
 
+snd-soc-es9218p-objs := es9218p.o
+obj-$(CONFIG_SND_SOC_ES9218P)  += snd-soc-es9218p.o
+
 obj-$(CONFIG_SND_SOC_WCD9335) += snd-soc-wcd9335.o
 obj-$(CONFIG_SND_SOC_WCD_CPE)   += snd-soc-wcd-cpe.o
 obj-$(CONFIG_SND_SOC_WCD934X)	+= wcd934x/
