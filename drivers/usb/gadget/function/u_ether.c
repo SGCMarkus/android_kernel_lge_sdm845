@@ -550,7 +550,7 @@ static void process_rx_w(struct work_struct *work)
 	while ((skb = skb_dequeue(&dev->rx_frames))) {
 		if (status < 0
 				|| ETH_HLEN > skb->len
-				|| skb->len > ETH_FRAME_LEN) {
+				|| skb->len > GETHER_MAX_ETH_FRAME_LEN) {
 #ifdef CONFIG_LGE_USB_GADGET
 		/*
 		  Need to revisit net->mtu	does not include header size incase of changed MTU
