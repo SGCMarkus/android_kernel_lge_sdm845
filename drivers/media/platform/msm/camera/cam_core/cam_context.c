@@ -520,7 +520,7 @@ void cam_context_put_allref(struct cam_context *ctx)
         cam_context_putref(ctx);
         if ((atomic_read(&(ctx->refcount.refcount)) != 0))
             CAM_INFO(CAM_CORE,
-                "[%s] ctx device hdl %lx ctx_id %d ref still %d",
+                "[%s] ctx device hdl %d ctx_id %d ref still %d",
                 ctx->dev_name, ctx->dev_hdl, ctx->ctx_id,
                  atomic_read(&(ctx->refcount.refcount)));
     }
