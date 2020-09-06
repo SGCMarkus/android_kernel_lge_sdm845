@@ -2696,22 +2696,22 @@ static ssize_t show_swipe_enable(struct device *dev, char *buf)
 	int ret = 0;
 
 	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
-			SWIPE_L, ts->swipe[SWIPE_L].enable);
+			SWIPE_L, d->swipe[SWIPE_L].enable);
 	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
-			SWIPE_R, ts->swipe[SWIPE_R].enable);
+			SWIPE_R, d->swipe[SWIPE_R].enable);
 	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
 			SWIPE_D, d->swipe[SWIPE_D].enable);
 	ret += snprintf(buf + ret, PAGE_SIZE, "%d %d\n",
 			SWIPE_U, d->swipe[SWIPE_U].enable);
 
 	TOUCH_I("%s: ts->swipe[SWIPE_L].enable = %d\n", __func__,
-			ts->swipe[SWIPE_L].enable);
+			d->swipe[SWIPE_L].enable);
 	TOUCH_I("%s: ts->swipe[SWIPE_R].enable = %d\n", __func__,
-			ts->swipe[SWIPE_R].enable);
+			d->swipe[SWIPE_R].enable);
 	TOUCH_I("%s: ts->swipe[SWIPE_D].enable = %d\n", __func__,
-			ts->swipe[SWIPE_D].enable);
+			d->swipe[SWIPE_D].enable);
 	TOUCH_I("%s: ts->swipe[SWIPE_U].enable = %d\n", __func__,
-			ts->swipe[SWIPE_U].enable);
+			d->swipe[SWIPE_U].enable);
 
 	sw49410_print_swipe_info(dev);
 
@@ -2735,16 +2735,16 @@ static ssize_t store_swipe_enable(struct device *dev, const char *buf, size_t co
 
 	switch(enable_swipe[0]) {
 		case SWIPE_L:
-			ts->swipe[SWIPE_L].enable = enable_swipe[1] ? true : false;
+			d->swipe[SWIPE_L].enable = enable_swipe[1] ? true : false;
 			break;
 		case SWIPE_R:
-			ts->swipe[SWIPE_R].enable = enable_swipe[1] ? true : false;
+			d->swipe[SWIPE_R].enable = enable_swipe[1] ? true : false;
 			break;
 		case SWIPE_U:
-			ts->swipe[SWIPE_U].enable = enable_swipe[1] ? true : false;
+			d->swipe[SWIPE_U].enable = enable_swipe[1] ? true : false;
 			break;
 		case SWIPE_D:
-			ts->swipe[SWIPE_D].enable = enable_swipe[1] ? true : false;
+			d->swipe[SWIPE_D].enable = enable_swipe[1] ? true : false;
 			break;
 		default: break;
 	}
