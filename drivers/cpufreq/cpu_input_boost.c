@@ -14,6 +14,7 @@
 #include <linux/slab.h>
 #include <linux/version.h>
 #include <linux/sched.h>
+#include <linux/cpuset.h>
 
 /* The sched_param struct is located elsewhere in newer kernels */
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)
@@ -179,6 +180,8 @@ static void __cpu_input_boost_kick_max(struct boost_drv *b,
 	if (test_bit(SCREEN_OFF, &b->state))
 		return;
 
+	do_hp_cpuset();
+
 	do {
 		curr_expires = atomic_long_read(&b->max_boost_expires);
 		new_expires = jiffies + boost_jiffies;
@@ -220,6 +223,7 @@ static void max_unboost_worker(struct work_struct *work)
 
 	clear_bit(MAX_BOOST, &b->state);
 	wake_up(&b->boost_waitq);
+	do_lp_cpuset();
 }
 
 static int cpu_boost_thread(void *data)
@@ -351,6 +355,7 @@ free_handle:
 
 static void cpu_input_boost_input_disconnect(struct input_handle *handle)
 {
+	do_lp_cpuset();
 	if (dynamic_sched_boost)
 		sched_set_boost(0);
 	input_close_device(handle);
