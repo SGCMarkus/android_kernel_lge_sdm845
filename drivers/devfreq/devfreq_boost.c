@@ -11,6 +11,7 @@
 #include <linux/kthread.h>
 #include <linux/slab.h>
 #include <linux/sched.h>
+#include "governor.h"
 
 enum {
 	SCREEN_OFF,
