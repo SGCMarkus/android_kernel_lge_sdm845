@@ -2112,6 +2112,14 @@ long _do_fork(unsigned long clone_flags,
 	int trace = 0;
 	long nr;
 
+	/* Boost CPU to the max for 50 ms when userspace launches an app */
+	if (is_zygote_pid(current->pid)) {
+		cpu_input_boost_kick_max(50);
+		devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 50);
+		devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 50);
+	}
+
+>>>>>>> 5189356e5e76... devfreq_boost: Update and expand to handle CPUBW/LLCCBW boosting
 	/*
 	 * Determine whether and which event to report to ptracer.  When
 	 * called from kernel_thread or CLONE_UNTRACED is explicitly
