@@ -32,6 +32,7 @@
 #include <linux/notifier.h>
 #include <linux/atomic.h>
 #include <linux/input.h>
+#include <linux/spi/spi-geni-qcom.h>
 #include <linux/input/mt.h>
 #include <touch_common.h>
 #include <touch_hwif.h>
@@ -595,7 +596,8 @@ struct touch_core_data {
 
 	struct app_info app_data[3];
 	struct perf_test_info perf_test;
-	struct pm_qos_request pm_qos_req;
+	struct pm_qos_request pm_spi_req;
+	struct pm_qos_request pm_touch_req;
 };
 
 #define PROPERTY_GPIO(np, string, target)				\
