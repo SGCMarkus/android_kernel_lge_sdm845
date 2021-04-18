@@ -182,12 +182,10 @@ irqreturn_t touch_irq_thread(int irq, void *dev_id)
 
 	TOUCH_TRACE();
 
-	pm_qos_update_request(&ts->pm_touch_req, 100);
-	pm_qos_update_request(&ts->pm_spi_req, 100);
+	pm_qos_update_request(&ts->pm_qos_req, 100);
 #if defined(CONFIG_SECURE_TOUCH)
 	if (secure_touch_filter_interrupt(ts) == IRQ_HANDLED) {
-	        pm_qos_update_request(&ts->pm_spi_req, PM_QOS_DEFAULT_VALUE);
-	        pm_qos_update_request(&ts->pm_touch_req, PM_QOS_DEFAULT_VALUE);
+		pm_qos_update_request(&ts->pm_qos_req, PM_QOS_DEFAULT_VALUE);
 		return IRQ_HANDLED;
 	}
 #endif
@@ -251,8 +249,8 @@ irqreturn_t touch_irq_thread(int irq, void *dev_id)
 	}
 
 	mutex_unlock(&ts->lock);
-	pm_qos_update_request(&ts->pm_spi_req, PM_QOS_DEFAULT_VALUE);
-        pm_qos_update_request(&ts->pm_touch_req, PM_QOS_DEFAULT_VALUE);
+	pm_qos_update_request(&ts->pm_qos_req, PM_QOS_DEFAULT_VALUE);
+
 	return IRQ_HANDLED;
 }
 
@@ -1068,16 +1066,10 @@ static int touch_core_probe_normal(struct platform_device *pdev)
 		goto error_init_input;
 	}
 
-		ts->pm_spi_req.type = PM_QOS_REQ_AFFINE_IRQ;
-		ts->pm_spi_req.irq = ts->irq;
-		pm_qos_add_request(&ts->pm_spi_req, PM_QOS_CPU_DMA_LATENCY,
-			PM_QOS_DEFAULT_VALUE);
-
-		ts->pm_touch_req.type = PM_QOS_REQ_AFFINE_IRQ;
-		ts->pm_touch_req.irq = ts->irq;
-		pm_qos_add_request(&ts->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
-				PM_QOS_DEFAULT_VALUE);
-
+	ts->pm_qos_req.type = PM_QOS_REQ_AFFINE_IRQ;
+	ts->pm_qos_req.irq = ts->irq;
+	pm_qos_add_request(&ts->pm_qos_req, PM_QOS_CPU_DMA_LATENCY,
+			   PM_QOS_DEFAULT_VALUE);
 
 	ts->irqflags |= IRQF_ONESHOT | IRQF_PERF_CRITICAL;
 	ret = touch_request_irq(ts->irq, touch_irq_handler, touch_irq_thread,
@@ -1106,8 +1098,7 @@ static int touch_core_probe_normal(struct platform_device *pdev)
 
 error_request_irq:
 	free_irq(ts->irq, ts);
-	pm_qos_remove_request(&ts->pm_touch_req);
-	pm_qos_remove_request(&ts->pm_spi_req);
+	pm_qos_remove_request(&ts->pm_qos_req);
 error_init_input:
 	if (ts->input) {
 		input_mt_destroy_slots(ts->input);
