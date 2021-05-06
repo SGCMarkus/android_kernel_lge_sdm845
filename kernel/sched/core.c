@@ -854,6 +854,49 @@ static void update_rq_clock_task(struct rq *rq, s64 delta)
 #endif
 }
 
+
+
+/*
+ * Calls to sched_migrate_to_cpumask_start() cannot nest. This can only be used
+ * in process context.
+ */
+void sched_migrate_to_cpumask_start(struct cpumask *old_mask,
+				    const struct cpumask *dest)
+{
+	struct task_struct *p = current;
+
+	raw_spin_lock_irq(&p->pi_lock);
+	*cpumask_bits(old_mask) = *cpumask_bits(&p->cpus_allowed);
+	raw_spin_unlock_irq(&p->pi_lock);
+
+	/*
+	 * This will force the current task onto the destination cpumask. It
+	 * will sleep when a migration to another CPU is actually needed.
+	 */
+	set_cpus_allowed_ptr(p, dest);
+}
+
+void sched_migrate_to_cpumask_end(const struct cpumask *old_mask,
+				  const struct cpumask *dest)
+{
+	struct task_struct *p = current;
+
+	/*
+	 * Check that cpus_allowed didn't change from what it was temporarily
+	 * set to earlier. If so, we can go ahead and lazily restore the old
+	 * cpumask. There's no need to immediately migrate right now.
+	 */
+	raw_spin_lock_irq(&p->pi_lock);
+	if (*cpumask_bits(&p->cpus_allowed) == *cpumask_bits(dest)) {
+		struct rq *rq = this_rq();
+
+		raw_spin_lock(&rq->lock);
+		do_set_cpus_allowed(p, old_mask);
+		raw_spin_unlock(&rq->lock);
+	}
+	raw_spin_unlock_irq(&p->pi_lock);
+}
+
 void sched_set_stop_task(int cpu, struct task_struct *stop)
 {
 	struct sched_param param = { .sched_priority = MAX_RT_PRIO - 1 };
