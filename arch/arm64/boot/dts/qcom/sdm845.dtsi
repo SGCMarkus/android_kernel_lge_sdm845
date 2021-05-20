@@ -56,7 +56,7 @@
 
 		CPU0: cpu@0 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x0>;
 			enable-method = "psci";
 			efficiency = <610>;
@@ -93,7 +93,7 @@
 
 		CPU1: cpu@100 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x100>;
 			enable-method = "psci";
 			efficiency = <610>;
@@ -124,7 +124,7 @@
 
 		CPU2: cpu@200 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x200>;
 			enable-method = "psci";
 			efficiency = <610>;
@@ -155,7 +155,7 @@
 
 		CPU3: cpu@300 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x300>;
 			enable-method = "psci";
 			efficiency = <610>;
@@ -186,7 +186,7 @@
 
 		CPU4: cpu@400 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x400>;
 			enable-method = "psci";
 			efficiency = <1024>;
@@ -217,7 +217,7 @@
 
 		CPU5: cpu@500 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x500>;
 			enable-method = "psci";
 			efficiency = <1024>;
@@ -248,7 +248,7 @@
 
 		CPU6: cpu@600 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x600>;
 			enable-method = "psci";
 			efficiency = <1024>;
@@ -279,7 +279,7 @@
 
 		CPU7: cpu@700 {
 			device_type = "cpu";
-			compatible = "arm,armv8";
+			compatible = "arm,kryo";
 			reg = <0x0 0x700>;
 			enable-method = "psci";
 			efficiency = <1024>;
