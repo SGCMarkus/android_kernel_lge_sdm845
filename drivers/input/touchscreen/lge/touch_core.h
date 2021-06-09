@@ -571,6 +571,8 @@ struct touch_core_data {
         struct notifier_block drm_notif;
 #elif defined(CONFIG_FB)
 	struct notifier_block fb_notif;
+	struct work_struct pm_work;
+	bool screen_off;
 #endif
 	void *touch_device_data;
 
