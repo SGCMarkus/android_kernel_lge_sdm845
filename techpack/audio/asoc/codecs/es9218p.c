@@ -3776,7 +3776,7 @@ static void es9218_shutdown(struct snd_pcm_substream *substream,
 
 	req.type = PM_QOS_REQ_AFFINE_CORES;
 	req.irq = -1;
-	cpumask_copy(&req.cpus_affine, cpu_present_mask);
+        atomic_set(&req.cpus_affine, *cpumask_bits(cpu_lp_mask));
 
 #if ES9218P_DEBUG == 1
 	__pm_wakeup_event(&wl_shutdown, jiffies_to_msecs(10));
