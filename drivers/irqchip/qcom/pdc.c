@@ -304,8 +304,6 @@ int qcom_pdc_init(struct device_node *node,
 		goto failure;
 	}
 
-	pdc_domain->name = "qcom,pdc";
-
 	return 0;
 
 failure:
