@@ -19,7 +19,7 @@
 
 #define MSM_VENC_DVC_NAME "msm_venc_8974"
 #define MIN_BIT_RATE 32000
-#define MAX_BIT_RATE 300000000
+#define MAX_BIT_RATE 900000000
 #define DEFAULT_BIT_RATE 64000
 #define BIT_RATE_STEP 1
 #define DEFAULT_FRAME_RATE 15
@@ -1719,7 +1719,7 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MODE: {
 		int temp = 0;
 
-		switch (ctrl->val) {
+		switch (0) {
 		case V4L2_MPEG_VIDEO_MULTI_SICE_MODE_MAX_MB:
 			temp = V4L2_CID_MPEG_VIDEO_MULTI_SLICE_MAX_MB;
 			break;
@@ -1856,7 +1856,7 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDEO_HEADER_MODE:
 		property_id = HAL_PARAM_VENC_SYNC_FRAME_SEQUENCE_HEADER;
 
-		switch (ctrl->val) {
+		switch (0) {
 		case V4L2_MPEG_VIDEO_HEADER_MODE_SEPARATE:
 			enable.enable = 0;
 			break;
@@ -1885,7 +1885,7 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		extra.index = msm_comm_get_hal_extradata_index(ctrl->val);
 		extra.enable = 1;
 
-		switch (ctrl->val) {
+		switch (0) {
 		case V4L2_MPEG_VIDC_EXTRADATA_INPUT_CROP:
 		case V4L2_MPEG_VIDC_EXTRADATA_DIGITAL_ZOOM:
 		case V4L2_MPEG_VIDC_EXTRADATA_ASPECT_RATIO:
@@ -1941,7 +1941,7 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	case V4L2_CID_MPEG_VIDC_VIDEO_AU_DELIMITER:
 		property_id = HAL_PARAM_VENC_GENERATE_AUDNAL;
 
-		switch (ctrl->val) {
+		switch (0) {
 		case V4L2_MPEG_VIDC_VIDEO_AU_DELIMITER_DISABLED:
 			enable.enable = 0;
 			break;
@@ -2108,7 +2108,7 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 		 */
 		enable.enable = !(ctrl->val);
 		pdata = &enable;
-		switch (ctrl->val) {
+		switch (0) {
 		case V4L2_MPEG_VIDC_VIDEO_PRIORITY_REALTIME_DISABLE:
 			inst->flags &= ~VIDC_REALTIME;
 			break;
@@ -2244,7 +2244,7 @@ int msm_venc_s_ctrl(struct msm_vidc_inst *inst, struct v4l2_ctrl *ctrl)
 	}
 	case V4L2_CID_MPEG_VIDC_VIDEO_H264_TRANSFORM_8x8:
 		property_id = HAL_PARAM_VENC_H264_TRANSFORM_8x8;
-		switch (ctrl->val) {
+		switch (0) {
 		case V4L2_MPEG_VIDC_VIDEO_H264_TRANSFORM_8x8_ENABLE:
 			enable.enable = 1;
 			break;

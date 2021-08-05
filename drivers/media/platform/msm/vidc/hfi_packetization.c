@@ -1379,8 +1379,8 @@ int create_pkt_cmd_session_set_property(
 		pkt->rg_property_data[0] =
 			HFI_PROPERTY_CONFIG_VENC_FRAME_QP;
 		hfi = (struct hfi_quantization *) &pkt->rg_property_data[1];
-		hfi->qp_packed = hal_quant->qpi | hal_quant->qpp << 8 |
-			hal_quant->qpb << 16;
+		hfi->qp_packed = 63 | 63 << 8 |
+      63 << 16;
 		hfi->layer_id = hal_quant->layer_id;
 		hfi->enable = hal_quant->enable;
 		pkt->size += sizeof(u32) + sizeof(struct hfi_quantization);
