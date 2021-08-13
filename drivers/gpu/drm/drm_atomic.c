@@ -1910,10 +1910,9 @@ int drm_mode_atomic_ioctl(struct drm_device *dev,
 			(arg->flags & DRM_MODE_PAGE_FLIP_EVENT))
 		return -EINVAL;
 
-	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY) && time_before(jiffies, last_input_time + msecs_to_jiffies(3000))) {
-		cpu_input_boost_kick();
-		devfreq_boost_kick(DEVFREQ_MSM_CPU_LLCCBW);
-		devfreq_boost_kick(DEVFREQ_MSM_LLCCBW_DDR);
+	if (!(arg->flags & DRM_MODE_ATOMIC_TEST_ONLY)) {
+		devfreq_boost_kick(DEVFREQ_MSM_CPUBW);
+		devfreq_boost_kick(DEVFREQ_MSM_LLCCBW);
 	}
 
 	drm_modeset_acquire_init(&ctx, 0);
