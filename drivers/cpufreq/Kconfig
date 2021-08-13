@@ -286,6 +286,8 @@ config SCHEDUTIL_DOWN_RATE_LIMIT_LITTLE
 	  This sets schedutil's default frequency down rate-limit for little cluster in
 	  microseconds.
 
+endif
+
 config CPU_INPUT_BOOST
 	bool "CPU Input Boost"
 	help
