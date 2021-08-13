@@ -66,6 +66,7 @@
 #include <net/sock.h>
 #include <linux/binfmts.h>
 #include <linux/devfreq_boost.h>
+#include <linux/cpu_input_boost.h>
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/cgroup.h>
@@ -2948,6 +2949,7 @@ static ssize_t __cgroup_procs_write(struct kernfs_open_file *of, char *buf,
         if (!ret && !threadgroup &&
                !memcmp(of->kn->parent->name, "top-app", sizeof("top-app")) &&
                task_is_zygote(tsk->parent)) {
+		cpu_input_boost_kick_max(1000);
                 devfreq_boost_kick_max(DEVFREQ_MSM_CPUBW, 1000);
                 devfreq_boost_kick_max(DEVFREQ_MSM_LLCCBW, 1000);
 
