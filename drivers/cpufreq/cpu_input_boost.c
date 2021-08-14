@@ -10,7 +10,7 @@
 #include <linux/input.h>
 #include <linux/kthread.h>
 #include <linux/moduleparam.h>
-#include <linux/msm_drm_notify.h>
+#include <linux/state_notifier.h>
 #include <linux/slab.h>
 #include <linux/version.h>
 #include <linux/sched.h>
@@ -68,7 +68,7 @@ struct boost_drv {
 	struct delayed_work input_unboost;
 	struct delayed_work max_unboost;
 	struct notifier_block cpu_notif;
-	struct notifier_block msm_drm_notif;
+	struct notifier_block state_notif;
 	wait_queue_head_t boost_waitq;
 	atomic_long_t max_boost_expires;
 	unsigned long state;
@@ -283,23 +283,16 @@ static int cpu_notifier_cb(struct notifier_block *nb, unsigned long action,
 
 	return NOTIFY_OK;
 }
-
-static int msm_drm_notifier_cb(struct notifier_block *nb, unsigned long action,
-			  void *data)
+static int state_notifier_cb(struct notifier_block *nb,
+                               unsigned long action,void *data)
 {
-	struct boost_drv *b = container_of(nb, typeof(*b), msm_drm_notif);
-	struct msm_drm_notifier *evdata = data;
-	int *blank = evdata->data;
-
-	/* Parse framebuffer blank events as soon as they occur */
-	if (action != MSM_DRM_EARLY_EVENT_BLANK)
-		return NOTIFY_OK;
-
+	struct boost_drv *b = container_of(nb, typeof(*b), state_notif);
+	int *blank = ((struct state_event *)data)->data;
 	/* Boost when the screen turns on and unboost when it turns off */
-	if (*blank == MSM_DRM_BLANK_UNBLANK) {
+	if (*blank == STATE_NOTIFIER_BOOST) {
 		clear_bit(SCREEN_OFF, &b->state);
 		__cpu_input_boost_kick_max(b, wake_boost_duration);
-	} else {
+	} else if (*blank == STATE_NOTIFIER_SUSPEND) {
 		set_bit(SCREEN_OFF, &b->state);
 		wake_up(&b->boost_waitq);
 	}
@@ -413,25 +406,25 @@ static int __init cpu_input_boost_init(void)
 		goto unregister_cpu_notif;
 	}
 
-	b->msm_drm_notif.notifier_call = msm_drm_notifier_cb;
-	b->msm_drm_notif.priority = INT_MAX;
-	ret = msm_drm_register_client(&b->msm_drm_notif);
+	b->state_notif.notifier_call = state_notifier_cb;
+	b->state_notif.priority = INT_MAX;
+	ret = state_register_client(&b->state_notif);
 	if (ret) {
-		pr_err("Failed to register msm_drm notifier, err: %d\n", ret);
+		pr_err("Failed to register state notifier, err: %d\n", ret);
 		goto unregister_handler;
 	}
 
-	thread = kthread_run(cpu_boost_thread, b, "cpu_boostd");
+	thread = kthread_run_perf_critical(cpu_boost_thread, b, "cpu_boostd");
 	if (IS_ERR(thread)) {
 		ret = PTR_ERR(thread);
 		pr_err("Failed to start CPU boost thread, err: %d\n", ret);
-		goto unregister_fb_notif;
+		goto unregister_state_notif;
 	}
 
 	return 0;
 
-unregister_fb_notif:
-	msm_drm_unregister_client(&b->msm_drm_notif);
+unregister_state_notif:
+	state_unregister_client(&b->state_notif);
 unregister_handler:
 	input_unregister_handler(&cpu_input_boost_input_handler);
 unregister_cpu_notif:
