@@ -1,4 +1,4 @@
-/*
+ /*
  * governor.h - internal header for devfreq governors.
  *
  * Copyright (C) 2011 Samsung Electronics
@@ -24,9 +24,6 @@
 #define DEVFREQ_GOV_INTERVAL			0x3
 #define DEVFREQ_GOV_SUSPEND			0x4
 #define DEVFREQ_GOV_RESUME			0x5
-
-/* Caution: devfreq->lock must be locked before calling update_devfreq */
-extern int update_devfreq(struct devfreq *devfreq);
 
 extern void devfreq_monitor_start(struct devfreq *devfreq);
 extern void devfreq_monitor_stop(struct devfreq *devfreq);
