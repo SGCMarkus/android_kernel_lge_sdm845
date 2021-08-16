@@ -489,20 +489,20 @@ int ipa_uc_ntn_conn_pipes(struct ipa_ntn_conn_in_params *inp,
 				result);
 			return result;
 		}
-
-		result = ipa_rm_request_resource(IPA_RM_RESOURCE_ETHERNET_PROD);
-		if (result == -EINPROGRESS) {
-			if (wait_for_completion_timeout(&ntn_ctx->ntn_completion
-                                msecs_to_jiffies(10000)) == 0) {
-				IPA_UC_OFFLOAD_ERR("ETH_PROD req timeout\n");
-				result = -EFAULT;
-				goto fail;
-			}
-		} else if (result != 0) {
-			IPA_UC_OFFLOAD_ERR("fail to request resource\n");
+	result = ipa_rm_request_resource(IPA_RM_RESOURCE_ODU_ADAPT_PROD);
+	if (result == -EINPROGRESS) {
+		if (wait_for_completion_timeout(&ntn_ctx->ntn_completion,
+			msecs_to_jiffies(10000)) == 0) {
+			IPA_UC_OFFLOAD_ERR("ODU PROD resource req time out\n");
 			result = -EFAULT;
 			goto fail;
 		}
+	} else if (result != 0) {
+		IPA_UC_OFFLOAD_ERR("fail to request resource\n");
+		result = -EFAULT;
+		goto fail;
+	}
+
 #ifdef CONFIG_IPA3
 	}
 #endif
