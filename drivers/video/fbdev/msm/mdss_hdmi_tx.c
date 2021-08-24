@@ -3643,7 +3643,7 @@ static int hdmi_tx_evt_handle_resume(struct hdmi_tx_ctrl *hdmi_ctrl)
 
 		reinit_completion(&hdmi_ctrl->hpd_int_done);
 		timeout = wait_for_completion_timeout(
-			&hdmi_ctrl->hpd_int_done, HZ/10);
+			&hdmi_ctrl->hpd_int_done, msecs_to_jiffies(100));
 		if (!timeout && !hdmi_ctrl->hpd_state) {
 			DEV_DBG("%s: cable removed during suspend\n", __func__);
 			hdmi_tx_set_audio_switch_node(hdmi_ctrl, 0);

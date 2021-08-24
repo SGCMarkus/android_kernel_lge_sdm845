@@ -2876,9 +2876,8 @@ static int mdss_dsi_event_handler(struct mdss_panel_data *pdata,
 
 		if (IS_ENABLED(CONFIG_MSM_DBA) &&
 			pdata->panel_info.is_dba_panel) {
-			queue_delayed_work(ctrl_pdata->workq,
-				&ctrl_pdata->dba_work, HZ);
-                                    &ctrl_pdata->dba_work, msecs_to_jiffies(1000));
+				queue_delayed_work(ctrl_pdata->workq,
+					&ctrl_pdata->dba_work, msecs_to_jiffies(1000));
 		}
 		break;
 	default:
