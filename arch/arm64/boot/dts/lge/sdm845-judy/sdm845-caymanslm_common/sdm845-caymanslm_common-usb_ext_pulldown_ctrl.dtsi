@@ -1,0 +1,65 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&tlmm {
+	atest_usb_active: atest_usb_active {
+		mux {
+			pins = "gpio8";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio8";
+			drive-strength = <12>;
+			bias-pull-up;
+		};
+	};
+	atest_usb_suspend: atest_usb_suspend {
+		mux {
+			pins = "gpio8";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio8";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+	};
+
+        atest_en_active: atest_en_active {
+	        mux {
+			pins = "gpio100";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio100";
+			bias-pull-down;
+			drive-strength = <2>;
+		};
+        };
+	atest_en_suspend: atest_en_suspend {
+		mux {
+			pins = "gpio100";
+			function = "gpio";
+		};
+		config {
+			pin = "gpio100";
+			drive-strength = <12>;
+			bias-pull-up;
+		};
+	};
+};
+
+&qusb_phy0 {
+	pinctrl-names = "atest_usb_suspend", "atest_usb_active";
+	pinctrl-0 = <&atest_usb_suspend &atest_en_suspend>;
+	pinctrl-1 = <&atest_usb_active &atest_en_active>;
+};

@@ -1,0 +1,94 @@
+
+qcom,LGE_BLT41_Tocad_3500mAh {
+	qcom, = <24>;
+	/* #4303441_LGE_BLT41_3500mAh_averaged_MasterSlave_Dec16th2019*/
+	/* constant parameter */
+	lge,fg-cutoff-voltage = <3200>;
+	lge,fg-cutoff-current = <200>;
+	lge,fg-esr-tight-lt-filter-micro-pct = <30000>;
+	lge,fg-esr-broad-lt-filter-micro-pct = <30000>;
+	/* dynamic KI param */
+	lge,dynamic-ki-en;
+	//lge,ki-coeff-chg-enable;
+	lge,ki-coeff-dischg-enable;
+	lge,ki-coeff-soc-alert = <5>;
+	lge,ki-coeff-comp = <200>;
+	lge,ki-coeff-margin-vfloat-mv = <100>;
+	lge,ki-coeff-limit = <300 20000>; //min max
+	/* runtime changing parameter */
+	lge,ki-coeff-curr-lowth-dischg = <100>;
+	lge,ki-coeff-curr-highth-dischg = <900>;
+	lge,ki-coeff-soc-dischg = <30 60 100>;
+	lge,ki-coeff-low-dischg = <800 800 800>;
+	lge,ki-coeff-med-dischg = <1500 1500 1500>;
+	lge,ki-coeff-hi-dischg = <2200 2200 2200>;
+	lge,ki-coeff-hi-chg = <0>;
+
+	qcom,max-voltage-uv = <4430000>;
+	qcom,fg-cc-cv-threshold-mv = <4430>;
+	qcom,nom-batt-capacity-mah = <3500>;
+	qcom,fastchg-current-ma = <3000>;
+	qcom,batt-id-kohm = <92>;
+	qcom,battery-beta = <4150>;
+	qcom,battery-type = "LGE_BLT41_Tocad_3500mAh";
+	qcom,checksum = <0x133C>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.58";
+	qcom,fg-profile-data = [
+		 32 21 CA 0D
+		 20 12 7B 04
+		 F4 1C B8 01
+		 9F 04 11 0A
+		 04 18 D0 23
+		 49 44 79 5A
+		 84 00 00 00
+		 10 00 00 00
+		 00 00 4E C3
+		 D1 CC FF 07
+		 19 00 08 00
+		 85 DA F7 E4
+		 A3 FD 1D F2
+		 8F F5 4F 12
+		 10 05 23 0D
+		 16 06 09 20
+		 27 00 14 00
+		 78 20 74 04
+		 AC 0B F2 04
+		 D9 1C CD 02
+		 40 0C 21 12
+		 A4 18 8B 23
+		 61 44 90 5A
+		 6D 00 00 00
+		 0F 00 00 00
+		 00 00 88 CD
+		 4E BA 69 BA
+		 16 00 00 00
+		 69 EA F7 E4
+		 CB FD 7F EB
+		 7F F4 12 03
+		 E9 06 A1 13
+		 99 33 CC FF
+		 07 10 00 00
+		 7E 0D 33 47
+		 16 00 40 00
+		 8B 01 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};

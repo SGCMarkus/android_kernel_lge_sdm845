@@ -1,0 +1,7 @@
+menu "TouchSense dw7800 driver support"
+
+config PMI8998_HAPTICS
+	tristate "Qualcomm pmi8998 haptics driver support"
+	default n
+
+endmenu

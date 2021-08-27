@@ -1,0 +1,88 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common-touch.dtsi"
+
+&qupv3_se14_i2c {
+	status = "okay";
+	
+		sw42902@28 {
+		compatible = "lge,sw42902";
+		reg = <0x28>;
+		status = "okay";
+		interrupt-parent = <&tlmm>;
+		interrupts = <31 0x2008>;
+		irqflags = <0x00000002>;
+
+		pinctrl-names = "touch_pin_active", "touch_pin_sleep";
+		pinctrl-0 = <&ts_reset_active &ts_int_active>;
+		pinctrl-1 = <&ts_reset_suspend &ts_int_suspend>;
+
+		vdd-gpio = <&tlmm 117 0x00>;
+		vcl-gpio = <&tlmm 116 0x00>;
+		reset-gpio = <&tlmm 32 0x00>;
+		irq-gpio = <&tlmm 31 0x2008>;
+
+		/* caps */
+		max_x = <1080>;
+		max_y = <2460>;
+		max_pressure = <0xff>;
+		max_width_major = <2460>;
+		max_width_minor = <2460>;
+		max_orientation = <90>;
+		max_id = <10>;
+		hw_reset_delay = <90>;
+		sw_reset_delay = <10>;
+
+		/* role */
+		use_lpwg = <1>;
+		use_lpwg_test = <1>;
+		hide_coordinate = <1>;
+		use_activepen_status = <1>;
+		use_film_status = <1>;
+		use_dex_mode = <1>;
+
+		/* firmware */
+		fw_image = "touch/caymanslm/B3W68CAYMAN_3_41.img",
+			   "touch/caymanslm/B3W68DS3_0_35.img";
+
+		panel_spec = "touch/caymanslm/cayman_sw42902_limit.txt";
+		panel_spec_mfts_folder = "touch/caymanslm/cayman_sw42902_limit.txt";
+
+		/* asc */
+		use_asc = <0>;
+		low_delta_thres = <350>;
+		high_delta_thres = <600>;
+		max_delta_cnt = <2>;
+
+		/* Performance Test */
+		use_perf_test = <1>;
+		test_delay = <8>;
+		test_pressure = <50>;
+		test_width = <100>;
+		click_test_x = <180>;
+		click_test_y = <760>;
+		v_drag_test_x = <144>;
+		v_drag_test_start_y = <2003>;
+		v_drag_test_end_y = <1116>;
+		h_drag_test_start_x = <1163>;
+		h_drag_test_end_x = <276>;
+		h_drag_test_y = <2184>;
+	};
+
+	/* Temp Slave Address */
+	active@37 {
+		compatible = "active,pen";
+		status = "ok";
+		reg = <0x37>;
+	};
+};

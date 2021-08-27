@@ -1,0 +1,91 @@
+qcom,LGE_BLT47_LGC_4300mAh {
+	qcom, = <24>;
+	/* constant parameter */
+	lge,fg-cutoff-voltage = <3200>;
+	lge,fg-cutoff-current = <200>;
+	lge,fg-esr-tight-lt-filter-micro-pct = <30000>;
+	lge,fg-esr-broad-lt-filter-micro-pct = <30000>;
+	lge,dynamic-ki-en;
+	//lge,ki-coeff-chg-enable;
+	lge,ki-coeff-dischg-enable;
+	lge,ki-coeff-soc-alert = <7>;
+	lge,ki-coeff-comp = <200>;
+	lge,ki-coeff-margin-vfloat-mv = <100>;
+	lge,ki-coeff-limit = <300 20000>; //min max
+	/* runtime charging parameter */
+	lge,ki-coeff-curr-lowth-dischg = <100>;
+	lge,ki-coeff-curr-highth-dischg = <900>;
+	lge,ki-coeff-soc-dischg = <30 60 100>;
+	lge,ki-coeff-low-dischg = <800 800 800>;
+	lge,ki-coeff-med-dischg = <1500 1500 1500>;
+	lge,ki-coeff-hi-dischg = <2200 2200 2200>;
+	lge,ki-coeff-hi-chg = <300>;
+	/* #4435939_LGE_BLT47lgc_4250mAh_averaged_MasterSlave_Mar3rd2020*/
+	qcom,max-voltage-uv = <4450000>;
+	qcom,fg-cc-cv-threshold-mv = <4430>;
+	qcom,nom-batt-capacity-mah = <4300>;
+	qcom,fastchg-current-ma = <4000>;
+	qcom,batt-id-kohm = <11>;
+	qcom,battery-beta = <4250>;
+	qcom,battery-type = "LGE_BLT47_LGC_4300mAh";
+	qcom,checksum = <0xAE20>;
+	qcom,gui-version = "PMI8998GUI - 2.0.0.58";
+	qcom,fg-profile-data = [
+		 63 1F BE 05
+		 80 0A 4B 06
+		 D3 1C 14 02
+		 9C 0D D3 0A
+		 8C 18 FC 22
+		 73 45 03 53
+		 71 00 00 00
+		 12 00 00 00
+		 00 00 E5 C2
+		 2D CC 9D BA
+		 26 00 08 00
+		 3B E3 9E 07
+		 FA 05 D6 F3
+		 45 06 18 0B
+		 A9 04 FA 3A
+		 1B 06 09 20
+		 27 00 14 00
+		 52 20 E3 04
+		 12 0B C7 05
+		 EB 1C 90 02
+		 C1 0C 94 0B
+		 8F 18 05 2A
+		 B1 4D A3 5B
+		 73 00 00 00
+		 0D 00 00 00
+		 00 00 DF D5
+		 68 C3 01 00
+		 1F 00 00 00
+		 42 F2 9E 07
+		 DB FC 5F F2
+		 A1 F5 76 02
+		 03 0A 23 23
+		 C6 33 CC FF
+		 07 10 00 00
+		 9A 10 33 47
+		 1F 00 40 00
+		 F6 00 0A FA
+		 FF 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+		 00 00 00 00
+	];
+};

@@ -1,0 +1,82 @@
+/*
+ * Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc {
+	gpio_keys {
+		compatible = "gpio-keys";
+		label = "gpio_keys";
+		status = "okay";
+		pinctrl_names = "default";
+		pinctrl-0 = <&luke_gpio_default &ds3_smart_cover_default &ds3_cover_display_back_default>;
+		luke {
+			label = "luke";
+			gpios = <&pm8998_gpios 4 GPIO_ACTIVE_LOW>;
+			linux,input-type = <5>;
+			linux,code = <222>;
+			gpio-key,wakeup;
+			debounce-interval = <200>;
+		};
+		ds3_smart_cover {
+			label = "ds3_smart_cover";
+			gpios = <&tlmm 80 GPIO_ACTIVE_LOW>;
+			linux,input-type = <5>;
+			linux,code = <222>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			linux,can-disable;
+		};
+		ds3_cover_display_back {
+			label = "ds3_cover_display_back";
+			gpios = <&tlmm 44 GPIO_ACTIVE_LOW>;
+			linux,input-type = <5>;
+			linux,code = <222>;
+			gpio-key,wakeup;
+			debounce-interval = <15>;
+			linux,can-disable;
+		};
+	};
+};
+
+&tlmm {
+	ds3_smart_cover {
+		ds3_smart_cover_default: ds3_smart_cover_default {
+			pins = "gpio80";
+			function = "normal";
+			bias-pull-up;
+			power-source = <1>;
+			input-enable;
+		};
+	};
+	ds3_cover_display_back {
+		ds3_cover_display_back_default: ds3_cover_display_back_default {
+			pins = "gpio44";
+			function = "normal";
+			bias-pull-up;
+			input-enable;
+		};
+
+	};
+};
+
+&pm8998_gpios {
+	luke_gpio {
+		 luke_gpio_default: luke_gpio_default {
+			pins = "gpio4";
+			function = "gpio";
+			input-enable;
+			bias-pull-up;
+			power-source = <0>;
+		};
+	};
+};
+

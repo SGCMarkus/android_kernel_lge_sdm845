@@ -1,0 +1,39 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-judy_common/sdm845-judy_common-nfc.dtsi"
+
+&qupv3_se3_i2c { /* QUP_3 (NFC) */
+    status = "ok";
+    qcom,clk-freq-out = <400000>;
+    nq@28 {
+            status = "disabled";
+    };
+
+    cxd22xx-i2c@28 {
+            compatible = "sony,cxd22xx-i2c";
+            reg = <0x28>;
+            status = "ok";
+            sony,gpio_sda = <&tlmm 41 0x00>;
+            sony,gpio_scl = <&tlmm 42 0x00>;
+            sony,gpio_irq = <&tlmm 63 0x00>;
+            sony,gpio_hvdd = <&tlmm 102 0x00>;
+            sony,gpio_xrst = <&tlmm 62 0x00>;
+            sony,gpio_mode = <&tlmm 12 0x00>;
+            sony,gpio_tst1 = <&tlmm 104 0x00>;
+            sony,i2c-pull-up = <1>;
+            qcom,clk-src = "BBCLK2";
+            interrupt-parent = <&tlmm>;
+            interrupts = <63 0>;
+            interrupt-names = "nfc_irq";
+	};
+};

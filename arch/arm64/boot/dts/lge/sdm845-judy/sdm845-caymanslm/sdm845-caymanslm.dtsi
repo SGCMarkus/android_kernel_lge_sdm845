@@ -1,0 +1,35 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/clock/qcom,gcc-sdm845.h>
+#include <dt-bindings/clock/qcom,camcc-sdm845.h>
+#include <dt-bindings/clock/qcom,dispcc-sdm845.h>
+#include <dt-bindings/clock/qcom,rpmh.h>
+#include <dt-bindings/interrupt-controller/arm-gic.h>
+#include "../../../qcom/sdm845-pmic-overlay.dtsi"
+#include "../../../qcom/sdm845-pinctrl-overlay.dtsi"
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common.dtsi"
+#include "sdm845-caymanslm-pinctrl.dtsi"
+#include "sdm845-caymanslm-panel.dtsi"
+#include "sdm845-caymanslm-misc.dtsi"
+#include "sdm845-caymanslm-pm.dtsi"
+#include "sdm845-caymanslm-connectivity.dtsi"
+#include "sdm845-caymanslm-nfc.dtsi"
+#include "sdm845-caymanslm-mme.dtsi"
+#include "sdm845-caymanslm-touch.dtsi"
+#include "../sdm845-camera/sdm845-caymanslm-camera.dtsi"
+#include "sdm845-caymanslm-usb.dtsi"
+#include "sdm845-caymanslm-storage.dtsi"
+#include "sdm845-caymanslm-pkm.dtsi"
+#include "sdm845-caymanslm-sar.dtsi"
+

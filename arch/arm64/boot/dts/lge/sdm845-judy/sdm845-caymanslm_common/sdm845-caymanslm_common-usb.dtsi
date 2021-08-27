@@ -1,0 +1,104 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+#include "sdm845-caymanslm_common-usb-switch-fusb252.dtsi"
+
+&pm8998_gpios {
+	gpio9_adc {
+		gpio9_adc_default: gpio9_adc_default {
+			pins = "gpio9";
+			function = "normal";
+			bias-high-impedance;
+		};
+	};
+};
+
+&pmi8998_pdphy {
+    lge,sbu-sel-gpio = <&tlmm 99 0>;
+    lge,sbu-oe-gpio = <&tlmm 21 0>;
+    lge,hs-pulldown-en-gpio = <&tlmm 100 0>;
+
+	pinctrl-names = "default";
+	pinctrl-0 = <&gpio9_adc_default>;
+};
+
+&usb0 {
+	usb-phy = <&qusb_phy0>;
+};
+
+&usb1 {
+	status = "okay";
+	extcon = <&lge_usb_ds3>;
+	dwc3@a800000 {
+		maximum-speed = "high-speed";
+		usb-phy = <&qusb_phy1>, <&usb_nop_phy>;
+		dr_mode = "host";
+		usbpd = <&pmi8998_pdphy>;
+	};
+};
+
+&qusb_phy1 {
+	status = "okay";
+	qcom,qusb-phy-tune-host = <0x32 0x29 0xca 0x04 0x03 0x28>;
+	qcom,is-sec-qusb-phy;
+};
+
+&usb_qmp_phy {
+	status = "okay";
+};
+
+&qusb_phy0 {
+	qcom,qusb-phy-tune = <0x67 0x29 0xca 0x03 0x03 0x18>;
+	qcom,qusb-phy-tune-host = <0x77 0x29 0xca 0x07 0x03 0x28>;
+};
+
+&usb_qmp_dp_phy {
+	qcom,tx-a-pre-emphasis = <0x0d>;
+	qcom,tx-b-pre-emphasis = <0x0d>;
+	qcom,tx-a-swing = <0x1f>;
+	qcom,tx-b-swing = <0x1f>;
+};
+
+&tlmm {
+    lge_ds_en_active: lge_ds_en_active {
+		mux {
+			pins = "gpio91";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio91";
+			bias-disable = <0>;
+			drive-strength = <2>;
+		};
+    };
+};
+
+&vendor {
+    lge_usb_ds3: lge_usb_ds3 {
+        compatible = "lge,usb_ds3";
+		lge,dd-sw-sel-gpio = <&tlmm 123 0>;
+		lge,load-sw-on-gpio = <&tlmm 92 0>;
+		lge,ds-en-gpio = <&tlmm 91 0>;
+		lge,acc_det_vadc;
+
+		usbpd = <&pmi8998_pdphy>;
+		extcon = <&pmi8998_pdphy>;
+
+		qcom,channel-vadc = <&pm8998_vadc>;
+
+		lge,acc-high-thr = <960000>;
+		lge,acc-low-thr = <810000>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&lge_ds_en_active>;
+    };
+};

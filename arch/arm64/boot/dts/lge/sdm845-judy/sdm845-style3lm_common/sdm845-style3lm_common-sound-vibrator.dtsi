@@ -1,0 +1,43 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&qupv3_se12_i2c { /*QUPV3 SE12 */
+		status = "ok";
+		dw7800@59 {
+			compatible = "dongwoon,dw7800";
+			status = "disabled";
+			reg = <0x59>;
+			dongwoon,vpwr-on = <0>;
+		};
+};
+
+&spmi_bus {
+	qcom,pmi8998@3 {
+		/delete-node/ pmi8998_haptics;
+		haptics: qcom,haptics@c000 {
+			compatible = "qcom,qpnp-haptics";
+			reg = <0xc000 0x100>;
+			interrupts = <0x3 0xc0 0x0 IRQ_TYPE_EDGE_BOTH>,
+			             <0x3 0xc0 0x1 IRQ_TYPE_EDGE_BOTH>;
+			interrupt-names = "hap-sc-irq", "hap-play-irq";
+			qcom,ilim-ma = <800>;
+			qcom,actuator-type = <0>;
+			qcom,wave-shape = "sine";
+			qcom,play-mode = "direct";
+			qcom,vmax-mv = <3000>;
+			qcom,wave-play-rate-us = <5263>;
+			qcom,lra-auto-res-mode = "none";
+			/delete-property/ qcom,lra-allow-variable-play-rate;
+			status = "okay";
+		};
+	};
+};
