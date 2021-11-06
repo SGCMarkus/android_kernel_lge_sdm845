@@ -244,6 +244,8 @@ enum dsi_dfps_type {
  * @DSI_CMD_SET_ROI:			   Panel ROI update
  * @DSI_CMD_SET_TIMING_SWITCH:             Timing switch
  * @DSI_CMD_SET_POST_TIMING_SWITCH:        Post timing switch
+ * @DSI_CMD_SET_LOW_PERSIST_MODE_OFF:      low persistence mode off
+ * @DSI_CMD_SET_LOW_PERSIST_MODE_ON:       low persistence mode on
  * @DSI_CMD_SET_MAX
  */
 enum dsi_cmd_set_type {
@@ -268,6 +270,11 @@ enum dsi_cmd_set_type {
 	DSI_CMD_SET_ROI,
 	DSI_CMD_SET_TIMING_SWITCH,
 	DSI_CMD_SET_POST_TIMING_SWITCH,
+	DSI_CMD_SET_LOW_PERSIST_MODE_OFF,
+	DSI_CMD_SET_LOW_PERSIST_MODE_ON,
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	DSI_CMD_SET_ON_WITH_APO,
+#endif
 	DSI_CMD_SET_MAX
 };
 
@@ -381,6 +388,9 @@ struct dsi_mode_info {
 	bool dsc_enabled;
 	struct msm_display_dsc_info *dsc;
 	struct msm_roi_caps roi_caps;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	u32 refresh_rate_div;
+#endif
 };
 
 /**

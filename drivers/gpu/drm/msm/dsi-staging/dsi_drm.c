@@ -117,8 +117,12 @@ void dsi_convert_to_drm_mode(const struct dsi_display_mode *dsi_mode,
 
 	/* set mode name */
 	snprintf(drm_mode->name, DRM_DISPLAY_MODE_LEN, "%dx%dx%dx%d",
-		 drm_mode->hdisplay, drm_mode->vdisplay, drm_mode->vrefresh,
-		 drm_mode->clock);
+		 drm_mode->hdisplay, drm_mode->vdisplay,
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+		dsi_mode->timing.refresh_rate_div?(drm_mode->vrefresh/dsi_mode->timing.refresh_rate_div):(drm_mode->vrefresh), drm_mode->clock);
+#else
+		 drm_mode->vrefresh, drm_mode->clock);
+#endif
 }
 
 static int dsi_bridge_attach(struct drm_bridge *bridge)
@@ -336,6 +340,10 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 		 * propagate the private info to the adjusted_mode derived dsi
 		 * mode
 		 */
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+		dsi_mode.timing.refresh_rate = panel_dsi_mode->timing.refresh_rate;
+		dsi_mode.timing.refresh_rate_div = panel_dsi_mode->timing.refresh_rate_div;
+#endif
 		dsi_mode.priv_info = panel_dsi_mode->priv_info;
 		dsi_mode.dsi_mode_flags = panel_dsi_mode->dsi_mode_flags;
 	}
@@ -352,6 +360,7 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 
 		convert_to_dsi_mode(&crtc_state->crtc->state->mode,
 							&cur_dsi_mode);
+#if !IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
 		rc = dsi_display_validate_mode_change(c_bridge->display,
 					&cur_dsi_mode, &dsi_mode);
 		if (rc) {
@@ -359,7 +368,7 @@ static bool dsi_bridge_mode_fixup(struct drm_bridge *bridge,
 				c_bridge->display->name, rc);
 			return false;
 		}
-
+#endif
 		cur_mode = crtc_state->crtc->mode;
 
 		/* No DMS/VRR when drm pipeline is changing */
@@ -811,6 +820,10 @@ int dsi_connector_get_modes(struct drm_connector *connector, void *data)
 		/* set the first mode in list as preferred */
 		if (i == 0)
 			m->type |= DRM_MODE_TYPE_PREFERRED;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+		if (modes[i].timing.refresh_rate_div)
+			m->vrefresh /= modes[i].timing.refresh_rate_div;
+#endif
 		drm_mode_probed_add(connector, m);
 	}
 
@@ -931,6 +944,13 @@ int dsi_conn_post_kickoff(struct drm_connector *connector)
 
 	/* ensure dynamic clk switch flag is reset */
 	c_bridge->dsi_mode.dsi_mode_flags &= ~DSI_MODE_FLAG_DYN_CLK;
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	rc = dsi_display_post_kickoff(display);
+	if (rc) {
+		pr_err("failed new post kickoff\n");
+	}
+#endif
 
 	return 0;
 }

@@ -195,13 +195,28 @@ static void audit_set_portid(struct audit_buffer *ab, __u32 portid)
 	}
 }
 
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+static int audit_check_no_rate_limit_cmdine(void)
+{
+	if (audit_backlog_limit == 99 && audit_rate_limit == 99) {
+		return 1;
+	}
+
+	return 0;
+}
+#endif
+
 void audit_panic(const char *message)
 {
 	switch (audit_failure) {
 	case AUDIT_FAIL_SILENT:
 		break;
 	case AUDIT_FAIL_PRINTK:
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+		if (audit_check_no_rate_limit_cmdine() || printk_ratelimit())
+#else
 		if (printk_ratelimit())
+#endif
 			pr_err("%s\n", message);
 		break;
 	case AUDIT_FAIL_PANIC:
@@ -272,7 +287,11 @@ void audit_log_lost(const char *message)
 	}
 
 	if (print) {
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+		if (audit_check_no_rate_limit_cmdine() || printk_ratelimit())
+#else
 		if (printk_ratelimit())
+#endif
 			pr_warn("audit_lost=%u audit_rate_limit=%u audit_backlog_limit=%u\n",
 				atomic_read(&audit_lost),
 				audit_rate_limit,
@@ -328,11 +347,21 @@ static int audit_do_config_change(char *function_name, u32 *to_change, u32 new)
 
 static int audit_set_rate_limit(u32 limit)
 {
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+	if (audit_check_no_rate_limit_cmdine())
+		return 0;
+	else
+#endif
 	return audit_do_config_change("audit_rate_limit", &audit_rate_limit, limit);
 }
 
 static int audit_set_backlog_limit(u32 limit)
 {
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+	if (audit_check_no_rate_limit_cmdine())
+		return 0;
+	else
+#endif
 	return audit_do_config_change("audit_backlog_limit", &audit_backlog_limit, limit);
 }
 
@@ -394,7 +423,11 @@ static void audit_printk_skb(struct sk_buff *skb)
 	char *data = nlmsg_data(nlh);
 
 	if (nlh->nlmsg_type != AUDIT_EOE) {
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+		if (audit_check_no_rate_limit_cmdine() || printk_ratelimit())
+#else
 		if (printk_ratelimit())
+#endif
 			pr_notice("type=%d %s\n", nlh->nlmsg_type, data);
 		else
 			audit_log_lost("printk limit exceeded");
@@ -1265,6 +1298,29 @@ static int __init audit_backlog_limit_set(char *str)
 }
 __setup("audit_backlog_limit=", audit_backlog_limit_set);
 
+
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+/* Process kernel command-line parameter at boot time.
+ * audit_rate_limit=<n> */
+static int __init audit_rate_limit_set(char *str)
+{
+	u32 audit_rate_limit_arg;
+
+	pr_info("audit_rate_limit: ");
+	if (kstrtouint(str, 0, &audit_rate_limit_arg)) {
+		pr_cont("using default of %u, unable to parse %s\n",
+			audit_rate_limit, str);
+		return 1;
+	}
+
+	audit_rate_limit = audit_rate_limit_arg;
+	pr_cont("%d\n", audit_rate_limit);
+
+	return 1;
+}
+__setup("audit_rate_limit=", audit_rate_limit_set);
+#endif
+
 static void audit_buffer_free(struct audit_buffer *ab)
 {
 	unsigned long flags;
@@ -1427,7 +1483,11 @@ struct audit_buffer *audit_log_start(struct audit_context *ctx, gfp_t gfp_mask,
 					continue;
 			}
 		}
+#ifdef CONFIG_AUDIT_NO_RATE_LIMIT_CMDLINE
+		if (audit_check_no_rate_limit_cmdine() || printk_ratelimit())
+#else
 		if (audit_rate_check() && printk_ratelimit())
+#endif
 			pr_warn("audit_backlog=%d > audit_backlog_limit=%d\n",
 				skb_queue_len(&audit_skb_queue),
 				audit_backlog_limit);

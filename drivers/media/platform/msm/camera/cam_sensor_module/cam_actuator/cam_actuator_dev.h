@@ -125,6 +125,12 @@ struct cam_actuator_ctrl_t {
 	struct i2c_data_settings i2c_data;
 	struct cam_actuator_query_cap act_info;
 	struct intf_params bridge_intf;
+#if defined (CONFIG_MACH_SDM845_JUDYPN) || defined (CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM) /* LGE_CHANGE, 2018-09-11, OIS,AF Driver update for LG EIS, yonghwan.lym@lge.com */
+	/* LGE Actuator */
+	struct msm_act_readout_buffer buf;
+	spinlock_t hall_lock;
+	struct class *camera_class;
+#endif
 };
 
 #endif /* _CAM_ACTUATOR_DEV_H_ */

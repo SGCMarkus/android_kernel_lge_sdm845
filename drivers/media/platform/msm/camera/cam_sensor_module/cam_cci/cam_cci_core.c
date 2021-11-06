@@ -864,12 +864,12 @@ static int32_t cam_cci_data_queue(struct cci_device *cci_dev,
 
 	return rc;
 }
-
+#if 0 //QCT_ORI
 static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 	struct cam_cci_ctrl *c_ctrl)
 {
 	int32_t rc = 0;
-	uint32_t val = 0, i = 0, j = 0;
+	uint32_t val = 0, i = 0, j = 0, irq_mask_update = 0;
 	unsigned long rem_jiffies, flags;
 	int32_t read_words = 0, exp_words = 0;
 	int32_t index = 0, first_byte = 0, total_read_words = 0;
@@ -894,17 +894,34 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 	base = soc_info->reg_map[0].mem_base;
 	mutex_lock(&cci_dev->cci_master_info[master].mutex_q[queue]);
 
-	/*
-	 * Todo: If there is a change in frequency of operation
-	 * Wait for previos transaction to complete
-	 */
+	mutex_lock(&cci_dev->cci_master_info[master].mutex);
+	if (cci_dev->cci_master_info[master].is_first_req == true) {
+		cci_dev->cci_master_info[master].is_first_req = false;
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		down(&cci_dev->cci_master_info[master].master_sem);
+	} else if (c_ctrl->cci_info->i2c_freq_mode
+		!= cci_dev->i2c_freq_mode[master]) {
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		down(&cci_dev->cci_master_info[master].master_sem);
+	} else {
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		cci_dev->cci_master_info[master].freq_ref_cnt++;
+	}
 
 	/* Set the I2C Frequency */
 	rc = cam_cci_set_clk_param(cci_dev, c_ctrl);
 	if (rc < 0) {
 		CAM_ERR(CAM_CCI, "cam_cci_set_clk_param failed rc = %d", rc);
+		mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		goto rel_mutex;
 	}
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 
 	/*
 	 * Call validate queue to make sure queue is empty before starting.
@@ -1048,13 +1065,20 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 			j, total_read_words);
 
 		spin_lock_irqsave(&cci_dev->lock_status, flags);
-		if (cci_dev->irq_status1) {
-			CAM_DBG(CAM_CCI, "clear irq_status1:%x",
-				cci_dev->irq_status1);
-			cam_io_w_mb(cci_dev->irq_status1,
-				base + CCI_IRQ_CLEAR_1_ADDR);
-			cam_io_w_mb(0x1, base + CCI_IRQ_GLOBAL_CLEAR_CMD_ADDR);
-			cci_dev->irq_status1 = 0;
+		if (cci_dev->irqs_disabled) {
+			irq_mask_update =
+				cam_io_r_mb(base + CCI_IRQ_MASK_1_ADDR) |
+				CCI_IRQ_STATUS_1_I2C_M0_RD_THRESHOLD;
+			if (master == MASTER_0 && cci_dev->irqs_disabled &
+				CCI_IRQ_STATUS_1_I2C_M0_RD_THRESHOLD)
+				irq_mask_update |=
+					CCI_IRQ_STATUS_1_I2C_M0_RD_THRESHOLD;
+			else if (master == MASTER_1 && cci_dev->irqs_disabled &
+				CCI_IRQ_STATUS_1_I2C_M1_RD_THRESHOLD)
+				irq_mask_update |=
+					CCI_IRQ_STATUS_1_I2C_M1_RD_THRESHOLD;
+			cam_io_w_mb(irq_mask_update,
+				base + CCI_IRQ_MASK_1_ADDR);
 		}
 		spin_unlock_irqrestore(&cci_dev->lock_status, flags);
 
@@ -1094,9 +1118,15 @@ static int32_t cam_cci_burst_read(struct v4l2_subdev *sd,
 
 rel_mutex:
 	mutex_unlock(&cci_dev->cci_master_info[master].mutex_q[queue]);
+	mutex_lock(&cci_dev->cci_master_info[master].mutex);
+	if (cci_dev->cci_master_info[master].freq_ref_cnt == 0)
+		up(&cci_dev->cci_master_info[master].master_sem);
+	else
+		cci_dev->cci_master_info[master].freq_ref_cnt--;
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 	return rc;
 }
-
+#endif
 static int32_t cam_cci_read(struct v4l2_subdev *sd,
 	struct cam_cci_ctrl *c_ctrl)
 {
@@ -1127,17 +1157,34 @@ static int32_t cam_cci_read(struct v4l2_subdev *sd,
 
 	mutex_lock(&cci_dev->cci_master_info[master].mutex_q[queue]);
 
-	/*
-	 * Todo: If there is a change in frequency of operation
-	 * Wait for previos transaction to complete
-	 */
+	mutex_lock(&cci_dev->cci_master_info[master].mutex);
+	if (cci_dev->cci_master_info[master].is_first_req == true) {
+		cci_dev->cci_master_info[master].is_first_req = false;
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		down(&cci_dev->cci_master_info[master].master_sem);
+	} else if (c_ctrl->cci_info->i2c_freq_mode
+		!= cci_dev->i2c_freq_mode[master]) {
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		down(&cci_dev->cci_master_info[master].master_sem);
+	} else {
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		cci_dev->cci_master_info[master].freq_ref_cnt++;
+	}
 
 	/* Set the I2C Frequency */
 	rc = cam_cci_set_clk_param(cci_dev, c_ctrl);
 	if (rc < 0) {
+		mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 		CAM_ERR(CAM_CCI, "cam_cci_set_clk_param failed rc = %d", rc);
 		goto rel_mutex;
 	}
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 
 	/*
 	 * Call validate queue to make sure queue is empty before starting.
@@ -1279,6 +1326,12 @@ static int32_t cam_cci_read(struct v4l2_subdev *sd,
 	}
 rel_mutex:
 	mutex_unlock(&cci_dev->cci_master_info[master].mutex_q[queue]);
+	mutex_lock(&cci_dev->cci_master_info[master].mutex);
+	if (cci_dev->cci_master_info[master].freq_ref_cnt == 0)
+		up(&cci_dev->cci_master_info[master].master_sem);
+	else
+		cci_dev->cci_master_info[master].freq_ref_cnt--;
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 	return rc;
 }
 
@@ -1302,12 +1355,34 @@ static int32_t cam_cci_i2c_write(struct v4l2_subdev *sd,
 		c_ctrl->cci_info->sid, c_ctrl->cci_info->retries,
 		c_ctrl->cci_info->id_map);
 
+	mutex_lock(&cci_dev->cci_master_info[master].mutex);
+	if (cci_dev->cci_master_info[master].is_first_req == true) {
+		cci_dev->cci_master_info[master].is_first_req = false;
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		down(&cci_dev->cci_master_info[master].master_sem);
+	} else if (c_ctrl->cci_info->i2c_freq_mode
+		!= cci_dev->i2c_freq_mode[master]) {
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		down(&cci_dev->cci_master_info[master].master_sem);
+	} else {
+		CAM_DBG(CAM_CCI, "Master: %d, curr_freq: %d, req_freq: %d",
+			master, cci_dev->i2c_freq_mode[master],
+			c_ctrl->cci_info->i2c_freq_mode);
+		cci_dev->cci_master_info[master].freq_ref_cnt++;
+	}
+
 	/* Set the I2C Frequency */
 	rc = cam_cci_set_clk_param(cci_dev, c_ctrl);
 	if (rc < 0) {
 		CAM_ERR(CAM_CCI, "cam_cci_set_clk_param failed rc = %d", rc);
-		return rc;
+		mutex_unlock(&cci_dev->cci_master_info[master].mutex);
+		goto ERROR;
 	}
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 	/*
 	 * Call validate queue to make sure queue is empty before starting.
 	 * If this call fails, don't proceed with i2c_write call. This is to
@@ -1319,18 +1394,25 @@ static int32_t cam_cci_i2c_write(struct v4l2_subdev *sd,
 	if (rc < 0) {
 		CAM_ERR(CAM_CCI, "Initial validataion failed rc %d",
 			rc);
-		return rc;
+		goto ERROR;
 	}
 	if (c_ctrl->cci_info->retries > CCI_I2C_READ_MAX_RETRIES) {
 		CAM_ERR(CAM_CCI, "More than max retries");
-		return rc;
+		goto ERROR;
 	}
 	rc = cam_cci_data_queue(cci_dev, c_ctrl, queue, sync_en);
 	if (rc < 0) {
 		CAM_ERR(CAM_CCI, "failed rc: %d", rc);
-		return rc;
+		goto ERROR;
 	}
 
+ERROR:
+	mutex_lock(&cci_dev->cci_master_info[master].mutex);
+	if (cci_dev->cci_master_info[master].freq_ref_cnt == 0)
+		up(&cci_dev->cci_master_info[master].master_sem);
+	else
+		cci_dev->cci_master_info[master].freq_ref_cnt--;
+	mutex_unlock(&cci_dev->cci_master_info[master].mutex);
 	return rc;
 }
 
@@ -1457,7 +1539,7 @@ static int32_t cam_cci_read_bytes(struct v4l2_subdev *sd,
 	}
 
 	read_bytes = read_cfg->num_byte;
-
+#if 0 //QCT_ORI
 	/*
 	 * To avoid any conflicts due to back to back trigger of
 	 * THRESHOLD irq's, we reinit the threshold wait before
@@ -1479,8 +1561,9 @@ static int32_t cam_cci_read_bytes(struct v4l2_subdev *sd,
 			cci_dev->is_burst_read = false;
 			rc = cam_cci_read(sd, c_ctrl);
 		}
-		if (rc) {
+		if (rc < 0) {
 			CAM_ERR(CAM_CCI, "failed to read rc:%d", rc);
+			CAM_ERR(CAM_CCI, "failed : master %d, i2c_freq_mode %d, sid 0x%x", master, c_ctrl->cci_info->i2c_freq_mode, c_ctrl->cci_info->sid); /* LGE_CHANGE, add debug log. 2018-11-15 sungmin.cho@lge.com */
 			goto ERROR;
 		}
 
@@ -1493,6 +1576,27 @@ static int32_t cam_cci_read_bytes(struct v4l2_subdev *sd,
 			read_bytes = 0;
 		}
 	} while (read_bytes);
+#else
+	do {
+		if (read_bytes > CCI_READ_MAX)
+			read_cfg->num_byte = CCI_READ_MAX;
+		else
+			read_cfg->num_byte = read_bytes;
+		rc = cam_cci_read(sd, c_ctrl);
+		if (rc < 0) {
+			CAM_ERR(CAM_CCI, "failed rc %d", rc);
+			CAM_ERR(CAM_CCI, "failed : master %d, i2c_freq_mode %d, sid 0x%x", master, c_ctrl->cci_info->i2c_freq_mode, c_ctrl->cci_info->sid); /* LGE_CHANGE, add debug log. 2018-11-15 sungmin.cho@lge.com */
+			goto ERROR;
+		}
+		if (read_bytes > CCI_READ_MAX) {
+			read_cfg->addr += CCI_READ_MAX;
+			read_cfg->data += CCI_READ_MAX;
+			read_bytes -= CCI_READ_MAX;
+		} else {
+			read_bytes = 0;
+		}
+	} while (read_bytes);
+#endif
 
 ERROR:
 	cci_dev->is_burst_read = false;
@@ -1613,17 +1717,14 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 		return rc;
 	}
 
+	mutex_lock(&cci_dev->global_mutex);
 	CAM_DBG(CAM_CCI, "cmd %d", cci_ctrl->cmd);
 	switch (cci_ctrl->cmd) {
 	case MSM_CCI_INIT:
-		mutex_lock(&cci_dev->init_mutex);
 		rc = cam_cci_init(sd, cci_ctrl);
-		mutex_unlock(&cci_dev->init_mutex);
 		break;
 	case MSM_CCI_RELEASE:
-		mutex_lock(&cci_dev->init_mutex);
 		rc = cam_cci_release(sd);
-		mutex_unlock(&cci_dev->init_mutex);
 		break;
 	case MSM_CCI_I2C_READ:
 		rc = cam_cci_read_bytes(sd, cci_ctrl);
@@ -1648,5 +1749,6 @@ int32_t cam_cci_core_cfg(struct v4l2_subdev *sd,
 
 	cci_ctrl->status = rc;
 
+	mutex_unlock(&cci_dev->global_mutex);
 	return rc;
 }

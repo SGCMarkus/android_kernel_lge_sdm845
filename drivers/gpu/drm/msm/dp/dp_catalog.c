@@ -21,6 +21,11 @@
 #include "dp_reg.h"
 #include "msm_kms.h"
 
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+#include <linux/lge_ds3.h>
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
 #define DP_GET_MSB(x)	(x >> 8)
 #define DP_GET_LSB(x)	(x & 0xff)
 
@@ -54,6 +59,22 @@
 	parser->get_io_buf(parser, #x); \
 }
 
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_JUDYPN
+static u8 const vm_pre_emphasis[4][4] = {
+	{0x06, 0x0B, 0x14, 0xFF},       /* pe0, 1.3 db */
+	{0x06, 0x0B, 0x12, 0xFF},       /* pe1, 3.5 db */
+	{0x06, 0x0B, 0xFF, 0xFF},       /* pe2, 6.0 db */
+	{0xFF, 0xFF, 0xFF, 0xFF}        /* pe3, 9.5 db */
+};
+
+/* voltage swing, 0.2v and 1.0v are not support */
+static u8 const vm_voltage_swing[4][4] = {
+	{0x09, 0x0F, 0x16, 0xFF}, /* sw0, 0.4v  */
+	{0x11, 0x1E, 0x1F, 0xFF}, /* sw1, 0.6 v */
+	{0x19, 0x1F, 0xFF, 0xFF}, /* sw1, 0.8 v */
+	{0xFF, 0xFF, 0xFF, 0xFF}  /* sw1, 1.2 v, optional */
+};
+#else
 static u8 const vm_pre_emphasis[4][4] = {
 	{0x00, 0x0B, 0x14, 0xFF},       /* pe0, 0 db */
 	{0x00, 0x0B, 0x12, 0xFF},       /* pe1, 3.5 db */
@@ -68,6 +89,94 @@ static u8 const vm_voltage_swing[4][4] = {
 	{0x19, 0x1F, 0xFF, 0xFF}, /* sw1, 0.8 v */
 	{0xFF, 0xFF, 0xFF, 0xFF}  /* sw1, 1.2 v, optional */
 };
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#include <linux/module.h>
+
+int param_get_byte_hex(char *buffer, const struct kernel_param *kp)
+{
+	return scnprintf(buffer, PAGE_SIZE, "0x%02X", *((u8*)kp->arg));
+}
+const struct kernel_param_ops param_ops_byte_hex = {
+    .set = param_set_byte,
+    .get = param_get_byte_hex
+};
+#define param_check_byte_hex(name, p) param_check_byte(name, p)
+
+#define P_LEVEL_MAX 4
+#define V_LEVEL_MAX 4
+
+static u8 vm_pre_emphasis_ovwr0[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 vm_pre_emphasis_ovwr1[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 vm_pre_emphasis_ovwr2[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 vm_pre_emphasis_ovwr3[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 *vm_pre_emphasis_ovwr[4] = {
+	vm_pre_emphasis_ovwr0,
+	vm_pre_emphasis_ovwr1,
+	vm_pre_emphasis_ovwr2,
+	vm_pre_emphasis_ovwr3,
+};
+module_param_array(vm_pre_emphasis_ovwr0, byte_hex, NULL, S_IRUGO|S_IWUSR);
+module_param_array(vm_pre_emphasis_ovwr1, byte_hex, NULL, S_IRUGO|S_IWUSR);
+module_param_array(vm_pre_emphasis_ovwr2, byte_hex, NULL, S_IRUGO|S_IWUSR);
+module_param_array(vm_pre_emphasis_ovwr3, byte_hex, NULL, S_IRUGO|S_IWUSR);
+
+static u8 get_vm_pre_emphasis(int v, int p)
+{
+	return vm_pre_emphasis_ovwr[v][p]==0xFF?vm_pre_emphasis[v][p]:vm_pre_emphasis_ovwr[v][p];
+}
+
+static u8 vm_voltage_swing_ovwr0[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 vm_voltage_swing_ovwr1[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 vm_voltage_swing_ovwr2[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 vm_voltage_swing_ovwr3[4] = {0xFF, 0xFF, 0xFF, 0xFF};
+static u8 *vm_voltage_swing_ovwr[4] = {
+	vm_voltage_swing_ovwr0,
+	vm_voltage_swing_ovwr1,
+	vm_voltage_swing_ovwr2,
+	vm_voltage_swing_ovwr3,
+};
+module_param_array(vm_voltage_swing_ovwr0, byte_hex, NULL, S_IRUGO|S_IWUSR);
+module_param_array(vm_voltage_swing_ovwr1, byte_hex, NULL, S_IRUGO|S_IWUSR);
+module_param_array(vm_voltage_swing_ovwr2, byte_hex, NULL, S_IRUGO|S_IWUSR);
+module_param_array(vm_voltage_swing_ovwr3, byte_hex, NULL, S_IRUGO|S_IWUSR);
+
+static u8 get_vm_voltage_swing(int v, int p)
+{
+	return vm_voltage_swing_ovwr[v][p]==0xFF?vm_voltage_swing[v][p]:vm_voltage_swing_ovwr[v][p];
+}
+
+static void dp_parser_table(struct dp_parser *parser, char *name, u8** buf)
+{
+	struct device *dev = &parser->pdev->dev;
+	char property_name[1024] = {0,};
+	struct property *data = NULL;
+	int i = 0, cnt = 0;
+	int rc = 0;
+
+	for (i = 0; i < V_LEVEL_MAX; i++) {
+		snprintf(property_name, sizeof(property_name), "%s%d", name, i);
+		data = of_find_property(dev->of_node, property_name, &cnt);
+		if (data) {
+			cnt = (cnt>P_LEVEL_MAX)?P_LEVEL_MAX:cnt;
+			rc = of_property_read_u8_array(dev->of_node, property_name, buf[i], cnt);
+			if (rc) {
+				pr_warn("parse error: %s, rc=%d\n", property_name, rc);
+			}
+		}
+	}
+}
+
+void lge_dp_parser_pre_emphasis_ovwr(struct dp_parser *parser)
+{
+	dp_parser_table(parser, "lge,pre-emphasis-ovwr", vm_pre_emphasis_ovwr);
+}
+void lge_dp_parser_voltage_swing_ovwr(struct dp_parser *parser)
+{
+	dp_parser_table(parser, "lge,voltage-swing-ovwr", vm_voltage_swing_ovwr);
+}
+#endif // CONFIG_LGE_DISPLAY_COMMON
 
 struct dp_catalog_io {
 	struct dp_io_data *dp_ahb;
@@ -307,7 +416,7 @@ static void dp_catalog_aux_update_cfg(struct dp_catalog_aux *aux,
 
 	current_index = cfg[type].current_index;
 	new_index = (current_index + 1) % cfg[type].cfg_cnt;
-	pr_debug("Updating %s from 0x%08x to 0x%08x\n",
+	pr_info("Updating %s from 0x%08x to 0x%08x\n",
 		dp_phy_aux_config_type_to_string(type),
 	cfg[type].lut[current_index], cfg[type].lut[new_index]);
 
@@ -1142,8 +1251,21 @@ static void dp_catalog_ctrl_update_vx_px(struct dp_catalog_ctrl *ctrl,
 
 	pr_debug("hw: v=%d p=%d\n", v_level, p_level);
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	value0 = get_vm_voltage_swing(v_level, p_level);
+	value1 = get_vm_pre_emphasis(v_level, p_level);
+#else
 	value0 = vm_voltage_swing[v_level][p_level];
 	value1 = vm_pre_emphasis[v_level][p_level];
+#endif
+
+#if IS_ENABLED(CONFIG_LGE_DUAL_SCREEN)
+	if (is_ds_connected()) {
+		value0 = 0x10; // 575.5 mV
+		value1 = 0x11; // post emp : -4.4dB
+	}
+	pr_err("[drm-dp] value0 0x%0x, value1 0x%0x\n", value0, value1);
+#endif
 
 	/* program default setting first */
 

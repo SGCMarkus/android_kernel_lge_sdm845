@@ -427,6 +427,17 @@ int cam_context_init(struct cam_context *ctx,
  */
 void cam_context_putref(struct cam_context *ctx);
 
+/* LGE_CHANGE, CST, put back all ref for ctx */
+/**
+ * cam_context_put_all_ref()
+ *
+ * @brief:       Put back all context reference.
+ *
+ * @ctx:                  Context for which ref is returned
+ *
+ */
+void cam_context_put_allref(struct cam_context *ctx);
+
 /**
  * cam_context_getref()
  *

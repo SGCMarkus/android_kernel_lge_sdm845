@@ -1,0 +1,64 @@
+/* Copyright (c) 2018, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&vendor {
+	lge_sbu_switch: lge_sbu_switch {
+		compatible = "lge,lge_sbu_switch";
+
+		lge,oe-gpio = <&tlmm 21 0>;
+		lge,sel-gpio = <&tlmm 99 0>;
+		lge,ovp-gpio = <&tlmm 79 0>;
+
+		pinctrl-names = "default";
+		pinctrl-0 = <&lge_sbu_switch_oe_active &lge_sbu_switch_sel_active &lge_sbu_switch_ccov_active>;
+	};
+};
+
+&tlmm {
+	lge_sbu_switch_oe_active: lge_sbu_switch_oe_active {
+		mux {
+			pins = "gpio21";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio21";
+			drive-strength = <6>;
+			bias-bus-hold;
+		};
+	};
+
+	lge_sbu_switch_sel_active: lge_sbu_switch_sel_active {
+		mux {
+			pins = "gpio99";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio99";
+			drive-strength = <2>;
+			bias-disable;
+		};
+	};
+
+	lge_sbu_switch_ccov_active: lge_sbu_switch_ccov_active {
+		mux {
+			pins = "gpio79";
+			function = "gpio";
+		};
+
+		config {
+			pins = "gpio79";
+			bias-pull-up;
+		};
+	};
+};

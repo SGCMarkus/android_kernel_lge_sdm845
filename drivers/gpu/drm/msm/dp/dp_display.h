@@ -19,6 +19,13 @@
 #include <drm/msm_drm.h>
 
 #include "dp_panel.h"
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+#include <linux/extcon.h>
+#define EXT_DD_MAX_COUNT 3
+#endif
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+#include "../lge/dp/lge_dp_def.h"
+#endif
 
 struct dp_display {
 	struct drm_device *drm_dev;
@@ -54,8 +61,14 @@ struct dp_display {
 	int (*get_display_type)(struct dp_display *dp_display,
 			const char **display_type);
 	bool (*vsc_sdp_supported)(struct dp_display *dp_display);
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	struct lge_dp_display lge_dp;
+#endif
 };
 
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+int is_dd_connected(void);
+#endif
 int dp_display_get_num_of_displays(void);
 int dp_display_get_displays(void **displays, int count);
 bool dp_connector_mode_needs_full_range(void *display);

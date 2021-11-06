@@ -2998,6 +2998,19 @@ void update_cpu_cluster_capacity(const cpumask_t *cpus)
 	__update_min_max_capacity();
 
 	release_rq_locks_irqrestore(cpu_possible_mask, &flags);
+#ifdef CONFIG_LGE_PM_DEBUG
+	list_for_each_entry_rcu(cluster, &cluster_head, list) {
+		pr_info_ratelimited("Cluster->id[%d], cur_freq:%u, min_freq:%u,"
+				" max_freq:%u, max_mitigated_freq:%u,"
+				" capacity:%d\n",
+				cluster->id,
+				cluster->cur_freq,
+				cluster->min_freq,
+				cluster->max_freq,
+				cluster->max_mitigated_freq,
+				cluster->capacity);
+	}
+#endif
 }
 
 static unsigned long max_cap[NR_CPUS];

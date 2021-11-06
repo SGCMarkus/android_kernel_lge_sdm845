@@ -108,6 +108,9 @@ enum fg_debug_flag {
 	FG_BUS_READ		= BIT(6), /* Show REGMAP reads */
 	FG_CAP_LEARN		= BIT(7), /* Show capacity learning */
 	FG_TTF			= BIT(8), /* Show time to full */
+#ifdef CONFIG_LGE_PM_DEBUG
+	FG_LGE			= BIT(15),
+#endif
 };
 
 enum awake_reasons {
@@ -192,7 +195,6 @@ enum fg_sram_param_id {
 	FG_SRAM_RECHARGE_SOC_THR,
 	FG_SRAM_SYNC_SLEEP_THR,
 	FG_SRAM_RECHARGE_VBATT_THR,
-	FG_SRAM_KI_COEFF_LOW_DISCHG,
 	FG_SRAM_KI_COEFF_MED_DISCHG,
 	FG_SRAM_KI_COEFF_HI_DISCHG,
 	FG_SRAM_KI_COEFF_HI_CHG,
@@ -200,6 +202,11 @@ enum fg_sram_param_id {
 	FG_SRAM_ESR_TIGHT_FILTER,
 	FG_SRAM_ESR_BROAD_FILTER,
 	FG_SRAM_SLOPE_LIMIT,
+#ifdef CONFIG_LGE_PM
+	FG_SRAM_KI_COEFF_LOW_DISCHG,
+	FG_SRAM_KI_CURR_LOWTH_DISCHG,
+	FG_SRAM_KI_CURR_HIGHTH_DISCHG,
+#endif
 	FG_SRAM_MAX,
 };
 
@@ -259,8 +266,16 @@ enum slope_limit_status {
 	SLOPE_LIMIT_NUM_COEFFS,
 };
 
+#ifdef CONFIG_LGE_PM
+#define MAX_ESR_RT_FILTER_LEVEL		3
+#endif
+
 enum esr_filter_status {
+#ifdef CONFIG_LGE_PM
+	ROOM_TEMP = 0,
+#else
 	ROOM_TEMP = 1,
+#endif
 	LOW_TEMP,
 	RELAX_TEMP,
 };
@@ -285,6 +300,9 @@ struct fg_dt_props {
 	bool	use_esr_sw;
 	bool	disable_esr_pull_dn;
 	bool	disable_fg_twm;
+#ifdef CONFIG_LGE_PM
+	bool	dynamic_ki_en;
+#endif
 	int	cutoff_volt_mv;
 	int	empty_volt_mv;
 	int	vbatt_low_thr_mv;
@@ -316,7 +334,14 @@ struct fg_dt_props {
 	int	esr_broad_flt_upct;
 	int	esr_tight_lt_flt_upct;
 	int	esr_broad_lt_flt_upct;
+#ifdef CONFIG_LGE_PM
+	int	cutoff_lt_volt_mv;
+	int	cutoff_lt_curr_ma;
+	int	esr_flt_rt_switch_temp[MAX_ESR_RT_FILTER_LEVEL];
+	int	esr_flt_rt_duration[MAX_ESR_RT_FILTER_LEVEL];
+#else
 	int	esr_flt_rt_switch_temp;
+#endif
 	int	esr_tight_rt_flt_upct;
 	int	esr_broad_rt_flt_upct;
 	int	slope_limit_temp;
@@ -329,6 +354,10 @@ struct fg_dt_props {
 	int	jeita_thresholds[NUM_JEITA_LEVELS];
 	int	ki_coeff_soc[KI_COEFF_SOC_LEVELS];
 	int	ki_coeff_low_dischg[KI_COEFF_SOC_LEVELS];
+#ifdef CONFIG_LGE_PM
+	int	ki_curr_lowth_dischg;
+	int	ki_curr_highth_dischg;
+#endif
 	int	ki_coeff_med_dischg[KI_COEFF_SOC_LEVELS];
 	int	ki_coeff_hi_dischg[KI_COEFF_SOC_LEVELS];
 	int	slope_limit_coeffs[SLOPE_LIMIT_NUM_COEFFS];
@@ -452,6 +481,9 @@ struct fg_chip {
 	struct fg_dt_props	dt;
 	struct fg_batt_props	bp;
 	struct fg_cyc_ctr_data	cyc_ctr;
+#ifdef CONFIG_LGE_PM
+	struct fg_cyc_ctr_data	cyc_ctr_backup;
+#endif
 	struct notifier_block	nb;
 	struct notifier_block	twm_nb;
 	struct fg_cap_learning  cl;
@@ -513,6 +545,11 @@ struct fg_chip {
 	struct work_struct	esr_sw_work;
 	struct delayed_work	ttf_work;
 	struct delayed_work	sram_dump_work;
+#ifdef CONFIG_LGE_PM
+	int			esr_flt_rt_lvl;
+	struct delayed_work	polling_voltage_gap_work;
+	struct delayed_work	ki_coeff_work;
+#endif
 	struct delayed_work	pl_enable_work;
 	struct work_struct	esr_filter_work;
 	struct alarm		esr_filter_alarm;

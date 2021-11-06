@@ -236,6 +236,79 @@ static inline void stat(const struct kmem_cache *s, enum stat_item si)
  * 			Core slab cache functions
  *******************************************************************/
 
+#ifdef CONFIG_LGE_SLUB_UAF_DEBUG
+int set_memory_valid(unsigned long addr, int numpages, int enable);
+
+static inline void slab_set_page_valid(struct kmem_cache *s, void *object, int enable)
+{
+	int numpages = (s->object_size + PAGE_SIZE - 1) >> PAGE_SHIFT;
+	set_memory_valid(((unsigned long)object), numpages, enable);
+}
+#endif
+
+#ifdef CONFIG_LGE_SLUB_SIMPLE_DEBUG
+
+#define SIMPLE_TRACK_ADDRS_COUNT	10
+struct simple_track {
+	void **fp1;
+#ifdef CONFIG_LGE_SLUB_FREEPOINTER_DEBUG
+	void **fp2;
+#endif
+	unsigned long addr;
+#ifdef CONFIG_STACKTRACE
+	unsigned long addrs[SIMPLE_TRACK_ADDRS_COUNT];	/* Called from address */
+#endif
+	int cpu;		/* Was running on cpu */
+	int pid;		/* Pid context */
+};
+
+static noinline struct simple_track *get_simple_track(const struct kmem_cache *s, void *object)
+{
+	if(unlikely(s->offset) || s->object_size < sizeof(struct simple_track))
+		return NULL;
+	return object;
+}
+
+static void set_simple_track(struct kmem_cache *s, void *object, unsigned long addr)
+{
+	struct simple_track *p = get_simple_track(s, object);
+
+	if(unlikely(!p))
+		return;
+
+	if (addr) {
+#ifdef CONFIG_STACKTRACE
+		struct stack_trace trace;
+		int i;
+
+		trace.nr_entries = 0;
+		trace.max_entries = SIMPLE_TRACK_ADDRS_COUNT;
+		trace.entries = p->addrs;
+		trace.skip = 3;
+		kasan_disable_current();
+		save_stack_trace(&trace);
+		kasan_enable_current();
+
+		/* See rant in lockdep.c */
+		if (trace.nr_entries != 0 &&
+		    trace.entries[trace.nr_entries - 1] == ULONG_MAX)
+			trace.nr_entries--;
+
+		for (i = trace.nr_entries; i < SIMPLE_TRACK_ADDRS_COUNT; i++)
+			p->addrs[i] = 0;
+#endif
+		p->addr = addr;
+		p->cpu = smp_processor_id();
+		p->pid = current->pid;
+	}
+	else {
+		p->addr = 0xDEAD000000000001;
+		p->cpu = -1;
+		p->pid = -1;
+	}
+}
+#endif
+
 static inline void *get_freepointer(struct kmem_cache *s, void *object)
 {
 	return *(void **)(object + s->offset);
@@ -259,8 +332,76 @@ static inline void *get_freepointer_safe(struct kmem_cache *s, void *object)
 
 static inline void set_freepointer(struct kmem_cache *s, void *object, void *fp)
 {
+#ifdef CONFIG_LGE_SLUB_FREEPOINTER_DEBUG
+	struct simple_track *p = get_simple_track(s, object);
+	if(unlikely(!p)) {
+		*(void **)(object + s->offset) = fp;
+		return;
+	}
+
+	p->fp1 = p->fp2 = fp;
+#else
 	*(void **)(object + s->offset) = fp;
+#endif
 }
+
+#ifdef CONFIG_LGE_SLUB_SIMPLE_DEBUG
+/* Supports checking bulk free of a constructed freelist */
+static noinline void free_simple_debug_processing(
+	struct kmem_cache *s, struct page *page,
+	void *head, void *tail, int bulk_cnt,
+	unsigned long addr)
+{
+	struct kmem_cache_node *n = get_node(s, page_to_nid(page));
+	void *object = head;
+	int cnt = 0;
+	unsigned long uninitialized_var(flags);
+
+	spin_lock_irqsave(&n->list_lock, flags);
+	bit_spin_lock(PG_locked, &page->flags);
+
+simple_next_object:
+	cnt++;
+
+	set_simple_track(s, object, addr);
+
+	/* Reached end of constructed freelist yet? */
+	if (object != tail) {
+		object = get_freepointer(s, object);
+		goto simple_next_object;
+	}
+
+	if (cnt != bulk_cnt)
+		BUG();
+
+	__bit_spin_unlock(PG_locked, &page->flags);
+	spin_unlock_irqrestore(&n->list_lock, flags);
+
+#ifdef CONFIG_LGE_SLUB_UAF_DEBUG
+	if (s->object_size >= PAGE_SIZE)
+		slab_set_page_valid(s, head, 0);
+#endif
+
+	return;
+}
+
+#ifdef CONFIG_LGE_SLUB_FREEPOINTER_DEBUG
+static noinline void slab_alloc_debugging(struct kmem_cache *s, void *object)
+{
+	struct simple_track *p = get_simple_track(s, object);
+
+	if(unlikely(!object || !p))
+		return;
+
+	p->fp1 = NULL;
+	p->fp2 = NULL;
+	p->addr = 0xDEAD000000000002;
+	p->cpu = -1;
+	p->pid = -1;
+}
+#endif
+
+#endif
 
 /* Loop over all objects in a slab */
 #define for_each_object(__p, __s, __addr, __objects) \
@@ -669,7 +810,9 @@ static void print_trailer(struct kmem_cache *s, struct page *page, u8 *p)
 #ifdef CONFIG_SLUB_DEBUG_PANIC_ON
 static void slab_panic(const char *cause)
 {
-	panic("%s\n", cause);
+	/* panic("%s\n", cause); */
+	printk("%s, %s\n", __func__, cause);
+	BUG();
 }
 #else
 static inline void slab_panic(const char *cause) {}
@@ -740,6 +883,11 @@ static int check_bytes_and_report(struct kmem_cache *s, struct page *page,
 		end--;
 
 	slab_bug(s, "%s overwritten", what);
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	{
+		pr_err("INFO: physical address: 0x%llx, virtual address: 0x%p\n",(unsigned long long)virt_to_phys((void *)fault),fault);
+	}
+#endif
 	pr_err("INFO: 0x%p-0x%p. First byte 0x%x instead of 0x%x\n",
 					fault, end - 1, fault[0], value);
 	print_trailer(s, page, object);
@@ -834,8 +982,8 @@ static int slab_pad_check(struct kmem_cache *s, struct page *page)
 	while (end > fault && end[-1] == POISON_INUSE)
 		end--;
 
-	slab_err(s, page, "Padding overwritten. 0x%p-0x%p", fault, end - 1);
 	print_section(KERN_ERR, "Padding ", end - remainder, remainder);
+	slab_err(s, page, "Padding overwritten. 0x%p-0x%p", fault, end - 1);
 
 	restore_bytes(s, "slab padding", POISON_INUSE, end - remainder, end);
 	return 0;
@@ -1658,8 +1806,16 @@ static void __free_slab(struct kmem_cache *s, struct page *page)
 
 		slab_pad_check(s, page);
 		for_each_object(p, s, page_address(page),
+#ifdef CONFIG_LGE_SLUB_UAF_DEBUG
+						page->objects) {
+			if (s->object_size >= PAGE_SIZE)
+				slab_set_page_valid(s, p, 1);
+			check_object(s, page, p, SLUB_RED_INACTIVE);
+		}
+#else
 						page->objects)
 			check_object(s, page, p, SLUB_RED_INACTIVE);
+#endif
 	}
 
 	kmemcheck_free_shadow(page, compound_order(page));
@@ -2605,6 +2761,11 @@ new_slab:
 	if (likely(!kmem_cache_debug(s) && pfmemalloc_match(page, gfpflags)))
 		goto load_freelist;
 
+#ifdef CONFIG_LGE_SLUB_UAF_DEBUG
+	if (s->object_size >= PAGE_SIZE)
+		slab_set_page_valid(s, freelist, 1);
+#endif
+
 	/* Only entered in the debug case */
 	if (kmem_cache_debug(s) &&
 			!alloc_debug_processing(s, page, freelist, addr))
@@ -2637,6 +2798,11 @@ static void *__slab_alloc(struct kmem_cache *s, gfp_t gfpflags, int node,
 #endif
 
 	p = ___slab_alloc(s, gfpflags, node, addr, c);
+
+#ifdef CONFIG_LGE_SLUB_FREEPOINTER_DEBUG
+	slab_alloc_debugging(s, p);
+#endif
+
 	local_irq_restore(flags);
 	return p;
 }
@@ -2735,6 +2901,15 @@ redo:
 
 	slab_post_alloc_hook(s, gfpflags, 1, &object);
 
+#ifdef CONFIG_LGE_SLUB_FREEPOINTER_DEBUG
+	do {
+		struct simple_track *p = get_simple_track(s, object);
+		if(unlikely(!p))
+			return object;
+		BUG_ON(p->fp1 != p->fp2);
+	} while (0);
+#endif
+
 	return object;
 }
 
@@ -2817,9 +2992,13 @@ static void __slab_free(struct kmem_cache *s, struct page *page,
 
 	stat(s, FREE_SLOWPATH);
 
+#ifdef CONFIG_LGE_SLUB_SIMPLE_DEBUG
+	free_simple_debug_processing(s, page, head, tail, cnt, addr);
+#else
 	if (kmem_cache_debug(s) &&
 	    !free_debug_processing(s, page, head, tail, cnt, addr))
 		return;
+#endif
 
 	do {
 		if (unlikely(n)) {
@@ -3154,6 +3333,10 @@ int kmem_cache_alloc_bulk(struct kmem_cache *s, gfp_t flags, size_t size,
 					    _RET_IP_, c);
 			if (unlikely(!p[i]))
 				goto error;
+
+#ifdef CONFIG_LGE_SLUB_FREEPOINTER_DEBUG
+			slab_alloc_debugging(s, p[i]);
+#endif
 
 			c = this_cpu_ptr(s->cpu_slab);
 			continue; /* goto for-loop */

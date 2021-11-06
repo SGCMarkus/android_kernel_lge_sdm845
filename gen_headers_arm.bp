@@ -350,6 +350,7 @@ gen_headers_out_arm = [
     "linux/kvm.h",
     "linux/kvm_para.h",
     "linux/l2tp.h",
+    "linux/lib_lge_triton.h",
     "linux/libc-compat.h",
     "linux/limits.h",
     "linux/lirc.h",

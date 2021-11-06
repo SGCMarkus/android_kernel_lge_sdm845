@@ -174,7 +174,9 @@ struct dp_parser {
 	struct dp_pinctrl pinctrl;
 	struct dp_io io;
 	struct dp_display_data disp_data;
-
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	bool lge_dp_use;
+#endif
 	u8 l_map[4];
 	struct dp_aux_cfg aux_cfg[AUX_CFG_LEN];
 	u32 max_pclk_khz;

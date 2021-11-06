@@ -872,6 +872,7 @@ config QMP_DEBUGFS_CLIENT
 	  to Alway On processor using QMP transport.
 
 source "drivers/soc/qcom/memshare/Kconfig"
+source "drivers/soc/qcom/lge/Kconfig"
 
 config MSM_REMOTEQDSS
 	bool "Allow debug tools to enable events on other processors"

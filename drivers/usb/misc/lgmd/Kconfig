@@ -1,0 +1,6 @@
+config LGE_USB_LGMD18_JUDY
+	boolean "LGE USB Moisture Detector for JUDY in 2018"
+	default y if LGE_USB_LGMD18 && MACH_SDM845_JUDY
+	select LGE_USB_SBU_SWITCH
+	help
+	  Support moisture deteator for judy in 2018.

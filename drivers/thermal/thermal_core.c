@@ -59,6 +59,11 @@ static LIST_HEAD(thermal_tz_list);
 static LIST_HEAD(thermal_cdev_list);
 static LIST_HEAD(thermal_governor_list);
 
+#ifdef CONFIG_LGE_PM
+struct list_head thermal_cdev_debug_list = LIST_HEAD_INIT(thermal_cdev_debug_list);
+#define PMI8998_TZ_TYPE_LEN	10
+#endif
+
 static DEFINE_MUTEX(thermal_list_lock);
 static DEFINE_MUTEX(thermal_governor_lock);
 
@@ -596,6 +601,16 @@ static void store_temperature(struct thermal_zone_device *tz, int temp)
 static void update_temperature(struct thermal_zone_device *tz)
 {
 	int temp, ret;
+#ifdef CONFIG_LGE_PM
+	static bool init_flag = false;
+	if (!init_flag && !strncmp(tz->type, "pmi8998_tz", 10)) {
+		init_flag = true;
+		temp = 25000;
+		store_temperature(tz, temp);
+
+		return;
+	}
+#endif
 
 	ret = thermal_zone_get_temp(tz, &temp);
 	if (ret) {
@@ -1845,6 +1860,9 @@ __thermal_cooling_device_register(struct device_node *np,
 	/* Add 'this' new cdev to the global cdev list */
 	mutex_lock(&thermal_list_lock);
 	list_add(&cdev->node, &thermal_cdev_list);
+#ifdef CONFIG_LGE_PM
+	thermal_cdev_debug_list = thermal_cdev_list;
+#endif
 	mutex_unlock(&thermal_list_lock);
 
 	/* Update binding information for 'this' new cdev */
@@ -2000,8 +2018,13 @@ void thermal_cdev_update(struct thermal_cooling_device *cdev)
 	cdev->updated = true;
 	mutex_unlock(&cdev->lock);
 	trace_cdev_update(cdev, current_target, min_target);
+#ifdef CONFIG_LGE_PM_DEBUG
+	pr_info_ratelimited("%s set to state %lu min state %lu\n",
+				cdev->type, current_target, min_target);
+#else
 	dev_dbg(&cdev->device, "set to state %lu min state %lu\n",
 				current_target, min_target);
+#endif
 }
 EXPORT_SYMBOL(thermal_cdev_update);
 

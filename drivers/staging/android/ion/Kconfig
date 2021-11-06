@@ -65,3 +65,10 @@ config ALLOC_BUFFERS_IN_4K_CHUNKS
 	help
           Choose this option if you want ION to allocate buffers in
           only 4KB chunks.
+
+config ION_DEBUGGING_PROCFS
+	bool "ion debugging with /proc/ioninfo"
+	depends on ION
+	help
+	  Choose this option to debug with /proc/ioninfo. R OS doesn't support debugfs
+	  and need to debug ion memory. Instead of debugfs, procfs will be added.

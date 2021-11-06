@@ -462,8 +462,16 @@ static int __arm_lpae_map(struct arm_lpae_io_pgtable *data, unsigned long iova,
 	if (!pte) {
 		cptep = __arm_lpae_alloc_pages(ARM_LPAE_GRANULE(data),
 					       GFP_ATOMIC, cfg, cookie);
-		if (!cptep)
-			return -ENOMEM;
+		if (!cptep) {
+			//try allocating one more
+			//because allocation function with atomic option cann't directly reclaim pages
+			//but it wakes up kswapd
+			cptep = __arm_lpae_alloc_pages(ARM_LPAE_GRANULE(data),
+						GFP_ATOMIC, cfg, cookie);
+			if (!cptep)
+				return -ENOMEM;
+		}
+
 
 		pte = __pa(cptep) | ARM_LPAE_PTE_TYPE_TABLE;
 		if (cfg->quirks & IO_PGTABLE_QUIRK_ARM_NS)

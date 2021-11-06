@@ -13,6 +13,7 @@
  */
 
 #define pr_fmt(fmt)	"[drm-dp] %s: " fmt, __func__
+#define DEBUG
 
 #include <linux/types.h>
 #include <linux/completion.h>
@@ -42,6 +43,18 @@
 #define MR_LINK_PRBS7 0x100
 #define MR_LINK_CUSTOM80 0x200
 #define MR_LINK_TRAINING4  0x40
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+#include <linux/lge_ds3.h>
+#include <linux/hall_ic.h>
+
+extern struct hallic_dev dd_lt_dev;
+extern bool is_ds_connected(void);
+#endif
+extern bool is_ds_connected(void);
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+bool dp_lt1_state;
+int dp_ctrl_status;
+#endif
 
 struct dp_vc_tu_mapping_table {
 	u32 vic;
@@ -144,6 +157,10 @@ static void dp_ctrl_push_idle(struct dp_ctrl *dp_ctrl)
 		pr_warn("PUSH_IDLE pattern timedout\n");
 
 	pr_debug("mainlink off done\n");
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	dp_lt1_state = false;
+#endif
 }
 
 static void dp_ctrl_config_ctrl(struct dp_ctrl_private *ctrl)
@@ -943,6 +960,14 @@ static int dp_ctrl_link_rate_down_shift(struct dp_ctrl_private *ctrl)
 	if (!ctrl)
 		return -EINVAL;
 
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	if (ctrl->parser->lge_dp_use && !dp_lt1_state) {
+		dp_lt1_state = true;
+		pr_info("[drm-dp] lge_dp_use LT#1 failed, no action down shift BW \n ");
+		return 0;
+	}
+#endif
+
 	switch (ctrl->link->link_params.bw_code) {
 	case DP_LINK_BW_8_1:
 		ctrl->link->link_params.bw_code = DP_LINK_BW_5_4;
@@ -956,7 +981,12 @@ static int dp_ctrl_link_rate_down_shift(struct dp_ctrl_private *ctrl)
 		ctrl->link->link_params.bw_code = DP_LINK_BW_1_62;
 		break;
 	};
-
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	if (is_ds_connected()) {
+		pr_info("Force set BW 2.7G for DS3\n");
+		ctrl->link->link_params.bw_code = DP_LINK_BW_2_7;
+	}
+#endif
 	pr_debug("new bw code=0x%x\n", ctrl->link->link_params.bw_code);
 
 	return ret;
@@ -1042,7 +1072,22 @@ static int dp_ctrl_link_train(struct dp_ctrl_private *ctrl)
 	struct drm_dp_link link_info = {0};
 
 	ctrl->link->phy_params.p_level = 0;
+
+#ifdef CONFIG_LGE_DISPLAY_COMMON
+	if (ctrl->parser->lge_dp_use && !dp_lt1_state)
+		ctrl->link->phy_params.v_level = 2;
+#ifdef CONFIG_LGE_DUAL_SCREEN
+	else if (is_ds_connected())
+		ctrl->link->phy_params.v_level = 2;
+#endif
+	else
+		ctrl->link->phy_params.v_level = 0;
+
+	pr_info("lge_dp_use set : %d, swing level set : %d\n",
+		ctrl->parser->lge_dp_use, ctrl->link->phy_params.v_level);
+#else
 	ctrl->link->phy_params.v_level = 0;
+#endif
 
 	dp_ctrl_config_ctrl(ctrl);
 
@@ -1392,6 +1437,7 @@ static void dp_ctrl_reset(struct dp_ctrl *dp_ctrl)
 static int dp_ctrl_on(struct dp_ctrl *dp_ctrl)
 {
 	int rc = 0;
+	static int temp = 0;
 	struct dp_ctrl_private *ctrl;
 	u32 rate = 0;
 	u32 link_train_max_retries = 100;
@@ -1458,8 +1504,17 @@ static int dp_ctrl_on(struct dp_ctrl *dp_ctrl)
 		dp_ctrl_enable_mainlink_clocks(ctrl);
 	}
 
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	if(rc) {
+		if (is_ds_connected()) {
+			hallic_set_state(&dd_lt_dev, -2);
+		}
+	}
+#endif
+
 	if (ctrl->link->sink_request & DP_TEST_LINK_PHY_TEST_PATTERN)
 		dp_ctrl_send_phy_test_pattern(ctrl);
+	ctrl->power_on = true;
 
 	ctrl->power_on = true;
 	pr_debug("End-\n");
@@ -1485,6 +1540,9 @@ static void dp_ctrl_off(struct dp_ctrl *dp_ctrl)
 
 	dp_ctrl_disable_mainlink_clocks(ctrl);
 
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	dp_ctrl_status = 0;
+#endif
 	ctrl->power_on = false;
 	pr_debug("DP off done\n");
 }
@@ -1551,7 +1609,6 @@ struct dp_ctrl *dp_ctrl_get(struct dp_ctrl_in *in)
 	dp_ctrl->reset	   = dp_ctrl_reset;
 	dp_ctrl->link_maintenance = dp_ctrl_link_maintenance;
 	dp_ctrl->process_phy_test_request = dp_ctrl_process_phy_test_request;
-
 	return dp_ctrl;
 error:
 	return ERR_PTR(rc);

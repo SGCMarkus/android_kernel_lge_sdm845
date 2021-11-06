@@ -337,6 +337,9 @@ bcl_read_exit:
 	return ret;
 }
 
+#ifdef CONFIG_LGE_PM
+extern void workaround_control_vbus2_regulator_trigger(void);
+#endif
 static irqreturn_t bcl_handle_irq(int irq, void *data)
 {
 	struct bcl_peripheral_data *perph_data =
@@ -407,6 +410,10 @@ static irqreturn_t bcl_handle_irq(int irq, void *data)
 	if (!notify)
 		pr_err_ratelimited("Irq:%d triggered. status:%u\n",
 					irq, irq_status);
+#ifdef CONFIG_LGE_PM
+	if (irq_status & BCL_IRQ_IBAT_L0)
+		workaround_control_vbus2_regulator_trigger();
+#endif
 
 	return IRQ_HANDLED;
 

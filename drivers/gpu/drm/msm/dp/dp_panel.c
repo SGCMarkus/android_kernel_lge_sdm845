@@ -25,6 +25,13 @@
 #define VSC_SDP_EXTENSION_FOR_COLORIMETRY_SUPPORTED BIT(3)
 #define VSC_EXT_VESA_SDP_SUPPORTED BIT(4)
 #define VSC_EXT_VESA_SDP_CHAINING_SUPPORTED BIT(5)
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+#include <linux/lge_ds3.h>
+extern void request_dualscreen_recovery(void);
+#endif
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+extern bool is_kopin;
+#endif
 
 enum dp_panel_hdr_pixel_encoding {
 	RGB,
@@ -116,7 +123,25 @@ static const u8 vendor_name[8] = {81, 117, 97, 108, 99, 111, 109, 109};
 /* MODEL NAME */
 static const u8 product_desc[16] = {83, 110, 97, 112, 100, 114, 97, 103,
 	111, 110, 0, 0, 0, 0, 0, 0};
-
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+static u8 kopin_edid[256] = {
+	0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x31, 0xd8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x05, 0x16, 0x01, 0x03, 0x6d, 0x11, 0x0a, 0x78, 0xea, 0x5e, 0xc0, 0xa4, 0x59, 0x4a, 0x98, 0x25,
+	0x20, 0x50, 0x54, 0x00, 0x00, 0x00, 0x4b, 0xc0, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x2f, 0x0d, 0x50, 0xf0, 0x30, 0xe0, 0x25, 0x10, 0x10, 0x70,
+	0x68, 0x00, 0xb0, 0x64, 0x00, 0x00, 0x00, 0x1e, 0x00, 0x00, 0x00, 0xff, 0x00, 0x4c, 0x69, 0x6e,
+	0x75, 0x78, 0x20, 0x23, 0x30, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0xfd, 0x00, 0x3b,
+	0x3d, 0x1e, 0x20, 0x04, 0x00, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0xfc,
+	0x00, 0x4b, 0x6f, 0x70, 0x69, 0x6e, 0x20, 0x4b, 0x43, 0x44, 0x0a, 0x20, 0x20, 0x20, 0x00, 0x34,
+	0x00, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x00, 0x31, 0xd8, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+	0x05, 0x16, 0x01, 0x03, 0x6d, 0x11, 0x0a, 0x78, 0xea, 0x5e, 0xc0, 0xa4, 0x59, 0x4a, 0x98, 0x25,
+	0x20, 0x50, 0x54, 0x00, 0x00, 0x00, 0x4b, 0xc0, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x01,
+	0x01, 0x01, 0x01, 0x01, 0x01, 0x01, 0x2f, 0x0d, 0x50, 0xf0, 0x30, 0xe0, 0x25, 0x10, 0x10, 0x70,
+	0x68, 0x00, 0xb0, 0x64, 0x00, 0x00, 0x00, 0x1e, 0x00, 0x00, 0x00, 0xff, 0x00, 0x4c, 0x69, 0x6e,
+	0x75, 0x78, 0x20, 0x23, 0x30, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0xfd, 0x00, 0x3b,
+	0x3d, 0x1e, 0x20, 0x04, 0x00, 0x0a, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00, 0x00, 0xfc,
+	0x00, 0x4b, 0x6f, 0x70, 0x69, 0x6e, 0x20, 0x4b, 0x43, 0x44, 0x0a, 0x20, 0x20, 0x20, 0x00, 0x34};
+#endif
 static int dp_panel_read_dpcd(struct dp_panel *dp_panel, bool multi_func)
 {
 	int rlen, rc = 0;
@@ -138,6 +163,12 @@ static int dp_panel_read_dpcd(struct dp_panel *dp_panel, bool multi_func)
 	link_info = &dp_panel->link_info;
 
 	if (!panel->custom_dpcd) {
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+		if (is_kopin) {
+			u8 edp_config = 0x1;
+			drm_dp_dpcd_write(panel->aux->drm_aux, 0x10a, &edp_config, 1);
+		}
+#endif
 		rlen = drm_dp_dpcd_read(panel->aux->drm_aux, DP_DPCD_REV,
 			dp_panel->dpcd, (DP_RECEIVER_CAP_SIZE + 1));
 		if (rlen < (DP_RECEIVER_CAP_SIZE + 1)) {
@@ -303,6 +334,7 @@ static int dp_panel_read_edid(struct dp_panel *dp_panel,
 {
 	int ret = 0;
 	struct dp_panel_private *panel;
+	int count = 0;
 
 	if (!dp_panel) {
 		pr_err("invalid input\n");
@@ -312,13 +344,41 @@ static int dp_panel_read_edid(struct dp_panel *dp_panel,
 
 	panel = container_of(dp_panel, struct dp_panel_private, dp_panel);
 
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+	if (is_kopin)
+		dp_panel_set_edid(dp_panel, kopin_edid);
+	else
+		panel->custom_edid = 0;
+#endif
 	if (panel->custom_edid) {
 		pr_debug("skip edid read in debug mode\n");
 		goto end;
 	}
 
-	sde_get_edid(connector, &panel->aux->drm_aux->ddc,
-		(void **)&dp_panel->edid_ctrl);
+	do {
+		sde_get_edid(connector, &panel->aux->drm_aux->ddc,
+			(void **)&dp_panel->edid_ctrl);
+          	msleep(50);
+		pr_info(" %s %d EDID read %s, count=%d", __func__, __LINE__, !dp_panel->edid_ctrl->edid?"failed":"successed",count);
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+		if (dp_panel->edid_ctrl->edid) {
+			int i = 0;
+			char out[1024] = {0,};
+			char *buffer = (char*)dp_panel->edid_ctrl->edid;
+			size_t size = sizeof(struct edid);
+
+			for (i = 0; i < size; ++i) {
+				snprintf(out+strlen(out), sizeof(out)-strlen(out), "%02X ", buffer[i]);
+				if ((i+1)%16 == 0) {
+					pr_info("%s\n", out);
+					memset(out, 0, sizeof(out));
+				}
+			}
+			if (strlen(out))
+				pr_info("%s\n", out);
+		}
+#endif
+	} while (!dp_panel->edid_ctrl->edid && (count++ < 10));
 	if (!dp_panel->edid_ctrl->edid) {
 		pr_err("EDID read failed\n");
 		ret = -EINVAL;
@@ -334,7 +394,9 @@ static int dp_panel_read_sink_caps(struct dp_panel *dp_panel,
 	int rc = 0, rlen, count, downstream_ports;
 	const int count_len = 1;
 	struct dp_panel_private *panel;
-
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	int retry_count = 0;
+#endif
 	if (!dp_panel || !connector) {
 		pr_err("invalid input\n");
 		rc = -EINVAL;
@@ -354,9 +416,39 @@ static int dp_panel_read_sink_caps(struct dp_panel *dp_panel,
 			goto end;
 		}
 		pr_err("panel dpcd read failed/incorrect, set default params\n");
-		dp_panel_set_default_link_params(dp_panel);
-	}
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+		do {
+			pr_err("%s: retry%d read dpcd\n", __func__, retry_count);
+			rc = dp_panel_read_dpcd(dp_panel, multi_func);
+			mdelay(2);
 
+			if (rc || !is_link_rate_valid(drm_dp_link_rate_to_bw_code(
+				dp_panel->link_info.rate)) || !is_lane_count_valid(
+				dp_panel->link_info.num_lanes) ||
+				((drm_dp_link_rate_to_bw_code(dp_panel->link_info.rate)) >
+				dp_panel->max_bw_code)) {
+				continue;
+			} else {
+				break;
+			}
+		} while (is_ds_connected() && (retry_count++ < 3));
+
+		if(retry_count >= 3) {
+			dp_panel_set_default_link_params(dp_panel);
+			request_dualscreen_recovery();
+		}
+#else
+		dp_panel_set_default_link_params(dp_panel);
+#endif
+	}
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+	if (is_kopin) {
+		if (dp_panel->dpcd[DP_DPCD_REV] == 0x13) {
+			pr_info("[drm-dp] rev 1.3...\n");
+			goto end;
+		}
+	}
+#endif
 	downstream_ports = dp_panel->dpcd[DP_DOWNSTREAMPORT_PRESENT] &
 				DP_DWN_STRM_PORT_PRESENT;
 

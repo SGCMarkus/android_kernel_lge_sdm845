@@ -32,6 +32,10 @@
 #include <linux/usb/composite.h>
 #include <linux/usb/gadget.h>
 
+#ifdef CONFIG_LGE_USB_FACTORY
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
 #include "debug.h"
 #include "core.h"
 #include "gadget.h"
@@ -2022,6 +2026,15 @@ static int dwc3_gadget_run_stop(struct dwc3 *dwc, int is_on, int suspend)
 		return -ETIMEDOUT;
 	}
 
+#ifdef CONFIG_LGE_USB_FACTORY
+	if ((lge_get_boot_mode() == LGE_BOOT_MODE_QEM_130K) ||
+		(lge_get_boot_mode() == LGE_BOOT_MODE_PIF_130K)) {
+		reg = dwc3_readl(dwc->regs, DWC3_DCFG);
+		reg &= ~(DWC3_DCFG_SPEED_MASK);
+		reg |= DWC3_DCFG_FULLSPEED;
+		dwc3_writel(dwc->regs, DWC3_DCFG, reg);
+	}
+#endif
 	dwc3_trace(trace_dwc3_gadget, "gadget %s data soft-%s",
 			dwc->gadget_driver
 			? dwc->gadget_driver->function : "no-function",
@@ -2377,6 +2390,9 @@ static int dwc3_gadget_stop(struct usb_gadget *g)
 
 	spin_lock_irqsave(&dwc->lock, flags);
 	dwc->gadget_driver = NULL;
+#ifdef CONFIG_LGE_USB
+	trace_printk("[F: %s]: %p, %pF\n", __func__, dwc, (void *)__builtin_return_address(0));
+#endif
 	spin_unlock_irqrestore(&dwc->lock, flags);
 
 	dbg_event(0xFF, "fwq_started", 0);
@@ -2913,6 +2929,9 @@ static void dwc3_disconnect_gadget(struct dwc3 *dwc)
 	struct usb_gadget_driver *gadget_driver;
 
 	if (dwc->gadget_driver && dwc->gadget_driver->disconnect) {
+#ifdef CONFIG_LGE_USB
+		trace_printk("[F: %s]: %p\n", __func__, dwc);
+#endif
 		gadget_driver = dwc->gadget_driver;
 		spin_unlock(&dwc->lock);
 		dbg_event(0xFF, "DISCONNECT", 0);
@@ -3087,8 +3106,14 @@ static void dwc3_gadget_disconnect_interrupt(struct dwc3 *dwc)
 	reg &= ~DWC3_DCTL_INITU2ENA;
 	dwc3_writel(dwc->regs, DWC3_DCTL, reg);
 
+#ifdef CONFIG_LGE_USB
+	if (dwc->gadget_driver)
+		dwc3_disconnect_gadget(dwc);
+	else
+		pr_err("%s: dwc->gadget is NULL\n", __func__);
+#else
 	dwc3_disconnect_gadget(dwc);
-
+#endif
 	dwc->gadget.speed = USB_SPEED_UNKNOWN;
 	dwc->setup_packet_pending = false;
 	dwc->link_state = DWC3_LINK_STATE_SS_DIS;
@@ -3831,10 +3856,12 @@ irqreturn_t dwc3_interrupt(int irq, void *_dwc)
 	dwc->irq_completion_time[dwc->irq_dbg_index] =
 		ktime_us_delta(ktime_get(), start_time);
 	dwc->irq_event_count[dwc->irq_dbg_index] = temp_cnt / 4;
-	dwc->irq_dbg_index = (dwc->irq_dbg_index + 1) % MAX_INTR_STATS;
 
 	if (ret == IRQ_WAKE_THREAD)
 		queue_work(dwc->dwc_wq, &dwc->bh_work);
+
+	dwc->irq_end_time[dwc->irq_dbg_index] = ktime_get();
+	dwc->irq_dbg_index = (dwc->irq_dbg_index + 1) % MAX_INTR_STATS;
 
 	return IRQ_HANDLED;
 }

@@ -49,6 +49,10 @@
 #include <linux/compat.h>
 #endif
 
+#ifdef CONFIG_LGE_DIAG_BYPASS
+#include "lg_diag_bypass.h"
+#endif
+
 MODULE_DESCRIPTION("Diag Char Driver");
 MODULE_LICENSE("GPL v2");
 
@@ -170,6 +174,12 @@ static struct mutex apps_data_mutex;
 uint16_t diag_debug_mask;
 void *diag_ipc_log;
 #endif
+
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+extern bool is_socket_mode;
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 
 static void diag_md_session_close(int pid);
 
@@ -1852,6 +1862,15 @@ static int diag_switch_logging(struct diag_logging_mode_param_t *param)
 		param->peripheral_mask = peripheral_mask;
 	}
 
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+    if (param->req_mode == SOCKET_MODE)
+		is_socket_mode = true;
+	else
+		is_socket_mode = false;
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
+
 	switch (param->req_mode) {
 	case CALLBACK_MODE:
 	case UART_MODE:
@@ -2228,7 +2247,6 @@ static int diag_ioctl_hdlc_toggle(unsigned long ioarg)
 	uint8_t hdlc_support, i;
 	int peripheral = -EINVAL;
 	struct diag_md_session_t *session_info = NULL;
-
 	if (copy_from_user(&hdlc_support, (void __user *)ioarg,
 				sizeof(uint8_t)))
 		return -EFAULT;
@@ -3718,6 +3736,7 @@ exit:
 				DIAG_LOG(DIAG_DEBUG_DCI,
 				"diag: valid task doesn't exist for pid = %d\n",
 				entry->tgid);
+
 				put_pid(pid_struct);
 				continue;
 			}
@@ -3805,9 +3824,15 @@ static ssize_t diagchar_write(struct file *file, const char __user *buf,
 		return -EIO;
 	}
 
+#ifdef CONFIG_LGE_DIAG_BYPASS
+	if ((driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected && !lge_bypass_status()) ||
+		(driver->logging_mode == DIAG_PCIE_MODE &&
+		!driver->pcie_connected)) {
+#else
 	if ((driver->logging_mode == DIAG_USB_MODE && !driver->usb_connected) ||
 		(driver->logging_mode == DIAG_PCIE_MODE &&
 		!driver->pcie_connected)) {
+#endif
 		if (!((pkt_type == DCI_DATA_TYPE) ||
 		    (pkt_type == DCI_PKT_TYPE) ||
 		    (pkt_type & DATA_TYPE_DCI_LOG) ||
@@ -4211,6 +4236,11 @@ static int __init diagchar_init(void)
 	driver->poolsize_dci = poolsize_dci;
 	driver->poolsize_user = poolsize_user;
 	driver->num_clients = max_clients;
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+	is_socket_mode = false;
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 
 	for (i = 0; i < NUM_UPD; i++) {
 		driver->pd_logging_mode[i] = 0;

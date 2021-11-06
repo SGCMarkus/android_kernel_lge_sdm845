@@ -78,6 +78,9 @@ struct bio {
 	*/
 	struct inode            *bi_dio_inode;
 #endif
+#ifdef CONFIG_LGE_IOSCHED_EXTENSION
+	unsigned short		bi_excontrol;
+#endif
 #ifdef CONFIG_DM_DEFAULT_KEY
 	int bi_crypt_skip;
 #endif
@@ -274,6 +277,17 @@ enum req_op {
 };
 
 #define REQ_OP_BITS 3
+
+#ifdef CONFIG_LGE_IOSCHED_EXTENSION
+#define __REQ_EX_MAX 15
+enum req_exflag_bits {
+	__REQ_EX_ORDERED,
+
+	__REQ_EX_NR_BITS = __REQ_EX_MAX,
+};
+
+#define REQ_EX_ORDERED (1 << __REQ_EX_ORDERED)
+#endif
 
 typedef unsigned int blk_qc_t;
 #define BLK_QC_T_NONE	-1U

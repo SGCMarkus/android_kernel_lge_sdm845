@@ -23,6 +23,7 @@
 #include <linux/init.h>
 #include <linux/slab.h>
 #include <linux/swap.h>
+#include <linux/llist.h>
 #include <linux/vmalloc.h>
 #include "ion_priv.h"
 
@@ -57,36 +58,38 @@ static void ion_page_pool_free_pages(struct ion_page_pool *pool,
 
 static int ion_page_pool_add(struct ion_page_pool *pool, struct page *page)
 {
-	mutex_lock(&pool->mutex);
 	if (PageHighMem(page)) {
-		list_add_tail(&page->lru, &pool->high_items);
-		pool->high_count++;
+		llist_add((struct llist_node *)&page->lru, &pool->high_items);
+		atomic_inc(&pool->high_count);
 	} else {
-		list_add_tail(&page->lru, &pool->low_items);
-		pool->low_count++;
+		llist_add((struct llist_node *)&page->lru, &pool->low_items);
+		atomic_inc(&pool->low_count);
 	}
 
 	mod_node_page_state(page_pgdat(page), NR_INDIRECTLY_RECLAIMABLE_BYTES,
 			    (1 << (PAGE_SHIFT + pool->order)));
-	mutex_unlock(&pool->mutex);
 	return 0;
 }
 
 static struct page *ion_page_pool_remove(struct ion_page_pool *pool, bool high)
 {
-	struct page *page;
+	struct page *page = NULL;
+	struct llist_node *ret;
 
 	if (high) {
-		BUG_ON(!pool->high_count);
-		page = list_first_entry(&pool->high_items, struct page, lru);
-		pool->high_count--;
+		BUG_ON(!atomic_read(&pool->high_count));
+		ret = llist_del_first(&pool->high_items);
+		if (ret)
+			page = llist_entry((struct list_head *)ret, struct page, lru);
+		atomic_dec(&pool->high_count);
 	} else {
-		BUG_ON(!pool->low_count);
-		page = list_first_entry(&pool->low_items, struct page, lru);
-		pool->low_count--;
+		BUG_ON(!atomic_read(&pool->low_count));
+		ret = llist_del_first(&pool->low_items);
+		if (ret)
+			page = llist_entry((struct list_head *)ret, struct page, lru);
+		atomic_dec(&pool->low_count);
 	}
 
-	list_del(&page->lru);
 	mod_node_page_state(page_pgdat(page), NR_INDIRECTLY_RECLAIMABLE_BYTES,
 			    -(1 << (PAGE_SHIFT + pool->order)));
 	return page;
@@ -101,13 +104,18 @@ void *ion_page_pool_alloc(struct ion_page_pool *pool, bool *from_pool)
 	*from_pool = true;
 
 	if (mutex_trylock(&pool->mutex)) {
-		if (pool->high_count)
+		if (atomic_read(&pool->high_count))
 			page = ion_page_pool_remove(pool, true);
-		else if (pool->low_count)
+		else if (atomic_read(&pool->low_count))
 			page = ion_page_pool_remove(pool, false);
 		mutex_unlock(&pool->mutex);
 	}
 	if (!page) {
+#ifdef CONFIG_MIGRATE_HIGHORDER
+		if (pool->order > 0 &&
+				(global_page_state(NR_FREE_HIGHORDER_PAGES) < (1 << pool->order)))
+			return page;
+#endif
 		page = ion_page_pool_alloc_pages(pool);
 		*from_pool = false;
 	}
@@ -125,9 +133,9 @@ void *ion_page_pool_alloc_pool_only(struct ion_page_pool *pool)
 		return NULL;
 
 	if (mutex_trylock(&pool->mutex)) {
-		if (pool->high_count)
+		if (atomic_read(&pool->high_count))
 			page = ion_page_pool_remove(pool, true);
-		else if (pool->low_count)
+		else if (atomic_read(&pool->low_count))
 			page = ion_page_pool_remove(pool, false);
 		mutex_unlock(&pool->mutex);
 	}
@@ -151,10 +159,10 @@ void ion_page_pool_free_immediate(struct ion_page_pool *pool, struct page *page)
 
 int ion_page_pool_total(struct ion_page_pool *pool, bool high)
 {
-	int count = pool->low_count;
+	int count = atomic_read(&pool->low_count);
 
 	if (high)
-		count += pool->high_count;
+		count += atomic_read(&pool->high_count);
 
 	return count << pool->order;
 }
@@ -177,9 +185,9 @@ int ion_page_pool_shrink(struct ion_page_pool *pool, gfp_t gfp_mask,
 		struct page *page;
 
 		mutex_lock(&pool->mutex);
-		if (pool->low_count) {
+		if (atomic_read(&pool->low_count)) {
 			page = ion_page_pool_remove(pool, false);
-		} else if (high && pool->high_count) {
+		} else if (high && atomic_read(&pool->high_count)) {
 			page = ion_page_pool_remove(pool, true);
 		} else {
 			mutex_unlock(&pool->mutex);
@@ -201,10 +209,10 @@ struct ion_page_pool *ion_page_pool_create(struct device *dev, gfp_t gfp_mask,
 	if (!pool)
 		return NULL;
 	pool->dev = dev;
-	pool->high_count = 0;
-	pool->low_count = 0;
-	INIT_LIST_HEAD(&pool->low_items);
-	INIT_LIST_HEAD(&pool->high_items);
+	atomic_set(&pool->high_count, 0);
+	atomic_set(&pool->low_count, 0);
+	init_llist_head(&pool->low_items);
+	init_llist_head(&pool->high_items);
 	pool->gfp_mask = gfp_mask;
 	pool->order = order;
 	mutex_init(&pool->mutex);

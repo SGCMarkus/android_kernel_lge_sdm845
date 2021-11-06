@@ -816,7 +816,7 @@ static int dp_link_parse_request(struct dp_link_private *link)
 		goto end;
 	}
 
-	pr_debug("%s (0x%x) requested\n", dp_link_get_test_name(data), data);
+	pr_info("%s (0x%x) requested\n", dp_link_get_test_name(data), data);
 	link->request.test_requested = data;
 
 	if (link->request.test_requested == DP_TEST_LINK_PHY_TEST_PATTERN) {
@@ -1293,7 +1293,18 @@ static int dp_link_process_request(struct dp_link *dp_link)
 	dp_link_reset_data(link);
 
 	dp_link_parse_sink_status_field(link);
-
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	{
+		int i = 0;
+		char out[1024] = {0,};
+		pr_info("called by %pS\n", __builtin_return_address(0));
+		pr_info("test_requested = 0x%X\n", link->request.test_requested);
+		for (i = 0; i < DP_LINK_STATUS_SIZE; ++i) {
+			snprintf(out+strlen(out), sizeof(out)-strlen(out), "%02X ", link->link_status[i]);
+		}
+		pr_info("link_status = %s\n", out);
+	}
+#endif
 	if (dp_link_is_test_edid_read(link)) {
 		dp_link->sink_request |= DP_TEST_LINK_EDID_READ;
 		goto exit;
@@ -1337,6 +1348,9 @@ static int dp_link_process_request(struct dp_link *dp_link)
 
 	pr_debug("done\n");
 exit:
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	pr_info("sink_request=0x%04X\n");
+#endif
 	return ret;
 }
 

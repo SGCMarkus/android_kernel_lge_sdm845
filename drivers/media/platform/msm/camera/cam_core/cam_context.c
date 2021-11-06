@@ -163,6 +163,7 @@ int cam_context_handle_crm_apply_req(struct cam_context *ctx,
 		return -EINVAL;
 	}
 
+	mutex_lock(&ctx->ctx_mutex); /* LGE_CHANGE, solve the concurrency issue causing the cdm_write_genirq kernel crash. 2018-12-31 junsung.yang@lge.com */
 	if (ctx->state_machine[ctx->state].crm_ops.apply_req) {
 		rc = ctx->state_machine[ctx->state].crm_ops.apply_req(ctx,
 			apply);
@@ -171,6 +172,7 @@ int cam_context_handle_crm_apply_req(struct cam_context *ctx,
 			ctx->dev_hdl, ctx->state);
 		rc = -EPROTO;
 	}
+	mutex_unlock(&ctx->ctx_mutex); /* LGE_CHANGE, solve the concurrency issue causing the cdm_write_genirq kernel crash. 2018-12-31 junsung.yang@lge.com */
 
 	return rc;
 }
@@ -511,7 +513,18 @@ void cam_context_putref(struct cam_context *ctx)
 		ctx->dev_hdl, atomic_read(&(ctx->refcount.refcount)),
 		ctx->dev_name);
 }
-
+/* LGE_CHANGE, CST, put back all ref for ctx */
+void cam_context_put_allref(struct cam_context *ctx)
+{
+    while (atomic_read(&(ctx->refcount.refcount)) != 0) {
+        cam_context_putref(ctx);
+        if ((atomic_read(&(ctx->refcount.refcount)) != 0))
+            CAM_INFO(CAM_CORE,
+                "[%s] ctx device hdl %d ctx_id %d ref still %d",
+                ctx->dev_name, ctx->dev_hdl, ctx->ctx_id,
+                 atomic_read(&(ctx->refcount.refcount)));
+    }
+}
 void cam_context_getref(struct cam_context *ctx)
 {
 	if (kref_get_unless_zero(&ctx->refcount) == 0) {

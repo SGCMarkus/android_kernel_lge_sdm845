@@ -37,6 +37,11 @@
 #include "vdd-level-sdm845.h"
 #include "clk-voter.h"
 
+#ifdef CONFIG_MACH_LGE
+#include <soc/qcom/lge/board_lge.h>
+#endif
+
+
 #define GCC_MMSS_MISC				0x09FFC
 #define GCC_GPU_MISC				0x71028
 
@@ -975,6 +980,20 @@ static const struct freq_tbl ftbl_gcc_sdcc2_apps_clk_src[] = {
 	F(201500000, P_GPLL4_OUT_MAIN, 4, 0, 0),
 	{ }
 };
+
+#ifdef CONFIG_MACH_LGE
+static const struct freq_tbl ftbl_gcc_sdcc2_apps_clk_src_limit_max[] = {
+	F(400000, P_BI_TCXO, 12, 1, 4),
+	F(9600000, P_BI_TCXO, 2, 0, 0),
+	F(19200000, P_BI_TCXO, 1, 0, 0),
+	F(25000000, P_GPLL0_OUT_EVEN, 12, 0, 0),
+	F(50000000, P_GPLL0_OUT_EVEN, 6, 0, 0),
+	F(100000000, P_GPLL0_OUT_MAIN, 6, 0, 0),
+	F(201500000, P_GPLL4_OUT_MAIN, 4.5, 0, 0),
+	{ }
+};
+#endif
+
 
 static struct clk_rcg2 gcc_sdcc2_apps_clk_src = {
 	.cmd_rcgr = 0x1400c,
@@ -4189,6 +4208,26 @@ static void gcc_sdm845_fixup_sdm845v2(void)
 	gcc_ufs_phy_axi_clk_src.freq_tbl =
 		ftbl_gcc_ufs_card_axi_clk_src_sdm845_v2;
 	gcc_vsensor_clk_src.clkr.hw.init->rate_max[VDD_CX_LOW] = 600000000;
+
+#ifdef CONFIG_LGE_ONE_BINARY_SKU
+#ifdef CONFIG_MACH_SDM845_JUDYP
+	if (lge_get_sku_carrier() != HW_SKU_KR) {
+		printk(KERN_INFO "fixup sdcc2 clock\n");
+		gcc_sdcc2_apps_clk_src.freq_tbl =
+			ftbl_gcc_sdcc2_apps_clk_src_limit_max;
+	}
+#elif defined(CONFIG_MACH_SDM845_JUDYLN)
+	if (lge_get_sku_carrier() == HW_SKU_KR) {
+		printk(KERN_INFO "fixup sdcc2 clock\n");
+		gcc_sdcc2_apps_clk_src.freq_tbl =
+			ftbl_gcc_sdcc2_apps_clk_src_limit_max;
+	}
+#elif defined(CONFIG_MACH_SDM845_CAYMANSLM)
+        printk(KERN_INFO "fixup sdcc2 clock\n");
+        gcc_sdcc2_apps_clk_src.freq_tbl =
+            ftbl_gcc_sdcc2_apps_clk_src_limit_max;
+#endif
+#endif
 }
 
 static void gcc_sdm845_fixup_sdm670(void)

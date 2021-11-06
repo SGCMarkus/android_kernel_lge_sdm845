@@ -589,11 +589,16 @@ static int ipa3_usb_cons_request_resource_cb_do(
 				ipa3_usb_ctx->ttype_ctx[ttype].state));
 	switch (ipa3_usb_ctx->ttype_ctx[ttype].state) {
 	case IPA_USB_CONNECTED:
-	case IPA_USB_SUSPENDED_NO_RWAKEUP:
+//[LGP_MODEMBSP_PATCH][Start] case#04452882 : Fixed issue for USB tethering current floating
+	//case IPA_USB_SUSPENDED_NO_RWAKEUP:
+//[LGP_MODEMBSP_PATCH][End]
 		rm_ctx->cons_state = IPA_USB_CONS_GRANTED;
 		result = 0;
 		break;
 	case IPA_USB_SUSPEND_REQUESTED:
+//[LGP_MODEMBSP_PATCH][Start] case#04452882 : Fixed issue for USB tethering current floating
+	case IPA_USB_SUSPENDED_NO_RWAKEUP:
+//[LGP_MODEMBSP_PATCH][End]
 		rm_ctx->cons_requested = true;
 		if (rm_ctx->cons_state == IPA_USB_CONS_GRANTED)
 			result = 0;

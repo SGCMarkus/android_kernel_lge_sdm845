@@ -2424,6 +2424,7 @@ static inline struct page *follow_page(struct vm_area_struct *vma,
 #define FOLL_REMOTE	0x2000	/* we are working on non-current tsk/mm */
 #define FOLL_COW	0x4000	/* internal GUP flag */
 #define FOLL_ANON	0x8000	/* don't do file mappings */
+#define FOLL_CMA	0x80000 /* migrate if the page is from cma pageblock */
 
 typedef int (*pte_fn_t)(pte_t *pte, pgtable_t token, unsigned long addr,
 			void *data);
@@ -2440,6 +2441,13 @@ static inline bool page_poisoning_enabled(void) { return false; }
 static inline void kernel_poison_pages(struct page *page, int numpages,
 					int enable) { }
 static inline bool page_is_poisoned(struct page *page) { return false; }
+#endif
+
+#ifdef CONFIG_CMA_PINPAGE_MIGRATION
+long get_user_pages_foll_cma(struct task_struct *tsk, struct mm_struct *mm,
+		unsigned long start, unsigned long nr_pages,
+		int write, int force, struct page **pages,
+		struct vm_area_struct **vmas);
 #endif
 
 #ifdef CONFIG_DEBUG_PAGEALLOC
@@ -2655,6 +2663,8 @@ struct reclaim_param {
 	int nr_reclaimed;
 };
 extern struct reclaim_param reclaim_task_anon(struct task_struct *task,
+		int nr_to_reclaim);
+extern struct reclaim_param reclaim_task_file_anon(struct task_struct *task,
 		int nr_to_reclaim);
 #endif
 

@@ -38,6 +38,7 @@
 #include <linux/delayacct.h>
 #include <linux/psi.h>
 #include "internal.h"
+#include "../fs/sreadahead_prof.h"
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/filemap.h>
@@ -2238,6 +2239,9 @@ static struct file *do_sync_mmap_readahead(struct vm_area_struct *vma,
 	 * mmap read-around
 	 */
 	fpin = maybe_unlock_mmap_for_io(vma, flags, fpin);
+#ifdef CONFIG_READAHEAD_MMAP_SIZE_ENABLE
+	ra->ra_pages = CONFIG_READAHEAD_MMAP_PAGE_CNT;
+#endif
 	ra->start = max_t(long, 0, offset - ra->ra_pages / 2);
 	ra->size = ra->ra_pages;
 	ra->async_size = ra->ra_pages / 4;
@@ -2328,6 +2332,15 @@ int filemap_fault(struct vm_area_struct *vma, struct vm_fault *vmf)
 	} else if (!page) {
 		/* No page in the page cache at all */
 		count_vm_event(PGMAJFAULT);
+		/* LGE_CHANGE_S
+		*
+		* Profile files related to pgmajfault during 1st booting
+		* in order to use the data as readahead args
+		*
+		* matia.kim@lge.com 20130612
+		*/
+		sreadahead_prof(file, 0, 0);
+		/* LGE_CHANGE_E */
 		mem_cgroup_count_vm_event(vma->vm_mm, PGMAJFAULT);
 		ret = VM_FAULT_MAJOR;
 		fpin = do_sync_mmap_readahead(vma, vmf->flags, ra,

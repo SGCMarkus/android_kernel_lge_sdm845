@@ -806,6 +806,11 @@ void __init create_boot_cache(struct kmem_cache *s, const char *name, size_t siz
 	s->size = s->object_size = size;
 	s->align = calculate_alignment(flags, ARCH_KMALLOC_MINALIGN, size);
 
+#ifdef CONFIG_SLUB_UAF_DEBUG
+	if (s->object_size >= PAGE_SIZE)
+		s->align = PAGE_SIZE;
+#endif
+
 	slab_init_memcg_params(s);
 
 	err = __kmem_cache_create(s, flags);

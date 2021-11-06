@@ -1,0 +1,124 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+#include "../sdm845-caymanslm_common/sdm845-caymanslm_common-pinctrl.dtsi"
+
+&tlmm {
+	pmx_spi_tdmb {
+		spi_tdmb_active: spi_tdmb_active {
+			mux {
+				pins =  "gpio93", "gpio94", "gpio95", "gpio96";
+				function = "qup7";
+			};
+
+			config {
+				pins =  "gpio93", "gpio94", "gpio95", "gpio96";
+				drive-strength = <8>;
+				bias-disable;
+			};
+		};
+
+		spi_tdmb_suspend: spi_tdmb_suspend {
+			mux {
+				pins =  "gpio93", "gpio94", "gpio95", "gpio96";
+				function = "gpio";
+			};
+
+			config {
+				pins =  "gpio93", "gpio94", "gpio95", "gpio96";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
+	pmx_tdmb_int {
+		tdmb_int_active: tdmb_int_active {
+			mux {
+				pins = "gpio91";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio91";
+				drive-strength = <2>;
+				input-enable;
+				bias-pull-up;
+			};
+		};
+		tdmb_int_suspend: tdmb_int_suspend {
+			mux {
+				pins = "gpio91";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio91";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+
+	};
+
+	pmx_tdmb_ant {
+		tdmb_ant_active: tdmb_ant_active {
+			mux {
+				pins = "gpio92";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio92";
+				drive-strength = <2>;
+				output-low;
+				bias-disable;
+			};
+		};
+
+		tdmb_ant_suspend: tdmb_ant_suspend {
+			mux {
+				pins = "gpio92";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio92";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+
+	pmx_tdmb_lna {
+		tdmb_lna_active: tdmb_lna_active {
+			mux {
+				pins = "gpio128", "gpio129";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio128", "gpio129";
+				drive-strength = <2>;
+				output-low;
+				bias-disable;
+			};
+		};
+
+		tdmb_lna_suspend: tdmb_lna_suspend {
+			mux {
+				pins = "gpio128", "gpio129";
+				function = "gpio";
+			};
+			config {
+				pins = "gpio128", "gpio129";
+				drive-strength = <2>;
+				bias-pull-down;
+			};
+		};
+	};
+};

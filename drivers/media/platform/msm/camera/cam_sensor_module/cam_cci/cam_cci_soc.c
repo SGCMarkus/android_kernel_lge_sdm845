@@ -202,9 +202,12 @@ static void cam_cci_init_cci_params(struct cci_device *new_cci_dev)
 {
 	uint8_t i = 0, j = 0;
 
+	mutex_init(&new_cci_dev->global_mutex);
 	for (i = 0; i < NUM_MASTERS; i++) {
 		new_cci_dev->cci_master_info[i].status = 0;
+		new_cci_dev->cci_master_info[i].is_first_req = true;
 		mutex_init(&new_cci_dev->cci_master_info[i].mutex);
+		sema_init(&new_cci_dev->cci_master_info[i].master_sem, 1);
 		init_completion(
 			&new_cci_dev->cci_master_info[i].reset_complete);
 		init_completion(
@@ -218,7 +221,6 @@ static void cam_cci_init_cci_params(struct cci_device *new_cci_dev)
 				&new_cci_dev->cci_master_info[i].lock_q[j]);
 		}
 	}
-	mutex_init(&new_cci_dev->init_mutex);
 	new_cci_dev->cci_state = CCI_STATE_DISABLED;
 	spin_lock_init(&new_cci_dev->lock_status);
 }

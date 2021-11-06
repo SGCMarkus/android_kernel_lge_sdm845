@@ -315,6 +315,13 @@ config AUDIT
 	  logging of avc messages output). Does not do system-call
 	  auditing without CONFIG_AUDITSYSCALL.
 
+config AUDIT_NO_RATE_LIMIT_CMDLINE
+	bool
+	default y if AUDIT
+	help
+	  Disable rate limit of audit log for debugging.
+	  It should be enabled by userdebug build.
+
 config HAVE_ARCH_AUDITSYSCALL
 	bool
 
@@ -872,7 +879,7 @@ config IKHEADERS
 config LOG_BUF_SHIFT
 	int "Kernel log buffer size (16 => 64KB, 17 => 128KB)"
 	range 12 25
-	default 17
+	default 19
 	depends on PRINTK
 	help
 	  Select the minimal kernel log buffer size as a power of 2.

@@ -766,7 +766,14 @@ static void xfrm_policy_requeue(struct xfrm_policy *old,
 static bool xfrm_policy_mark_match(struct xfrm_policy *policy,
 				   struct xfrm_policy *pol)
 {
-	if (policy->mark.v == pol->mark.v &&
+	//LGP_DATA_IWLAN  kinsguitar20.kim@lge.com 2021.6.28 http://mlm.lge.com/di/browse/PPAL-4266...[START]
+	u32 mark = policy->mark.v & policy->mark.m;
+
+	if (policy->mark.v == pol->mark.v && policy->mark.m == pol->mark.m)
+		return true;
+
+
+	if ((mark & pol->mark.m) == pol->mark.v && //LGP_DATA_IWLAN kinsguitar20.kim@lge.com 2021.6.28 http://mlm.lge.com/di/browse/PPAL-4266...[END]
 	    policy->priority == pol->priority)
 		return true;
 

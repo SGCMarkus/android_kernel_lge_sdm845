@@ -888,4 +888,44 @@ config INPUT_HISI_POWERKEY
 	  To compile this driver as a module, choose M here: the
 	  module will be called hisi_powerkey.
 
+config STMVL53L0
+	tristate "STM VL53L0 Proximity support"
+	depends on  I2C=y
+	default y
+	help
+	  Say Y here if you want to use STMicroelectronics's proximity sensor
+	  through I2C interface.
+
+	  To compile this driver as a module, choose M here: the
+	  module will be called stmvl53l0.
+
+config SAR_ATMF04
+       bool "ATMF04 support"
+       depends on I2C
+       help
+         Support ATMF04 as an input device.
+
+config LGE_USE_SAR_CONTROLLER
+       bool "Sar controller device"
+       help
+         Support Sar Controller for this model.
+
+config SAR_ATMF04_2ND
+       bool "Secondary ATMF04 support"
+       depends on I2C
+       help
+         Support Secondary ATMF04 as an input device.
+
+config SAR_ATMF04_12QFN
+       bool "ATMF04_12QFN support"
+       depends on I2C
+       help
+         Support ATMF04_12QFN as an input device.
+
+config SAR_ALMF04_C2_C3_12QFN
+       bool "SAR_ALMF04_C2_C3_12QFN support"
+       depends on I2C
+       help
+         Support ATMF04_12QFN as an input device.
+
 endif

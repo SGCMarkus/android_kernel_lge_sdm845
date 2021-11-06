@@ -296,7 +296,6 @@ struct audio_dev {
 	/* number of frames sent since start_time */
 	s64				frames_sent;
 	struct audio_source_config	*config;
-	/* for creating and issuing QoS requests */
 	struct pm_qos_request pm_qos;
 };
 

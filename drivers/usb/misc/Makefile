@@ -29,3 +29,9 @@ obj-$(CONFIG_UCSI)			+= ucsi.o
 
 obj-$(CONFIG_USB_SISUSBVGA)		+= sisusbvga/
 obj-$(CONFIG_USB_LINK_LAYER_TEST)	+= lvstest.o
+
+obj-$(CONFIG_LGE_USB_SBU_SWITCH)	+= lge_sbu_switch.o
+obj-$(CONFIG_LGE_USB_MOISTURE_FUSB251)	+= fusb251.o
+obj-$(CONFIG_LGE_USB_MOISTURE_DETECTION) += lgmd/
+obj-$(CONFIG_LGE_DUAL_SCREEN)		+= lge_ds3.o
+ccflags-y				+= -I$(srctree)/drivers/usb/pd

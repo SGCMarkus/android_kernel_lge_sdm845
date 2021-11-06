@@ -48,6 +48,9 @@
 #include <asm/unaligned.h>
 #include <linux/idr.h>
 #include <linux/list.h>
+#ifdef CONFIG_LGE_DUAL_SCREEN
+#include <linux/lge_ds3.h>
+#endif
 
 #include "cdc-acm.h"
 
@@ -127,10 +130,21 @@ static int acm_ctrl_msg(struct acm *acm, int request, int value,
 	if (retval)
 		return retval;
 
+#ifdef CONFIG_LGE_DUAL_SCREEN
+	if (check_ds_connect_state() >= DS_STATE_HPD_ENABLED) {
+		retval = usb_control_msg(acm->dev, usb_sndctrlpipe(acm->dev, 0),
+				request, USB_RT_ACM, value,
+				acm->control->altsetting[0].desc.bInterfaceNumber,
+				buf, len, 1000);
+	} else {
+#endif
 	retval = usb_control_msg(acm->dev, usb_sndctrlpipe(acm->dev, 0),
 		request, USB_RT_ACM, value,
 		acm->control->altsetting[0].desc.bInterfaceNumber,
 		buf, len, 5000);
+#ifdef CONFIG_LGE_DUAL_SCREEN
+	}
+#endif
 
 	dev_dbg(&acm->control->dev,
 			"%s - rq 0x%02x, val %#x, len %#x, result %d\n",

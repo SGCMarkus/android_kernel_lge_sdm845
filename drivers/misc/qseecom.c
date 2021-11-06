@@ -557,7 +557,7 @@ static int qseecom_scm_call2(uint32_t svc_id, uint32_t tz_cmd_id,
 			smc_id = TZ_OS_APP_SHUTDOWN_ID;
 			desc.arginfo = TZ_OS_APP_SHUTDOWN_ID_PARAM_ID;
 			desc.args[0] = req->app_id;
-			ret = scm_call2(smc_id, &desc);
+			ret = __qseecom_scm_call2_locked(smc_id, &desc);
 			break;
 		}
 		case QSEOS_APP_LOOKUP_COMMAND: {
@@ -4155,7 +4155,7 @@ static int qseecom_receive_req(struct qseecom_dev_handle *data)
 		if (wait_event_interruptible(this_lstnr->rcv_req_wq,
 				__qseecom_listener_has_rcvd_req(data,
 				this_lstnr))) {
-			pr_debug("Interrupted: exiting Listener Service = %d\n",
+			pr_warn("Interrupted: exiting Listener Service = %d\n",
 						(uint32_t)data->listener.id);
 			/* woken up for different reason */
 			return -ERESTARTSYS;

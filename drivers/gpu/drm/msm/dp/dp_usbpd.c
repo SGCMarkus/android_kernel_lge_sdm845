@@ -28,6 +28,13 @@
 #define VDM_VERSION		0x0
 #define USB_C_DP_SID		0xFF01
 
+#ifdef CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN
+extern bool is_kopin;
+#endif
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+extern bool is_ds_connected(void);
+#endif
+
 enum dp_usbpd_pin_assignment {
 	DP_USBPD_PIN_A,
 	DP_USBPD_PIN_B,
@@ -254,7 +261,19 @@ static void dp_usbpd_connect_cb(struct usbpd_svid_handler *hdlr)
 		return;
 	}
 
-	pr_debug("\n");
+	pr_info("\n");
+
+#if defined(CONFIG_LGE_DISPLAY_NOT_SUPPORT_DISPLAYPORT)
+#if defined(CONFIG_LGE_DISPLAY_SUPPORT_DP_KOPIN)
+	if (!is_kopin)
+		return;
+#elif defined(CONFIG_LGE_DUAL_SCREEN)
+	if (!is_ds_connected()) {
+		pr_err("DP is not supported\n");
+		return;
+	}
+#endif
+#endif
 	dp_usbpd_send_event(pd, DP_USBPD_EVT_DISCOVER);
 }
 
@@ -270,7 +289,7 @@ static void dp_usbpd_disconnect_cb(struct usbpd_svid_handler *hdlr)
 
 	pd->alt_mode = DP_USBPD_ALT_MODE_NONE;
 	pd->dp_usbpd.alt_mode_cfg_done = false;
-	pr_debug("\n");
+	pr_info("\n");
 
 	if (pd->dp_cb && pd->dp_cb->disconnect)
 		pd->dp_cb->disconnect(pd->dev);
@@ -356,7 +375,7 @@ static void dp_usbpd_response_cb(struct usbpd_svid_handler *hdlr, u8 cmd,
 
 	pd = container_of(hdlr, struct dp_usbpd_private, svid_handler);
 
-	pr_debug("callback -> cmd: %s, *vdos = 0x%x, num_vdos = %d\n",
+	pr_info("callback -> cmd: %s, *vdos = 0x%x, num_vdos = %d\n",
 				dp_usbpd_cmd_name(cmd), *vdos, num_vdos);
 
 	if (dp_usbpd_validate_callback(cmd, cmd_type, num_vdos)) {
@@ -476,6 +495,20 @@ error:
 	return rc;
 }
 
+static enum plug_orientation dp_usbpd_get_orientation(struct dp_usbpd *dp_usbpd)
+{
+	struct dp_usbpd_private *pd;
+
+	if (!dp_usbpd) {
+		pr_err("invalid dp_usbpd\n");
+		return ORIENTATION_NONE;
+	}
+
+	pd = container_of(dp_usbpd, struct dp_usbpd_private, dp_usbpd);
+
+	return usbpd_get_plug_orientation(pd->pd);
+}
+
 struct dp_usbpd *dp_usbpd_get(struct device *dev, struct dp_usbpd_cb *cb)
 {
 	int rc = 0;
@@ -526,6 +559,7 @@ struct dp_usbpd *dp_usbpd_get(struct device *dev, struct dp_usbpd_cb *cb)
 	dp_usbpd = &usbpd->dp_usbpd;
 	dp_usbpd->simulate_connect = dp_usbpd_simulate_connect;
 	dp_usbpd->simulate_attention = dp_usbpd_simulate_attention;
+	dp_usbpd->get_orientation = dp_usbpd_get_orientation;
 
 	return dp_usbpd;
 error:

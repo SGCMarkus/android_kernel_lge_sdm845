@@ -4,6 +4,7 @@ obj-$(CONFIG_NEW_LEDS)			+= led-core.o
 obj-$(CONFIG_LEDS_CLASS)		+= led-class.o
 obj-$(CONFIG_LEDS_CLASS_FLASH)		+= led-class-flash.o
 obj-$(CONFIG_LEDS_TRIGGERS)		+= led-triggers.o
+obj-$(CONFIG_LEDS_LGE_EMOTIONAL)        += led-pattern.o
 
 # LED Platform Drivers
 obj-$(CONFIG_LEDS_88PM860X)		+= leds-88pm860x.o
@@ -73,7 +74,11 @@ obj-$(CONFIG_LEDS_IS31FL319X)		+= leds-is31fl319x.o
 obj-$(CONFIG_LEDS_IS31FL32XX)		+= leds-is31fl32xx.o
 obj-$(CONFIG_LEDS_PM8058)		+= leds-pm8058.o
 obj-$(CONFIG_LEDS_MLXCPLD)		+= leds-mlxcpld.o
+ifeq ($(CONFIG_LEDS_LGE_EMOTIONAL),y)
+obj-y                                   += leds-qpnp-pattern.o
+else
 obj-$(CONFIG_LEDS_QPNP)			+= leds-qpnp.o
+endif
 obj-$(CONFIG_LEDS_QPNP_FLASH)		+= leds-qpnp-flash.o leds-qpnp-flash-common.o
 obj-$(CONFIG_LEDS_QPNP_FLASH_V2)	+= leds-qpnp-flash-v2.o leds-qpnp-flash-common.o
 obj-$(CONFIG_LEDS_QPNP_WLED)		+= leds-qpnp-wled.o

@@ -82,6 +82,8 @@
 #define DCC_MAX_LINK_LIST		5
 #define DCC_INVALID_LINK_LIST		0xFF
 
+static struct dcc_drvdata *s_dcc_drvdata;
+
 enum dcc_func_type {
 	DCC_FUNC_TYPE_CAPTURE,
 	DCC_FUNC_TYPE_CRC,
@@ -1216,6 +1218,22 @@ static int dcc_add_loop(struct dcc_drvdata *drvdata, unsigned long loop_cnt)
 	return 0;
 }
 
+void ext_dcc_disable(void)
+{
+        struct dcc_drvdata *drvdata = s_dcc_drvdata;
+        int list;
+        pr_err("s_dcc_drvdata is %p\n", s_dcc_drvdata);
+        if (drvdata) {
+            for (list = 0; list < DCC_MAX_LINK_LIST; list++) {
+                    dcc_writel(drvdata, BIT(0), DCC_LL_LOCK(list));
+                    dcc_sram_writel(drvdata, DCC_LINK_DESCRIPTOR, 0);
+                    dcc_writel(drvdata, 0, DCC_LL_BASE(list));
+                    dcc_writel(drvdata, 0, DCC_FD_BASE(list));
+            }
+        }
+}
+EXPORT_SYMBOL(ext_dcc_disable);
+
 static ssize_t dcc_store_loop(struct device *dev,
 				    struct device_attribute *attr,
 				    const char *buf, size_t size)
@@ -1698,6 +1716,8 @@ static int dcc_probe(struct platform_device *pdev)
 		goto err;
 
 	dcc_configure_list(drvdata, pdev->dev.of_node);
+        s_dcc_drvdata = drvdata;
+        dev_err(dev, "Set s_dcc_drvdata to %p, drvdata is %p\n", s_dcc_drvdata, drvdata);
 
 	return 0;
 err:

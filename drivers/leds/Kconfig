@@ -742,6 +742,11 @@ config LEDS_QPNP_VIBRATOR
 	  manually or by the DTEST lines.It uses the android timed-output
 	  framework.
 
+config LEDS_LGE_EMOTIONAL
+        tristate "Support for EMOTIONAL LEDs using PMI8998"
+	help
+	  This enables support for emotional LED using PMI8998
+
 comment "LED Triggers"
 source "drivers/leds/trigger/Kconfig"
 

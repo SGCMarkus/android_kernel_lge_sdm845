@@ -37,6 +37,10 @@
 #include <linux/of.h>
 #include <linux/of_address.h>
 
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
 #define RAMOOPS_KERNMSG_HDR "===="
 #define MIN_MEM_SIZE 4096UL
 
@@ -157,14 +161,14 @@ static int ramoops_read_kmsg_hdr(char *buffer, struct timespec *time,
 	char data_type;
 	int header_length = 0;
 
-	if (sscanf(buffer, RAMOOPS_KERNMSG_HDR "%lu.%lu-%c\n%n", &time->tv_sec,
+	if (sscanf(buffer, RAMOOPS_KERNMSG_HDR "%lld.%lu-%c\n%n", (time64_t *)&time->tv_sec,
 			&time->tv_nsec, &data_type, &header_length) == 3) {
 		if (data_type == 'C')
 			*compressed = true;
 		else
 			*compressed = false;
-	} else if (sscanf(buffer, RAMOOPS_KERNMSG_HDR "%lu.%lu\n%n",
-			&time->tv_sec, &time->tv_nsec, &header_length) == 2) {
+	} else if (sscanf(buffer, RAMOOPS_KERNMSG_HDR "%lld.%lu\n%n",
+			(time64_t *)&time->tv_sec, &time->tv_nsec, &header_length) == 2) {
 			*compressed = false;
 	} else {
 		time->tv_sec = 0;
@@ -499,64 +503,54 @@ static int ramoops_init_prz(struct device *dev, struct ramoops_context *cxt,
 	return 0;
 }
 
-static int ramoops_parse_dt_size(struct platform_device *pdev,
-				 const char *propname, u32 *value)
-{
-	u32 val32 = 0;
-	int ret;
 
-	ret = of_property_read_u32(pdev->dev.of_node, propname, &val32);
-	if (ret < 0 && ret != -EINVAL) {
-		dev_err(&pdev->dev, "failed to parse property %s: %d\n",
-			propname, ret);
-		return ret;
-	}
-
-	if (val32 > INT_MAX) {
-		dev_err(&pdev->dev, "%s %u > INT_MAX\n", propname, val32);
-		return -EOVERFLOW;
-	}
-
-	*value = val32;
-	return 0;
-}
 
 static int ramoops_parse_dt(struct platform_device *pdev,
 			    struct ramoops_platform_data *pdata)
 {
 	struct device_node *of_node = pdev->dev.of_node;
-	struct resource *res;
-	u32 value;
+	u32 ecc_size;
 	int ret;
 
 	dev_dbg(&pdev->dev, "using Device Tree\n");
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res) {
-		dev_err(&pdev->dev,
-			"failed to locate DT /reserved-memory resource\n");
-		return -EINVAL;
-	}
+	ret = of_property_read_u32(of_node, "mem-size", (u32*)&pdata->mem_size);
+	if (ret < 0)
+		return ret;
 
-	pdata->mem_size = resource_size(res);
-	pdata->mem_address = res->start;
+	ret = of_property_read_u32(of_node, "mem-address", (u32*)&pdata->mem_address);
+	if (ret < 0)
+		return ret;
+
 	pdata->mem_type = of_property_read_bool(of_node, "unbuffered");
 	pdata->dump_oops = !of_property_read_bool(of_node, "no-dump-oops");
 
-#define parse_size(name, field) {					\
-		ret = ramoops_parse_dt_size(pdev, name, &value);	\
-		if (ret < 0)						\
-			return ret;					\
-		field = value;						\
+	ret = of_property_read_u32(of_node, "record-size", (u32*)&pdata->record_size);
+	if (ret < 0)
+		return ret;
+
+	ret = of_property_read_u32(of_node, "console-size", (u32*)&pdata->console_size);
+	if (ret < 0)
+		return ret;
+
+	ret = of_property_read_u32(of_node, "ftrace-size", (u32*)&pdata->ftrace_size);
+	if (ret < 0)
+		return ret;
+
+	ret = of_property_read_u32(of_node, "pmsg-size", (u32*)&pdata->pmsg_size);
+	if (ret < 0)
+		return ret;
+
+	ret = of_property_read_u32(of_node, "ecc-size", (u32*)&ecc_size);
+	if (ret == 0) {
+		if (ecc_size > INT_MAX) {
+			dev_err(&pdev->dev, "invalid ecc-size %u\n", ecc_size);
+			return -EOVERFLOW;
+		}
+		pdata->ecc_info.ecc_size = ecc_size;
+	} else if (ret != -EINVAL) {
+		return ret;
 	}
-
-	parse_size("record-size", pdata->record_size);
-	parse_size("console-size", pdata->console_size);
-	parse_size("ftrace-size", pdata->ftrace_size);
-	parse_size("pmsg-size", pdata->pmsg_size);
-	parse_size("ecc-size", pdata->ecc_info.ecc_size);
-
-#undef parse_size
 
 	return 0;
 }
@@ -624,9 +618,12 @@ static int ramoops_probe(struct platform_device *pdev)
 
 	dump_mem_sz = cxt->size - cxt->console_size - cxt->ftrace_size
 			- cxt->pmsg_size;
-	err = ramoops_init_przs(dev, cxt, &paddr, dump_mem_sz);
-	if (err)
-		goto fail_out;
+
+	if (dump_mem_sz) {
+		err = ramoops_init_przs(dev, cxt, &paddr, dump_mem_sz);
+		if (err)
+			goto fail_out;
+	}
 
 	err = ramoops_init_prz(dev, cxt, &cxt->cprz, &paddr,
 			       cxt->console_size, 0);
@@ -689,6 +686,12 @@ static int ramoops_probe(struct platform_device *pdev)
 	pr_info("attached 0x%lx@0x%llx, ecc: %d/%d\n",
 		cxt->size, (unsigned long long)cxt->phys_addr,
 		cxt->ecc_info.ecc_size, cxt->ecc_info.block_size);
+
+	platform_set_drvdata(pdev, pdata);
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+	lge_set_ram_console_addr(cxt->phys_addr, cxt->size);
+#endif
 
 	return 0;
 

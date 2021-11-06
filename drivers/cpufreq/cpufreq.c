@@ -37,6 +37,10 @@
 
 static LIST_HEAD(cpufreq_policy_list);
 
+#ifdef CONFIG_LGE_PM_PRM
+#include "main/lge_prm.h"
+#endif
+
 static inline bool policy_is_inactive(struct cpufreq_policy *policy)
 {
 	return cpumask_empty(policy->cpus);
@@ -2098,7 +2102,16 @@ int cpufreq_driver_target(struct cpufreq_policy *policy,
 {
 	int ret = -EINVAL;
 
+#ifdef CONFIG_LGE_PM_PRM
+	if (lge_prm_get_info(LGE_PRM_INFO_TRITON_ENABLED)) {
+		if (!down_write_trylock(&policy->rwsem))
+			return ret;
+	} else {
+		down_write(&policy->rwsem);
+	}
+#else
 	down_write(&policy->rwsem);
+#endif
 
 	ret = __cpufreq_driver_target(policy, target_freq, relation);
 

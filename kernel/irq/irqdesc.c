@@ -127,7 +127,7 @@ static DECLARE_BITMAP(allocated_irqs, IRQ_BITMAP_BITS);
 
 static void irq_kobj_release(struct kobject *kobj);
 
-#ifdef CONFIG_SYSFS
+#ifdef CONFIG_SYSFS_IRQDESC
 static struct kobject *irq_kobj_base;
 
 #define IRQ_ATTR_RO(_name) \

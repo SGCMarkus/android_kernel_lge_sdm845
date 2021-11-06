@@ -29,6 +29,9 @@
 #include <linux/slab.h>
 #include <linux/dmi.h>
 #include <linux/dma-mapping.h>
+#ifdef CONFIG_LGE_DUAL_SCREEN
+#include <linux/lge_ds3.h>
+#endif
 
 #include "xhci.h"
 #include "xhci-trace.h"
@@ -1663,8 +1666,16 @@ int xhci_urb_dequeue(struct usb_hcd *hcd, struct urb *urb, int status)
 		}
 		ep->ep_state |= EP_HALT_PENDING;
 		ep->stop_cmds_pending++;
+#ifdef CONFIG_LGE_DUAL_SCREEN
+		if (check_ds_connect_state() >= DS_STATE_HPD_ENABLED) {
+			ep->stop_cmd_timer.expires = jiffies + 1 * HZ;
+		} else {
+#endif
 		ep->stop_cmd_timer.expires = jiffies +
 			XHCI_STOP_EP_CMD_TIMEOUT * HZ;
+#ifdef CONFIG_LGE_DUAL_SCREEN
+		}
+#endif
 		add_timer(&ep->stop_cmd_timer);
 		xhci_queue_stop_endpoint(xhci, command, urb->dev->slot_id,
 					 ep_index, 0);

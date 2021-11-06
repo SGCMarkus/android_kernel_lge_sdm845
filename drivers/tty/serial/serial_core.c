@@ -588,6 +588,15 @@ static int uart_write(struct tty_struct *tty,
 		return 0;
 	}
 
+#ifdef CONFIG_LGE_USB_DEBUGGER
+	if (port) {
+		if (uart_console(port) && tty_port_suspended(tty->port)) {
+			uart_port_unlock(port, flags);
+			return -ENODEV;
+		}
+	}
+#endif
+
 	while (port) {
 		c = CIRC_SPACE_TO_END(circ->head, circ->tail, UART_XMIT_SIZE);
 		if (count < c)
@@ -2124,6 +2133,13 @@ int uart_suspend_port(struct uart_driver *drv, struct uart_port *uport)
 	if (!console_suspend_enabled && uart_console(uport))
 		goto unlock;
 
+#ifdef CONFIG_LGE_USB_DEBUGGER
+	if (uart_console(uport)) {
+		disable_irq(uport->irq);
+		console_stop(uport->cons);
+	}
+#endif
+
 	uport->suspended = 1;
 
 	if (tty_port_initialized(port)) {
@@ -2794,6 +2810,9 @@ int uart_add_one_port(struct uart_driver *drv, struct uart_port *uport)
 	if (!(uart_console(uport) && (uport->cons->flags & CON_ENABLED))) {
 		spin_lock_init(&uport->lock);
 		lockdep_set_class(&uport->lock, &port_lock_key);
+#if defined(CONFIG_SERIAL_MSM_GENI_LOCK)
+		spin_lock_init(&uport->rx_lock);
+#endif
 	}
 	if (uport->cons && uport->dev)
 		of_console_check(uport->dev->of_node, uport->cons->name, uport->line);

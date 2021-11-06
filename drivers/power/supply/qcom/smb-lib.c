@@ -70,6 +70,10 @@ int smblib_masked_write(struct smb_charger *chg, u16 addr, u8 mask, u8 val)
 	int rc = 0;
 
 	mutex_lock(&chg->write_lock);
+#ifdef CONFIG_LGE_PM_DEBUG
+	smblib_dbg(chg, PR_REGISTER, "addr:0x%04x, mask:0x%02x, val:0x%02x\n",
+		addr, mask, val);
+#endif
 	if (is_secure(chg, addr)) {
 		rc = regmap_write(chg->regmap, (addr & 0xFF00) | 0xD0, 0xA5);
 		if (rc < 0)
@@ -88,7 +92,10 @@ int smblib_write(struct smb_charger *chg, u16 addr, u8 val)
 	int rc = 0;
 
 	mutex_lock(&chg->write_lock);
-
+#ifdef CONFIG_LGE_PM_DEBUG
+	smblib_dbg(chg, PR_REGISTER, "addr:0x%04x, val:0x%02x\n",
+		addr, val);
+#endif
 	if (is_secure(chg, addr)) {
 		rc = regmap_write(chg->regmap, (addr & ~(0xFF)) | 0xD0, 0xA5);
 		if (rc < 0)
@@ -268,7 +275,27 @@ static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
 	int rc, i;
 	u8 apsd_stat, stat;
 	const struct apsd_result *result = &smblib_apsd_results[UNKNOWN];
+#ifdef CONFIG_LGE_PM
+	bool is_hvdcp_disabled = false;
 
+	if (workaround_usb_compliance_mode_enabled()) {
+		union power_supply_propval vbus = { 0, };
+
+		if (!smblib_get_prop_usb_present(chg, &vbus) && !!vbus.intval) {
+			smblib_dbg(chg, PR_MISC, "In USB compliance mode, "
+				"set SDP as apsd result.\n");
+			result = &smblib_apsd_results[SDP];
+			if (chg->pd_active)
+				chg->real_charger_type = POWER_SUPPLY_TYPE_USB_PD;
+			else
+				chg->real_charger_type = result->pst;
+		} else {
+			result = &smblib_apsd_results[UNKNOWN];
+			chg->real_charger_type = result->pst;
+		}
+		return result;
+	}
+#endif
 	rc = smblib_read(chg, APSD_STATUS_REG, &apsd_stat);
 	if (rc < 0) {
 		smblib_err(chg, "Couldn't read APSD_STATUS rc=%d\n", rc);
@@ -297,6 +324,17 @@ static const struct apsd_result *smblib_get_apsd_result(struct smb_charger *chg)
 		if (result != &smblib_apsd_results[HVDCP3])
 			result = &smblib_apsd_results[HVDCP2];
 	}
+
+#ifdef CONFIG_LGE_PM
+	is_hvdcp_disabled = is_client_vote_enabled(
+		chg->hvdcp_disable_votable_indirect, "DEFAULT_VOTER");
+	if (is_hvdcp_disabled) {
+		if (result->pst == POWER_SUPPLY_TYPE_USB_HVDCP ||
+			result->pst == POWER_SUPPLY_TYPE_USB_HVDCP_3) {
+			result = &smblib_apsd_results[DCP];
+		}
+	}
+#endif
 
 	return result;
 }
@@ -564,6 +602,12 @@ static int smblib_request_dpdm(struct smb_charger *chg, bool enable)
 	}
 
 	if (enable) {
+#ifdef CONFIG_LGE_PM
+		if (chg->moisture_ux && is_client_vote_enabled(chg->usb_icl_votable, "MOISTURE_VOTER")) {
+			smblib_dbg(chg, PR_MISC, "skip enable DPDM regulator on moisture\n");
+			return rc;
+		}
+#endif
 		if (chg->dpdm_reg && !regulator_is_enabled(chg->dpdm_reg)) {
 			smblib_dbg(chg, PR_MISC, "enabling DPDM regulator\n");
 			rc = regulator_enable(chg->dpdm_reg);
@@ -590,6 +634,15 @@ static void smblib_rerun_apsd(struct smb_charger *chg)
 {
 	int rc;
 
+#ifdef CONFIG_LGE_PM
+	extern bool unified_bootmode_fabproc(void);
+	if (unified_bootmode_fabproc()) {
+		smblib_dbg(chg, PR_MISC, "skip re-running APSD with factory cable\n");
+		vote(chg->pd_disallowed_votable_indirect,
+			HVDCP_TIMEOUT_VOTER, false, 0);
+		return;
+	}
+#endif
 	smblib_dbg(chg, PR_MISC, "re-running APSD\n");
 	if (chg->wa_flags & QC_AUTH_INTERRUPT_WA_BIT) {
 		rc = smblib_masked_write(chg,
@@ -808,6 +861,7 @@ int smblib_rerun_apsd_if_required(struct smb_charger *chg)
 		smblib_err(chg, "Couldn't to enable DPDM rc=%d\n", rc);
 
 	chg->uusb_apsd_rerun_done = true;
+
 	smblib_rerun_apsd(chg);
 
 	return 0;
@@ -1184,6 +1238,7 @@ static int __smblib_set_prop_typec_power_role(struct smb_charger *chg,
 		}
 	}
 
+
 	rc = smblib_masked_write(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
 				TYPEC_POWER_ROLE_CMD_MASK, power_role);
 	if (rc < 0) {
@@ -1191,6 +1246,9 @@ static int __smblib_set_prop_typec_power_role(struct smb_charger *chg,
 			power_role, rc);
 		return rc;
 	}
+#ifdef CONFIG_LGE_PM
+	smblib_dbg(chg, PR_MISC, "power_role = %d(0x%x)\n", val->intval, power_role);
+#endif
 
 	return rc;
 }
@@ -1447,6 +1505,13 @@ static int smblib_disable_power_role_switch_callback(struct votable *votable,
 	} else {
 		pval.intval = disable ? POWER_SUPPLY_TYPEC_PR_SINK
 				      : POWER_SUPPLY_TYPEC_PR_DUAL;
+#ifdef CONFIG_LGE_PM
+	     /* When the power_role_switch is disabled by moisture, be sure to command
+		TYPEC_DISABLE_CMD_BIT in 'TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG' for LGE scenario
+		*/
+		if (disable)
+			pval.intval = POWER_SUPPLY_TYPEC_PR_NONE;
+#endif
 		rc = __smblib_set_prop_typec_power_role(chg, &pval);
 	}
 
@@ -1658,6 +1723,15 @@ static int _smblib_vbus_regulator_enable(struct regulator_dev *rdev)
 			smblib_err(chg, "Couldn't enable OTG rc=%d\n", rc);
 	}
 
+#ifdef CONFIG_LGE_USB
+	/* HW controlled OTG_EN */
+	smblib_masked_write(chg, OTG_CFG_REG, OTG_EN_SRC_CFG_BIT,
+			    OTG_EN_SRC_CFG_BIT);
+#endif
+#ifdef CONFIG_LGE_PM
+	workaround_control_vbus2_regulator(chg, true);
+#endif
+
 	return rc;
 }
 
@@ -1721,6 +1795,14 @@ static int _smblib_vbus_regulator_disable(struct regulator_dev *rdev)
 		smblib_err(chg, "Couldn't set OTG_ENG_OTG_CFG_REG rc=%d\n", rc);
 		return rc;
 	}
+
+#ifdef CONFIG_LGE_USB
+	/* SW controlled OTG_EN */
+	smblib_masked_write(chg, OTG_CFG_REG, OTG_EN_SRC_CFG_BIT, 0);
+#endif
+#ifdef CONFIG_LGE_PM
+	workaround_control_vbus2_regulator(chg, false);
+#endif
 
 	return 0;
 }
@@ -2758,7 +2840,11 @@ int smblib_get_prop_die_health(struct smb_charger *chg,
 
 #define SDP_CURRENT_UA			500000
 #define CDP_CURRENT_UA			1500000
+#ifdef CONFIG_LGE_PM
+#define DCP_CURRENT_UA			1800000
+#else
 #define DCP_CURRENT_UA			1500000
+#endif
 #define HVDCP_CURRENT_UA		3000000
 #define TYPEC_DEFAULT_CURRENT_UA	900000
 #define TYPEC_MEDIUM_CURRENT_UA		1500000
@@ -2772,6 +2858,10 @@ static int get_rp_based_dcp_current(struct smb_charger *chg, int typec_mode)
 		rp_ua = TYPEC_HIGH_CURRENT_UA;
 		break;
 	case POWER_SUPPLY_TYPEC_SOURCE_MEDIUM:
+#ifdef CONFIG_LGE_PM
+		rp_ua = TYPEC_MEDIUM_CURRENT_UA;
+		break;
+#endif
 	case POWER_SUPPLY_TYPEC_SOURCE_DEFAULT:
 	/* fall through */
 	default:
@@ -3387,6 +3477,10 @@ irqreturn_t smblib_handle_debug(int irq, void *data)
 	struct smb_irq_data *irq_data = data;
 	struct smb_charger *chg = irq_data->parent_data;
 
+#ifdef CONFIG_LGE_PM_DEBUG
+/* Skip the burst logs of input-current-limiting */
+if (strcmp(irq_data->name, "input-current-limiting") || *chg->debug_mask == 0xFF)
+#endif
 	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s\n", irq_data->name);
 	return IRQ_HANDLED;
 }
@@ -3414,6 +3508,10 @@ irqreturn_t smblib_handle_otg_overcurrent(int irq, void *data)
 
 	if (stat & OTG_OVERCURRENT_RT_STS_BIT)
 		schedule_work(&chg->otg_oc_work);
+#ifdef CONFIG_LGE_USB
+	else if (!strcmp(irq_data->name, "otg-oc-dis-sw-sts"))
+		schedule_work(&chg->otg_oc_work);
+#endif
 
 	return IRQ_HANDLED;
 }
@@ -3495,6 +3593,13 @@ irqreturn_t smblib_handle_usbin_uv(int irq, void *data)
 
 	if (!chg->non_compliant_chg_detected &&
 			apsd->pst == POWER_SUPPLY_TYPE_USB_HVDCP) {
+#ifdef CONFIG_LGE_PM
+		if (workaround_force_incompatible_hvdcp_is_running()) {
+			smblib_dbg(chg, PR_MISC, "Skip non_compliant_chg\n");
+			return IRQ_HANDLED;
+		}
+#endif
+
 		rc = smblib_read(chg, QC_CHANGE_STATUS_REG, &stat);
 		if (rc < 0)
 			smblib_err(chg,
@@ -3589,6 +3694,9 @@ void smblib_usb_plugin_hard_reset_locked(struct smb_charger *chg)
 						false, 0);
 			}
 		}
+#ifdef CONFIG_LGE_PM
+		workaround_fake_pd_hard_reset_trigger();
+#endif
 	}
 
 	power_supply_changed(chg->usb_psy);
@@ -3637,6 +3745,12 @@ void smblib_usb_plugin_locked(struct smb_charger *chg)
 		if (get_effective_result(chg->apsd_disable_votable) &&
 				!chg->pd_active)
 			pr_err("APSD disabled on vbus rising without PD\n");
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+		if (!chg->moisture_ux &&
+				is_client_vote_enabled(chg->usb_icl_votable, "MOISTURE_VOTER")) {
+			vote(chg->hvdcp_hw_inov_dis_votable, "DISABLE_HVDCP_VOTER", true, 0);
+		}
+#endif
 	} else {
 		if (chg->fake_usb_insertion) {
 			chg->fake_usb_insertion = false;
@@ -3684,6 +3798,7 @@ irqreturn_t smblib_handle_usb_plugin(int irq, void *data)
 		smblib_usb_plugin_hard_reset_locked(chg);
 	else
 		smblib_usb_plugin_locked(chg);
+
 	mutex_unlock(&chg->lock);
 	return IRQ_HANDLED;
 }
@@ -3945,7 +4060,12 @@ static void smblib_force_legacy_icl(struct smb_charger *chg, int pst)
 		 * limit ICL to 100mA, the USB driver will enumerate to check
 		 * if this is a SDP and appropriately set the current
 		 */
+#ifdef CONFIG_LGE_PM
+		// LGE overrides IUSB for FLOAT to 500mA by default
+		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 500000);
+#else
 		vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 100000);
+#endif
 		break;
 	case POWER_SUPPLY_TYPE_USB_HVDCP:
 	case POWER_SUPPLY_TYPE_USB_HVDCP_3:
@@ -4108,6 +4228,19 @@ static int typec_try_sink(struct smb_charger *chg)
 	if (typec_mode == POWER_SUPPLY_TYPEC_SINK_AUDIO_ADAPTER
 		|| typec_mode == POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY)
 		return ATTACHED_SRC;
+
+#ifdef CONFIG_LGE_USB
+	rc = smblib_read(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG, &stat);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't read TYPE_C_INTRPT_ENB_SOFTWARE_CTRL rc=%d\n",
+			   rc);
+		goto try_sink_exit;
+	}
+	smblib_dbg(chg, PR_REGISTER, "TYPE_C_INTRPT_ENB_SOFTWARE_CTRL = 0x%02x\n", stat);
+
+	if (stat & TYPEC_POWER_ROLE_CMD_MASK)
+		return ATTACHED_SRC;
+#endif
 
 	/*
 	 * Try.SNK entry status - ATTACHWAIT.SRC state and detected Rd-open
@@ -4314,6 +4447,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	cancel_delayed_work_sync(&chg->hvdcp_detect_work);
 
 	/* reset input current limit voters */
+
 	vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 100000);
 	vote(chg->usb_icl_votable, PD_VOTER, false, 0);
 	vote(chg->usb_icl_votable, USB_PSY_VOTER, false, 0);
@@ -4410,9 +4544,11 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 
 	/* enable DRP */
 	val.intval = POWER_SUPPLY_TYPEC_PR_DUAL;
+#ifndef CONFIG_LGE_USB
 	rc = smblib_set_prop_typec_power_role(chg, &val);
 	if (rc < 0)
 		smblib_err(chg, "Couldn't enable DRP rc=%d\n", rc);
+#endif
 
 	/* HW controlled CC_OUT */
 	rc = smblib_masked_write(chg, TAPER_TIMER_SEL_CFG_REG,
@@ -4420,6 +4556,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 	if (rc < 0)
 		smblib_err(chg, "Couldn't enable HW cc_out rc=%d\n", rc);
 
+#ifndef CONFIG_LGE_USB
 	/* restore crude sensor if PM660/PMI8998 */
 	if (chg->wa_flags & TYPEC_PBS_WA_BIT) {
 		rc = smblib_write(chg, TM_IO_DTEST4_SEL, 0xA5);
@@ -4427,6 +4564,7 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 			smblib_err(chg, "Couldn't restore crude sensor rc=%d\n",
 				rc);
 	}
+#endif
 
 	mutex_lock(&chg->vconn_oc_lock);
 	if (!chg->vconn_en)
@@ -4438,6 +4576,10 @@ static void smblib_handle_typec_removal(struct smb_charger *chg)
 
 unlock:
 	mutex_unlock(&chg->vconn_oc_lock);
+
+#ifdef CONFIG_LGE_USB
+	smblib_vbus_regulator_disable(chg->vbus_vreg->rdev);
+#endif
 
 	/* clear exit sink based on cc */
 	rc = smblib_masked_write(chg, TYPE_C_INTRPT_ENB_SOFTWARE_CTRL_REG,
@@ -4471,6 +4613,9 @@ static void smblib_handle_typec_insertion(struct smb_charger *chg)
 									rc);
 
 	if (chg->typec_status[3] & UFP_DFP_MODE_STATUS_BIT) {
+#ifdef CONFIG_LGE_PM
+		workaround_charging_with_rd_tigger(chg);
+#endif
 		typec_sink_insertion(chg);
 	} else {
 		rc = smblib_request_dpdm(chg, true);
@@ -4547,7 +4692,12 @@ static void smblib_handle_typec_cc_state_change(struct smb_charger *chg)
 	/* suspend usb if sink */
 	if ((chg->typec_status[3] & UFP_DFP_MODE_STATUS_BIT)
 			&& chg->typec_present)
+#ifdef CONFIG_LGE_PM
+		vote(chg->usb_icl_votable, OTG_VOTER,
+			chg->typec_mode != POWER_SUPPLY_TYPEC_SINK_DEBUG_ACCESSORY, 0);
+#else
 		vote(chg->usb_icl_votable, OTG_VOTER, true, 0);
+#endif
 	else
 		vote(chg->usb_icl_votable, OTG_VOTER, false, 0);
 
@@ -4573,6 +4723,11 @@ void smblib_usb_typec_change(struct smb_charger *chg)
 
 	if (chg->typec_status[3] & TYPEC_VCONN_OVERCURR_STATUS_BIT)
 		schedule_work(&chg->vconn_oc_work);
+
+#ifdef CONFIG_LGE_PM
+	if (chg->typec_mode == POWER_SUPPLY_TYPEC_NONE)
+		workaround_charging_without_cc_reserve(chg, smblib_request_dpdm);
+#endif
 
 	power_supply_changed(chg->usb_psy);
 }
@@ -5469,3 +5624,238 @@ int smblib_deinit(struct smb_charger *chg)
 
 	return 0;
 }
+
+#ifdef CONFIG_LGE_PM
+/************************
+ * OVERRIDDEN CALLBACKS *
+ ************************/
+irqreturn_t override_handle_chg_state_change(int irq, void *data)
+{
+	const char str_charger_status[8][12] = {
+		"inhibit", "trickle", "precharge", "fullon",
+		"taper", "termination", "chg pause", "invalid"
+	};
+
+	struct smb_irq_data* irq_data = data;
+	struct smb_charger*  chg = irq_data->parent_data;
+	u8 stat;
+
+	if (smblib_read(chg, BATTERY_CHARGER_STATUS_1_REG, &stat) >= 0) {
+		smblib_dbg(chg, PR_REGISTER, "0x%04x:0x%02x - "
+			"BVR_INITIAL_RAMP(%d), "
+			"CC_SOFT_TERMINATE(%d), "
+			"STEP_CHARGING_STATUS(%d), "
+			"BATTERY_CHARGER_STATUS(%d)\n",
+			BATTERY_CHARGER_STATUS_1_REG, stat,
+			!!(stat & BVR_INITIAL_RAMP_BIT),
+			!!(stat & CC_SOFT_TERMINATE_BIT),
+			(int)((stat & STEP_CHARGING_STATUS_MASK) >> STEP_CHARGING_STATUS_SHIFT),
+			(int)(stat & BATTERY_CHARGER_STATUS_MASK));
+
+		stat &= BATTERY_CHARGER_STATUS_MASK;
+		smblib_dbg(chg, PR_INTERRUPT, "chg_state_change to 0x%X, %s\n",
+			stat, str_charger_status[stat&0x7]);
+
+		if (stat == TERMINATE_CHARGE) {
+			if (smblib_masked_write(chg, WD_CFG_REG,
+				BARK_WDOG_INT_EN_BIT, 0) >= 0)
+				smblib_dbg(chg, PR_REGISTER, "Turning off WDOG BARK\n");
+			else
+				smblib_err(chg, "Couldn't turn off WDOG BARK\n");
+		}
+		else {
+			if (smblib_masked_write(chg, WD_CFG_REG,
+				BARK_WDOG_INT_EN_BIT, BARK_WDOG_INT_EN_BIT) >= 0)
+				smblib_dbg(chg, PR_REGISTER, "Turning on WDOG BARK\n");
+			else
+				smblib_err(chg, "Couldn't turn on WDOG BARK\n");
+		}
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+		// Update filtered charging status to VENEER system
+		{	union power_supply_propval chgstep
+				= { .intval = stat, };
+			power_supply_set_property(chg->batt_psy,
+				POWER_SUPPLY_PROP_CHARGE_TYPE, &chgstep);
+		}
+#endif
+	}
+	else
+		smblib_err(chg, "Couldn't read BATTERY_CHARGER_STATUS_1\n");
+
+	// Call original here
+	return smblib_handle_chg_state_change(irq, data);
+}
+
+irqreturn_t override_handle_usb_typec_change(int irq, void* arg) {
+	irqreturn_t ret = smblib_handle_usb_typec_change(irq, arg);
+	// Handling LGE code after original ISR
+
+	struct smb_charger* chg = ((struct smb_irq_data*)arg)->parent_data;
+	if (workaround_usb_compliance_mode_enabled())
+		vote(chg->pd_disallowed_votable_indirect, HVDCP_TIMEOUT_VOTER,
+			false, 0);
+	workaround_charging_with_rd_func(chg);
+	if (chg->typec_mode == POWER_SUPPLY_TYPEC_SINK) {
+		union power_supply_propval val = { 0, };
+		int   usb_vnow = smblib_get_prop_usb_voltage_now(chg, &val)
+			? val.intval/1000 : -1;
+		smblib_dbg(chg, PR_OTG, "Vbus is %d mV on sink.\n", usb_vnow);
+	}
+
+	return ret;
+}
+
+irqreturn_t override_handle_usb_plugin(int irq, void* arg) {
+	struct smb_charger* chg = ((struct smb_irq_data*)arg)->parent_data;
+	union power_supply_propval val = { 0, };
+	bool vbus;
+
+	static DEFINE_MUTEX(lock);
+	mutex_lock(&lock);
+
+	// Call original here
+	smblib_handle_usb_plugin(irq, arg);
+
+	vbus = !smblib_get_prop_usb_present(chg, &val) ? !!val.intval : false;
+	smblib_dbg(chg, PR_INTERRUPT, "VBUS : %s\n", vbus ? "risen" :"lowered");
+
+	if (!vbus) {
+		workaround_support_weak_supply_check();
+		workaround_floating_during_rerun_reset();
+		workaround_force_incompatible_hvdcp_clear(chg);
+		workaround_charging_with_rd_clear(chg);
+		workaround_charging_without_cc_withdraw(chg,
+			smblib_handle_typec_removal);
+		workaround_check_unknown_cable_clear(chg);
+	}
+	else {
+		workaround_charging_without_cc_reserve(chg, smblib_request_dpdm);
+		if (workaround_usb_compliance_mode_enabled()) {
+			vote(chg->usb_icl_votable, LEGACY_UNKNOWN_VOTER, true, 0);
+			vote(chg->usb_icl_votable, USB_PSY_VOTER, true, 0);
+		}
+	}
+
+	workaround_recovering_abnormal_apsd_clear();
+	workaround_avoiding_mbg_fault_uart(vbus);
+
+	mutex_unlock(&lock);
+	return IRQ_HANDLED;
+}
+
+irqreturn_t override_handle_usb_source_change(int irq, void *data) {
+	struct smb_irq_data *irq_data = data;
+	struct smb_charger *chg = irq_data->parent_data;
+	irqreturn_t rc = IRQ_NONE;
+
+	rc = smblib_handle_usb_source_change(irq, data);
+
+	workaround_floating_during_rerun_apsd(chg->real_charger_type);
+	workaround_force_incompatible_hvdcp_trigger(chg);
+	workaround_skipping_vusb_delay_trigger(chg);
+	workaround_recovering_abnormal_apsd_dcp(chg);
+	workaround_check_unknown_cable(chg);
+
+	return rc;
+}
+
+irqreturn_t override_handle_icl_change(int irq, void *data) {
+	u8 stat;
+	int rc;
+	struct smb_irq_data *irq_data = data;
+	struct smb_charger *chg = irq_data->parent_data;
+
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+	int settled_ua;
+	struct power_supply* veneer = power_supply_get_by_name("veneer");
+	if (smblib_get_charge_param(chg, &chg->param.icl_stat, &settled_ua) >= 0
+		&& veneer) {
+		union power_supply_propval aicl
+			= { .intval = settled_ua, };
+		power_supply_set_property(veneer,
+			POWER_SUPPLY_PROP_INPUT_CURRENT_SETTLED, &aicl);
+		power_supply_put(veneer);
+	}
+#endif
+	if (chg->mode == PARALLEL_MASTER) {
+		// W/A to prevent the IRQ 'usbin-icl-change' storm (CN#03165535)
+		// : In the 'usbin-icl-change' ISR here, its own IRQ is disabled
+		//   if USBIN is suspended now.
+		// : Then it will be restored on the recovery W/A for USBIN-suspend.
+		//   Refer to the recovery W/A implemented in 'extension-workaround.c'
+
+		rc = smblib_read(chg, POWER_PATH_STATUS_REG, &stat);
+		if (rc >= 0 && (stat & USBIN_SUSPEND_STS_BIT)
+			&& chg->usb_icl_change_irq_enabled) {
+			disable_irq_nosync(irq);
+			chg->usb_icl_change_irq_enabled = false;
+			smblib_err(chg, "USBIN_SUSPEND_STS_BIT = High, Disable ICL-CHANGE IRQ\n");
+		}
+		else if (rc < 0)
+			smblib_err(chg, "Couldn't read POWER_PATH_STATUS rc=%d\n", rc);
+	}
+
+	// Call and return original here
+	return smblib_handle_icl_change(irq, data);
+}
+
+irqreturn_t override_handle_dc_debug(int irq, void* data) {
+	union power_supply_propval buf = {0, };
+	struct smb_irq_data*	   arg = data;
+	struct smb_charger*	   chg = arg->parent_data;
+
+	const char* irqname = arg->name;
+	int present = !smblib_get_prop_dc_present(chg, &buf) ? buf.intval : -1;
+	int online = !smblib_get_prop_dc_online(chg, &buf) ? buf.intval : -1;
+	int aicl = !smblib_get_prop_input_current_settled(chg, &buf) ? buf.intval/1000 : -1;
+	smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s (present=%d, online=%d, aicl=%dmA)\n",
+		irqname, present, online, aicl);
+
+	if (!strcmp(irqname, "dcin-plugin"))
+		return smblib_handle_dc_plugin(irq, data);
+	else
+		return IRQ_HANDLED;
+}
+
+irqreturn_t override_handle_aicl_fail(int irq, void* arg) {
+	struct smb_charger* chg = ((struct smb_irq_data*)arg)->parent_data;
+
+	workaround_force_incompatible_hvdcp_require();
+	workaround_resuming_suspended_usbin_trigger(chg);
+
+	return smblib_handle_debug(irq, arg);
+}
+
+irqreturn_t override_handle_switcher_power_ok(int irq, void* arg) {
+	struct smb_irq_data* irq_data = arg;
+	struct smb_charger* chg = irq_data->parent_data;
+	struct storm_watch* wdata = &irq_data->storm_data;
+	u8 stat;
+	int rc;
+
+	smblib_handle_switcher_power_ok(irq, arg);
+
+	rc = smblib_read(chg, POWER_PATH_STATUS_REG, &stat);
+	if (rc < 0) {
+		smblib_err(chg, "Couldn't read POWER_PATH_STATUS rc=%d\n", rc);
+		return IRQ_HANDLED;
+	}
+
+	#define POWER_PATH_BATTERY  BIT(1)
+	if ((stat & POWER_PATH_MASK) == POWER_PATH_BATTERY)
+		workaround_support_weak_supply_trigger(chg, !!(stat & USE_USBIN_BIT));
+
+	if (!wdata->storm_count)
+		smblib_dbg(chg, PR_INTERRUPT, "IRQ: %s, POWER_PATH_STS = 0x%x.\n", irq_data->name, stat);
+
+	return IRQ_HANDLED;
+}
+
+irqreturn_t oerride_handle_otg_fail(int irq, void *arg) {
+	struct smb_irq_data *irq_data = arg;
+	struct smb_charger *chg = irq_data->parent_data;
+
+	workaround_control_vbus2_regulator(chg, false);
+	return smblib_handle_debug(irq, arg);
+};
+#endif

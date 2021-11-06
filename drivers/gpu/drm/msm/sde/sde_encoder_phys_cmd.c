@@ -50,6 +50,34 @@
  */
 #define SDE_ENC_CTL_START_THRESHOLD_US 500
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+extern bool is_ddic_name(char *ddic_name);
+#endif
+
+extern u32 get_pin_status_10(void);
+
+static u32 get_intr2_status(struct sde_encoder_phys *phys_enc)
+{
+	u32 MDSS_REG_HW_INTR2_STATUS = 0x0C;
+
+	if (!phys_enc || !phys_enc->hw_mdptop)
+		return 0xDEADDEAD;
+
+	return SDE_REG_READ(&phys_enc->hw_mdptop->hw, MDSS_REG_HW_INTR2_STATUS);
+}
+
+static void clear_intr2_te(struct sde_encoder_phys *phys_enc)
+{
+	const u32 MDSS_REG_HW_INTR2_CLEAR = 0x2C;
+
+	if (!phys_enc || !phys_enc->hw_mdptop)
+		return;
+
+	SDE_REG_WRITE(&phys_enc->hw_mdptop->hw, MDSS_REG_HW_INTR2_CLEAR,
+			0x3000000);
+	wmb();
+}
+
 static inline int _sde_encoder_phys_cmd_get_idle_timeout(
 		struct sde_encoder_phys_cmd *cmd_enc)
 {
@@ -264,7 +292,8 @@ static void sde_encoder_phys_cmd_pp_rd_ptr_irq(void *arg, int irq_idx)
 	}
 
 	SDE_EVT32_IRQ(DRMID(phys_enc->parent),
-			phys_enc->hw_pp->idx - PINGPONG_0, event, 0xfff);
+			phys_enc->hw_pp->idx - PINGPONG_0, event, 0xfff,
+			get_intr2_status(phys_enc));
 
 	if (phys_enc->parent_ops.handle_vblank_virt)
 		phys_enc->parent_ops.handle_vblank_virt(phys_enc->parent,
@@ -466,6 +495,32 @@ static bool _sde_encoder_phys_is_ppsplit(struct sde_encoder_phys *phys_enc)
 	return false;
 }
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+static u32 sde_encoder_phys_cmd_te_monitor(void)
+{
+	int timeout = 10000;
+	int gpio_value = 0;
+	u32 ret;
+
+	pr_info("start\n");
+	while (timeout > 0 && gpio_value != 1) {
+		gpio_value = gpio_get_value(10);
+		usleep_range(500, 500);
+		timeout--;
+	}
+
+	if (gpio_value == 1) {
+		pr_info("[Display] TE GPIO value is 1\n");
+	} else {
+		pr_info("[Display] Could not catch TE GPIO value\n");
+	}
+	ret = gpio_value;
+	pr_info("end\n");
+
+	return ret;
+}
+#endif
+
 static int _sde_encoder_phys_cmd_handle_ppdone_timeout(
 		struct sde_encoder_phys *phys_enc)
 {
@@ -476,6 +531,10 @@ static int _sde_encoder_phys_cmd_handle_ppdone_timeout(
 
 	if (!phys_enc || !phys_enc->hw_pp || !phys_enc->hw_ctl)
 		return -EINVAL;
+
+	pr_err("pptimeout INTR2_STATUS 0x%x pin10 0x%x\n",
+			get_intr2_status(phys_enc),
+			get_pin_status_10());
 
 	cmd_enc->pp_timeout_report_cnt++;
 
@@ -493,7 +552,12 @@ static int _sde_encoder_phys_cmd_handle_ppdone_timeout(
 	SDE_EVT32(DRMID(phys_enc->parent), phys_enc->hw_pp->idx - PINGPONG_0,
 			cmd_enc->pp_timeout_report_cnt,
 			atomic_read(&phys_enc->pending_kickoff_cnt),
-			frame_event);
+			frame_event,
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+			sde_encoder_phys_cmd_te_monitor(),
+#endif
+			get_pin_status_10(),
+			get_intr2_status(phys_enc));
 
 	/* check if panel is still sending TE signal or not */
 	if (sde_connector_esd_status(phys_enc->connector))
@@ -502,7 +566,10 @@ static int _sde_encoder_phys_cmd_handle_ppdone_timeout(
 	if (cmd_enc->pp_timeout_report_cnt >= PP_TIMEOUT_MAX_TRIALS) {
 		cmd_enc->pp_timeout_report_cnt = PP_TIMEOUT_MAX_TRIALS;
 		frame_event |= SDE_ENCODER_FRAME_EVENT_PANEL_DEAD;
-
+// Temp Code
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+		if (!(is_ddic_name("sw49410") || is_ddic_name("sw49410_rev1") || is_ddic_name("sw43402") || is_ddic_name("sw43103")))
+#endif
 		SDE_DBG_DUMP("panic");
 	} else if (cmd_enc->pp_timeout_report_cnt == 1) {
 		/* to avoid flooding, only log first time, and "dead" time */
@@ -1137,6 +1204,8 @@ static int sde_encoder_phys_cmd_prepare_for_kickoff(
 				phys_enc->hw_pp->idx - PINGPONG_0);
 		SDE_ERROR("failed wait_for_idle: %d\n", ret);
 	}
+
+	clear_intr2_te(phys_enc);
 
 	SDE_DEBUG_CMDENC(cmd_enc, "pp:%d pending_cnt %d\n",
 			phys_enc->hw_pp->idx - PINGPONG_0,

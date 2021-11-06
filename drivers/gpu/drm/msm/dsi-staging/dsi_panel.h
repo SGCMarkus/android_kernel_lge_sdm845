@@ -34,7 +34,7 @@
 #define MAX_AD_BL_SCALE_LEVEL 65535
 #define DSI_CMD_PPS_SIZE 135
 
-#define DSI_MODE_MAX 5
+#define DSI_MODE_MAX 6
 
 enum dsi_panel_rotation {
 	DSI_PANEL_ROTATE_NONE = 0,
@@ -155,6 +155,10 @@ struct drm_panel_esd_config {
 	u32 groups;
 };
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#include "../lge/lge_dsi_panel_def.h"
+#endif
+
 enum dsi_panel_type {
 	DSI_PANEL = 0,
 	EXT_BRIDGE,
@@ -213,10 +217,13 @@ struct dsi_panel {
 
 	char dsc_pps_cmd[DSI_CMD_PPS_SIZE];
 	enum dsi_dms_mode dms_mode;
-
 	bool sync_broadcast_en;
 
 	struct dsi_panel_exd_config exd_config;
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	struct lge_dsi_panel lge;
+#endif
 };
 
 static inline bool dsi_panel_ulps_feature_enabled(struct dsi_panel *panel)
@@ -279,6 +286,10 @@ int dsi_panel_pre_prepare(struct dsi_panel *panel);
 int dsi_panel_set_lp1(struct dsi_panel *panel);
 
 int dsi_panel_set_lp2(struct dsi_panel *panel);
+
+int dsi_panel_set_low_persist_mode_disable(struct dsi_panel *panel);
+
+int dsi_panel_set_low_persist_mode_enable(struct dsi_panel *panel);
 
 int dsi_panel_set_nolp(struct dsi_panel *panel);
 

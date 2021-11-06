@@ -371,6 +371,10 @@ struct smb_charger {
 	int			qc2_max_pulses;
 	bool			non_compliant_chg_detected;
 	bool			fake_usb_insertion;
+#ifdef CONFIG_LGE_USB_MOISTURE_DETECTION
+	int			moisture_ux;
+	int			moisture_usb;
+#endif
 	bool			reddragon_ipc_wa;
 
 	/* extcon for VBUS / ID notification to USB for uUSB */
@@ -557,4 +561,57 @@ int smblib_force_ufp(struct smb_charger *chg);
 
 int smblib_init(struct smb_charger *chg);
 int smblib_deinit(struct smb_charger *chg);
+
+#ifdef CONFIG_LGE_PM
+// Workaround functions implemented in extension-workarounds.c
+void workaround_resuming_suspended_usbin_trigger(struct smb_charger* chg);
+void workaround_blocking_vddmin_chargerlogo(struct smb_charger *chg);
+void workaround_charging_without_cc_reserve(struct smb_charger* chg, int (*smblib_request_dpdm)(struct smb_charger *chg, bool enable));
+void workaround_charging_without_cc_withdraw(struct smb_charger* chg, void (*handle_typec_removal)(struct smb_charger *chg));
+void workaround_support_weak_supply_trigger(struct smb_charger* chg, bool trigger);
+void workaround_support_weak_supply_check(void);
+void workaround_usb_compliance_mode_register(bool* reference);
+bool workaround_usb_compliance_mode_enabled(void);
+void workaround_force_incompatible_hvdcp_clear(struct smb_charger* chg);
+void workaround_force_incompatible_hvdcp_trigger(struct smb_charger* chg);
+void workaround_force_incompatible_hvdcp_require(void);
+bool workaround_force_incompatible_hvdcp_is_running(void);
+void workaround_recovering_abnormal_apsd_pdactive(struct smb_charger *chg, bool pd_active);
+void workaround_recovering_abnormal_apsd_pdreset(struct smb_charger *chg);
+void workaround_recovering_abnormal_apsd_dcp(struct smb_charger *chg);
+void workaround_recovering_abnormal_apsd_clear(void);
+void workaround_floating_during_rerun_apsd(enum power_supply_type pst);
+void workaround_floating_during_rerun_reset(void);
+bool workaround_floating_during_rerun_working(void);
+void workaround_charging_with_rd_tigger(struct smb_charger* chg);
+void workaround_charging_with_rd_func(struct smb_charger* chg);
+void workaround_charging_with_rd_clear(struct smb_charger* chg);
+void workaround_skipping_vusb_delay_trigger(struct smb_charger* chg);
+bool workaround_skipping_vusb_delay_enabled(void);
+void workaround_disable_nonstandard_high_voltage_charger_trigger(struct smb_charger* chg);
+bool workaround_avoiding_mbg_fault_uart(bool enable);
+bool workaround_avoiding_mbg_fault_usbid(bool enable);
+void workaround_check_unknown_cable(struct smb_charger *chg);
+void workaround_check_unknown_cable_clear(struct smb_charger *chg);
+void workaround_fake_pd_hard_reset_trigger(void);
+bool workaround_fake_pd_hard_reset_show(void);
+void workaround_control_vbus2_regulator(struct smb_charger *chg, bool on);
+void workaround_control_vbus2_regulator_trigger(void);
+void workaround_control_vbus2_regulator_init(struct smb_charger *chg);
+void workaround_update_hall_ic(bool hall_ic);
+bool workaround_skip_usb_id_running(struct smb_charger *chg);
+void workaround_skip_usb_id_init(struct smb_charger *chg);
+
+// Override functions implemented in smb-lib.c
+irqreturn_t override_handle_chg_state_change(int irq, void *arg);
+irqreturn_t override_handle_usb_plugin(int irq, void *arg);
+irqreturn_t override_handle_usb_source_change(int irq, void *arg);
+irqreturn_t override_handle_icl_change(int irq, void *arg);
+irqreturn_t override_handle_usb_typec_change(int irq, void *arg);
+irqreturn_t override_handle_dc_debug(int irq, void *arg);
+irqreturn_t override_handle_aicl_fail(int irq, void* arg);
+irqreturn_t override_handle_switcher_power_ok(int irq, void* arg);
+irqreturn_t oerride_handle_otg_fail(int irq, void *arg);
+#endif /* CONFIG_LGE_PM : for LGE workaround */
+
 #endif /* __SMB2_CHARGER_H */

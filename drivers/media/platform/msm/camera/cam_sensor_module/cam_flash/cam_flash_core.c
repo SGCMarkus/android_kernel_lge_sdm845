@@ -18,6 +18,9 @@
 #include "cam_res_mgr_api.h"
 #include "cam_common_util.h"
 #include "cam_packet_util.h"
+#if defined(CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM)
+#include <soc/qcom/lge/lge_regulator_mode_change.h>
+#endif
 
 static int cam_flash_prepare(struct cam_flash_ctrl *flash_ctrl,
 	bool regulator_enable)
@@ -449,14 +452,13 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 		for (i = 0; i < flash_ctrl->torch_num_sources; i++) {
 			if (flash_ctrl->torch_trigger[i]) {
 				max_current = soc_private->torch_max_current[i];
-
 				if (flash_data->led_current_ma[i] <=
 					max_current)
 					curr = flash_data->led_current_ma[i];
 				else
 					curr = soc_private->torch_op_current[i];
 
-				CAM_DBG(CAM_PERF,
+				CAM_ERR(CAM_FLASH,
 					"Led_Current[%d] = %d", i, curr);
 				cam_res_mgr_led_trigger_event(
 					flash_ctrl->torch_trigger[i],
@@ -468,13 +470,21 @@ static int cam_flash_ops(struct cam_flash_ctrl *flash_ctrl,
 			if (flash_ctrl->flash_trigger[i]) {
 				max_current = soc_private->flash_max_current[i];
 
+				/*LGE_CHANGE_S, flash current set to 800mA for pre-flash, hyunuk.park@lge.com*/
+				#ifdef QCT_ORIGINAL
 				if (flash_data->led_current_ma[i] <=
 					max_current)
 					curr = flash_data->led_current_ma[i];
 				else
 					curr = soc_private->flash_op_current[i];
+				#else
+				curr = soc_private->flash_op_current[i];
+				#endif
+				CAM_ERR(CAM_FLASH, "led_current_ma[%d] = %d", i, flash_data->led_current_ma[i]);
+				CAM_ERR(CAM_FLASH, "flash_op_current[%d] = %d", i, soc_private->flash_op_current[i]);
+				/*LGE_CHANGE_E, flash current set to 800mA for pre-flash, hyunuk.park@lge.com*/
 
-				CAM_DBG(CAM_PERF, "LED flash_current[%d]: %d",
+				CAM_ERR(CAM_FLASH, "LED flash_current[%d]: %d",
 					i, curr);
 				cam_res_mgr_led_trigger_event(
 					flash_ctrl->flash_trigger[i],
@@ -500,6 +510,14 @@ int cam_flash_off(struct cam_flash_ctrl *flash_ctrl)
 		CAM_ERR(CAM_FLASH, "Flash control Null");
 		return -EINVAL;
 	}
+#if defined(CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM)
+	if (isEnable == true)
+	{
+        CAM_INFO(CAM_FLASH, "bob_mode_disable");
+        bob_mode_disable();
+        isEnable = false;
+	}
+#endif
 
 	if (flash_ctrl->switch_trigger)
 		cam_res_mgr_led_trigger_event(flash_ctrl->switch_trigger,
@@ -545,6 +563,15 @@ static int cam_flash_high(
 		CAM_ERR(CAM_FLASH, "Flash Data Null");
 		return -EINVAL;
 	}
+
+#if defined(CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM)
+	if (isEnable == false)
+	{
+        CAM_INFO(CAM_FLASH, "bob_mode_enable");
+        bob_mode_enable();
+        isEnable = true;
+	}
+#endif
 
 	for (i = 0; i < flash_ctrl->torch_num_sources; i++)
 		if (flash_ctrl->torch_trigger[i])
@@ -1751,6 +1778,15 @@ void cam_flash_shutdown(struct cam_flash_ctrl *fctrl)
 
 	if (fctrl->flash_state == CAM_FLASH_STATE_INIT)
 		return;
+
+#if defined(CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM)
+	if (isEnable == true)
+	{
+        CAM_INFO(CAM_FLASH, "bob_mode_disable");
+        bob_mode_disable();
+        isEnable = false;
+	}
+#endif
 
 	if ((fctrl->flash_state == CAM_FLASH_STATE_CONFIG) ||
 		(fctrl->flash_state == CAM_FLASH_STATE_START)) {

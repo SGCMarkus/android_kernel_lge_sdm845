@@ -1,0 +1,96 @@
+/* Copyright (c) 2017, The Linux Foundation. All rights reserved.
+ *
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License version 2 and
+ * only version 2 as published by the Free Software Foundation.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ */
+
+&soc{
+	fingerprint@0 {
+		compatible = "egistec,et520";
+		egistec,gpio_irq = <&tlmm 121 0x00>;
+		egistec,gpio_rst = <&tlmm 122 0x00>;
+		egistec,vdd_io-supply = <&fingerprint_sensor_vdd>;
+		pinctrl-names = "et520_reset_reset",
+			        "et520_reset_active",
+			        "et520_irq_ac tive";
+		pinctrl-0 = <&et520_reset_reset>;
+		pinctrl-1 = <&et520_reset_active>;
+		pinctrl-2 = <&et520_irq_active>;
+		status = "ok";
+	};
+
+	fingerprint_sensor_vdd: gpio-regulator@f {
+		compatible = "regulator-fixed";
+		reg = <0x0f 0x00>;
+		regulator-name = "fingerprint_sensor_vdd";
+		regulator-min-microvolt = <3300000>;
+		regulator-max-microvolt = <3300000>;
+		regulator-enable-ramp-delay = <135>; // TBD
+		enable-active-high;
+		gpio = <&tlmm 82 0x00>;
+		pinctrl-names = "default";
+		pinctrl-0 = <&fingerprint_sensor_ldo_gpio>;
+		vin-supply = <&pmi8998_bob>;
+	};
+
+};
+
+&tlmm {
+	et520_reset_reset: et520_reset_reset {
+		mux {
+			pins = "gpio122";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio122";
+			drive-strength = <2>;
+			bias-disable;
+			output-low;
+		};
+	};
+
+	et520_reset_active: et520_reset_active {
+		mux {
+			pins = "gpio122";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio122";
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+
+	et520_irq_active: et520_irq_active {
+		mux {
+			pins = "gpio121";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio121";
+			drive-strength = <2>;
+			bias-pull-down;
+			input-enable;
+		};
+	};
+
+	fingerprint_sensor_ldo_gpio: fingerprint_sensor_ldo_gpio {
+		mux {
+			pins = "gpio82";
+			function = "gpio";
+		};
+		config {
+			pins = "gpio82";
+			drive-strength = <2>;
+			bias-disable;
+			output-high;
+		};
+	};
+};

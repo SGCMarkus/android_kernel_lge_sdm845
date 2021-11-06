@@ -11,6 +11,7 @@
  *
  */
 
+#include <linux/irqchip/arm-gic-v3.h>
 #include <linux/kernel.h>
 #include <linux/platform_device.h>
 #include <asm/arch_timer.h>
@@ -18,6 +19,8 @@
 #include "rpmh_master_stat.h"
 #include <soc/qcom/lpm_levels.h>
 #include <soc/qcom/rpmh.h>
+
+#include <clocksource/arm_arch_timer.h>
 
 #define PDC_TIME_VALID_SHIFT	31
 #define PDC_TIME_UPPER_MASK	0xFFFFFF
@@ -51,6 +54,7 @@ static int system_sleep_update_wakeup(bool from_idle)
 
 	return setup_wakeup(lo, hi);
 }
+EXPORT_SYMBOL(system_sleep_update_wakeup);
 
 /**
  * system_sleep_allowed() - Returns if its okay to enter system low power modes

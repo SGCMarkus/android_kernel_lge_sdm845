@@ -52,6 +52,12 @@
 #define CREATE_TRACE_POINTS
 #include "sde_trace.h"
 
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+#include <linux/lge_ds3.h>
+extern void request_dualscreen_recovery(void);
+extern int dp_ctrl_status;
+#endif
+
 /* defines for secure channel call */
 #define SEC_SID_CNT               2
 #define SEC_SID_MASK_0            0x80881
@@ -1092,6 +1098,9 @@ static void sde_kms_wait_for_commit_done(struct msm_kms *kms,
 	struct drm_encoder *encoder;
 	struct drm_device *dev;
 	int ret;
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	static int retry_wait_commit_count = 0;
+#endif
 
 	if (!kms || !crtc || !crtc->state) {
 		SDE_ERROR("invalid params\n");
@@ -1122,6 +1131,19 @@ static void sde_kms_wait_for_commit_done(struct msm_kms *kms,
 		ret = sde_encoder_wait_for_event(encoder, MSM_ENC_COMMIT_DONE);
 		if (ret && ret != -EWOULDBLOCK) {
 			SDE_ERROR("wait for commit done returned %d\n", ret);
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+			if (is_ds_connected()) {
+				if (retry_wait_commit_count >= 10) {
+					SDE_ERROR("%s: Call request_dualscreen_recovery\n", __func__);
+					request_dualscreen_recovery();
+					retry_wait_commit_count = 0;
+					dp_ctrl_status = 1;
+				} else {
+					if (!dp_ctrl_status)
+						retry_wait_commit_count++;
+				}
+			}
+#endif
 			break;
 		}
 

@@ -81,6 +81,37 @@ TRACE_EVENT(cpufreq_sched_update_capacity,
 		      __entry->dl, __entry->total, __entry->new_total)
 );
 
+#ifdef CONFIG_LGE_PM_PRM
+TRACE_EVENT(sugov_triton_level,
+         TP_PROTO(int policy,
+			 unsigned int max,
+			 unsigned int min,
+             unsigned int diff,
+             int requested_freq,
+             int actual_freq),
+         TP_ARGS(policy, max, min, diff, requested_freq, actual_freq),
+         TP_STRUCT__entry(
+            __field(    int,        policy)
+            __field(    unsigned int,        max)
+            __field(    unsigned int,        min)
+            __field(    unsigned int,  diff)
+            __field(    int,   requested_freq)
+            __field(    int,   actual_freq)
+           ),
+         TP_fast_assign(
+            __entry->policy = policy;
+            __entry->max = max;
+            __entry->min = min;
+            __entry->diff = diff;
+            __entry->requested_freq = requested_freq;
+            __entry->actual_freq = actual_freq;
+            ),
+         TP_printk("policy :%d, max : %u , min: %u, diff : %u, requested : %d, actual : %d",
+             __entry->policy,__entry->max, __entry->min,
+			 __entry->diff, __entry->requested_freq,
+             __entry->actual_freq)
+);
+#endif
 #endif /* _TRACE_CPUFREQ_SCHED_H */
 
 /* This part must be outside protection */

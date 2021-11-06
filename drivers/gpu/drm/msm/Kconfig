@@ -149,3 +149,60 @@ config DRM_SDE_RSC
           avoids the display core power collapse. A client can also register
           for display core power collapse events on rsc.
 
+config LGE_DISPLAY_SW49408
+	bool "LGE sw49408"
+	---help---
+	The SW49408 provides support for SW49408 features made by LGE.
+
+config LGE_DISPLAY_COMMON
+	default y
+	bool "LGE DISPLAY COMMON"
+	---help---
+	The LGE DISPLAY COMMON feature.
+
+config LGE_DISPLAY_VR_LP_BLMAP
+	bool "LGE DISPLAY VR LP BLMAP"
+	---help---
+	The LGE DISPLAY feature for VR low persist mode.
+
+config LGE_DISPLAY_DIMMING_BOOT_SUPPORT
+	default y
+	bool "LGE DISPLAY DIMMING BOOT SUPPORT"
+	depends on LGE_DISPLAY_COMMON
+	---help---
+	The LGE DISPLAY DIMMING BOOT SUPPORT feature.
+
+config LGE_DISPLAY_OLED_SUPPORT
+	bool "LGE OLED DISPLAY"
+	---help---
+	The LGE DISPLAY feature for OLED panel.
+
+config LGE_DISPLAY_USE_FSC
+	bool "LGE USE WLED FSC"
+	---help---
+	The LGE DISPLAY feature for WLED MODEL.
+
+config LGE_DISPLAY_NOT_SUPPORT_DISPLAYPORT
+	bool "ENABLE DISPLAYPORT NOT SUPPORT NOTIFY FEATURE"
+	default n
+	---help---
+	This config is for notification to framework unsupported
+	DISPLAYPORT
+
+config LGE_DISPLAY_XLOG_ENABLED
+	bool "ENABLE DEBUG LOG LEVEL"
+	default n
+	---help---
+	This config is for debug log level to store memory and log
+
+config LGE_DISPLAY_SUPPORT_DP_KOPIN
+	bool "ENABLE DISPLAYPORT KOPIN DEVICE SUPPORT FEATURE"
+	default n
+	---help---
+	This config is for support only KOPIN devcie
+
+config LGE_DISPLAY_SUPPORT_DP_JUDYPN
+	bool "SUPPORT DISPLAYPORT JUDYPN"
+	default n
+	---help---
+	This config is for support only judypn device

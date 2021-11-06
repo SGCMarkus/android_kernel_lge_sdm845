@@ -59,6 +59,12 @@
 #define KI_COEFF_HI_DISCHG_OFFSET	0
 #define KI_COEFF_LOW_DISCHG_WORD	10
 #define KI_COEFF_LOW_DISCHG_OFFSET	2
+#ifdef CONFIG_LGE_PM
+#define KI_CURR_LOWTH_DISCHG_v2_WORD	10 // for Low to Med
+#define KI_CURR_LOWTH_DISCHG_v2_OFFSET	2
+#define KI_CURR_HIGHTH_DISCHG_v2_WORD	10 // for Med to High
+#define KI_CURR_HIGHTH_DISCHG_v2_OFFSET	3
+#endif
 #define KI_COEFF_FULL_SOC_WORD		12
 #define KI_COEFF_FULL_SOC_OFFSET	2
 #define DELTA_MSOC_THR_WORD		12
@@ -85,6 +91,11 @@
 #define ESR_TIMER_CHG_INIT_OFFSET	2
 #define ESR_EXTRACTION_ENABLE_WORD	19
 #define ESR_EXTRACTION_ENABLE_OFFSET	0
+#ifdef CONFIG_LGE_PM
+#define ESR_EXTRACTION_ENABLE_BYTE	0xBF
+#define ESR_EXTRACTION_DISABLE_BYTE	0xBE
+#define IVT_ADC_ENABLE_BYTE	0xFF
+#endif
 #define PROFILE_LOAD_WORD		24
 #define PROFILE_LOAD_OFFSET		0
 #define ESR_RSLOW_DISCHG_WORD		34
@@ -172,6 +183,19 @@ static void fg_encode_default(struct fg_sram_param *sp,
 	enum fg_sram_param_id id, int val, u8 *buf);
 
 static struct fg_irq_info fg_irqs[FG_IRQ_MAX];
+#ifdef CONFIG_LGE_PM
+static int calculate_rescaled_soc(struct fg_chip *chip);
+static int extension_fg_load_dt(void);
+static int extension_fg_load_icoeff_dt(struct fg_chip *chip);
+static int extension_fg_gen3_set_ki_coeff(struct fg_chip *chip);
+static int extension_fg_gen3_suspend(struct fg_chip *chip);
+static int extension_fg_gen3_resume(struct fg_chip *chip);
+static int override_fg_adjust_ki_coeff_dischg(struct fg_chip *chip, int ki_low, int ki_med, int ki_high);
+static void override_fg_hw_init(struct fg_chip *chip);
+#define KI_COEFF_LOW_DISCHG_DEFAULT	800
+#define KI_COEFF_MED_DISCHG_DEFAULT	1500
+#define KI_COEFF_HI_DISCHG_DEFAULT	2200
+#endif
 
 #define PARAM(_id, _addr_word, _addr_byte, _len, _num, _den, _offset,	\
 	      _enc, _dec)						\
@@ -257,6 +281,12 @@ static struct fg_sram_param pmi8998_v1_sram_params[] = {
 		1, 512, 1000000, 0, fg_encode_default, NULL),
 	PARAM(SLOPE_LIMIT, SLOPE_LIMIT_WORD, SLOPE_LIMIT_OFFSET, 1, 8192, 1000,
 		0, fg_encode_default, NULL),
+#ifdef CONFIG_LGE_PM
+	PARAM(KI_CURR_LOWTH_DISCHG, KI_CURR_LOWTH_DISCHG_v2_WORD, KI_CURR_LOWTH_DISCHG_v2_OFFSET, 1,
+		1000, 15625, 0, fg_encode_current, NULL),
+	PARAM(KI_CURR_HIGHTH_DISCHG, KI_CURR_HIGHTH_DISCHG_v2_WORD, KI_CURR_HIGHTH_DISCHG_v2_OFFSET, 1,
+		1000, 15625, 0, fg_encode_current, NULL),
+#endif
 };
 
 static struct fg_sram_param pmi8998_v2_sram_params[] = {
@@ -347,6 +377,12 @@ static struct fg_sram_param pmi8998_v2_sram_params[] = {
 		1, 512, 1000000, 0, fg_encode_default, NULL),
 	PARAM(SLOPE_LIMIT, SLOPE_LIMIT_WORD, SLOPE_LIMIT_OFFSET, 1, 8192, 1000,
 		0, fg_encode_default, NULL),
+#ifdef CONFIG_LGE_PM
+	PARAM(KI_CURR_LOWTH_DISCHG, KI_CURR_LOWTH_DISCHG_v2_WORD, KI_CURR_LOWTH_DISCHG_v2_OFFSET, 1,
+		1000, 15625, 0, fg_encode_current, NULL),
+	PARAM(KI_CURR_HIGHTH_DISCHG, KI_CURR_HIGHTH_DISCHG_v2_WORD, KI_CURR_HIGHTH_DISCHG_v2_OFFSET, 1,
+		1000, 15625, 0, fg_encode_current, NULL),
+#endif
 };
 
 static struct fg_alg_flag pmi8998_v1_alg_flags[] = {
@@ -671,11 +707,23 @@ static int fg_get_battery_temp(struct fg_chip *chip, int *val)
 
 	temp = ((buf[1] & BATT_TEMP_MSB_MASK) << 8) |
 		(buf[0] & BATT_TEMP_LSB_MASK);
+#ifdef CONFIG_LGE_PM
+	temp = DIV_ROUND_CLOSEST((temp * 10), 4);
+
+	/* Value is in Kelvin; Convert it to deciDegC */
+	temp = temp - (273 * 10);
+#else
 	temp = DIV_ROUND_CLOSEST(temp, 4);
 
 	/* Value is in Kelvin; Convert it to deciDegC */
 	temp = (temp - 273) * 10;
+#endif
 	*val = temp;
+
+#ifdef CONFIG_LGE_PM_DEBUG
+	if (temp >= 600)
+		pr_err("Battery temperature is raised to %d\n", temp);
+#endif
 	return 0;
 }
 
@@ -1024,8 +1072,16 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 		return -ENXIO;
 	}
 
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+{	struct device_node* extension_get_batt_profile(struct device_node* container,
+		int resistance_id);
+	profile_node = extension_get_batt_profile(batt_node,
+				chip->batt_id_ohms / 1000);
+}
+#else
 	profile_node = of_batterydata_get_best_profile(batt_node,
 				chip->batt_id_ohms / 1000, NULL);
+#endif
 	if (IS_ERR(profile_node))
 		return PTR_ERR(profile_node);
 
@@ -1033,6 +1089,18 @@ static int fg_get_batt_profile(struct fg_chip *chip)
 		pr_err("couldn't find profile handle\n");
 		return -ENODATA;
 	}
+
+#ifdef CONFIG_LGE_PM
+{
+	int override_fg_parse_ki_coefficient(
+				struct fg_chip *chip, struct device_node *node);
+	int override_fg_parse_for_battery_charactistics(
+				struct fg_chip *chip, struct device_node *node);
+	override_fg_parse_ki_coefficient(chip, profile_node);
+	override_fg_parse_for_battery_charactistics(chip, profile_node);
+	override_fg_hw_init(chip);
+}
+#endif
 
 	rc = of_property_read_string(profile_node, "qcom,battery-type",
 			&chip->bp.batt_type_str);
@@ -1181,6 +1249,7 @@ static void fg_notify_charger(struct fg_chip *chip)
 		return;
 
 	prop.intval = chip->bp.float_volt_uv;
+#ifndef CONFIG_MACH_SDM845_JUDYPN_LAO_COM
 	rc = power_supply_set_property(chip->batt_psy,
 			POWER_SUPPLY_PROP_VOLTAGE_MAX, &prop);
 	if (rc < 0) {
@@ -1188,6 +1257,7 @@ static void fg_notify_charger(struct fg_chip *chip)
 			rc);
 		return;
 	}
+#endif
 
 	prop.intval = chip->bp.fastchg_curr_ma * 1000;
 	rc = power_supply_set_property(chip->batt_psy,
@@ -1356,9 +1426,13 @@ static int fg_save_learned_cap_to_sram(struct fg_chip *chip)
 		pr_err("Error in writing act_batt_cap, rc=%d\n", rc);
 		return rc;
 	}
-
+#ifdef CONFIG_LGE_PM_DEBUG
+	fg_dbg(chip, FG_LGE, "learned capacity %llduah/%dmah stored\n",
+			        chip->cl.learned_cc_uah, cc_mah);
+#else
 	fg_dbg(chip, FG_CAP_LEARN, "learned capacity %llduah/%dmah stored\n",
 		chip->cl.learned_cc_uah, cc_mah);
+#endif
 	return 0;
 }
 
@@ -1399,9 +1473,13 @@ static int fg_load_learned_cap_from_sram(struct fg_chip *chip)
 		if (rc < 0)
 			pr_err("Error in saving learned_cc_uah, rc=%d\n", rc);
 	}
-
+#ifdef CONFIG_LGE_PM_DEBUG
+	fg_dbg(chip, FG_LGE, "learned_cc_uah:%lld nom_cap_uah: %lld\n",
+		chip->cl.learned_cc_uah, chip->cl.nom_cap_uah);
+#else
 	fg_dbg(chip, FG_CAP_LEARN, "learned_cc_uah:%lld nom_cap_uah: %lld\n",
 		chip->cl.learned_cc_uah, chip->cl.nom_cap_uah);
+#endif
 	return 0;
 }
 
@@ -1417,8 +1495,13 @@ static bool is_temp_valid_cap_learning(struct fg_chip *chip)
 
 	if (batt_temp > chip->dt.cl_max_temp ||
 		batt_temp < chip->dt.cl_min_temp) {
+#ifdef CONFIG_LGE_PM_DEBUG
+		fg_dbg(chip, FG_LGE, "batt temp %d out of range [%d %d]\n",
+			batt_temp, chip->dt.cl_min_temp, chip->dt.cl_max_temp);
+#else
 		fg_dbg(chip, FG_CAP_LEARN, "batt temp %d out of range [%d %d]\n",
 			batt_temp, chip->dt.cl_min_temp, chip->dt.cl_max_temp);
+#endif
 		return false;
 	}
 
@@ -1481,9 +1564,13 @@ static void fg_cap_learning_post_process(struct fg_chip *chip)
 	rc = fg_save_learned_cap_to_sram(chip);
 	if (rc < 0)
 		pr_err("Error in saving learned_cc_uah, rc=%d\n", rc);
-
+#ifdef CONFIG_LGE_PM_DEBUG
+	fg_dbg(chip, FG_LGE, "final cc_uah = %lld, learned capacity %lld -> %lld uah\n",
+		chip->cl.final_cc_uah, old_cap, chip->cl.learned_cc_uah);
+#else
 	fg_dbg(chip, FG_CAP_LEARN, "final cc_uah = %lld, learned capacity %lld -> %lld uah\n",
 		chip->cl.final_cc_uah, old_cap, chip->cl.learned_cc_uah);
+#endif
 }
 
 static int fg_cap_learning_process_full_data(struct fg_chip *chip)
@@ -1512,8 +1599,13 @@ static int fg_cap_learning_process_full_data(struct fg_chip *chip)
 	delta_cc_uah = div64_u64(chip->cl.learned_cc_uah * cc_soc_delta_pct,
 				100);
 	chip->cl.final_cc_uah = chip->cl.init_cc_uah + delta_cc_uah;
+#ifdef CONFIG_LGE_PM_DEBUG
+	fg_dbg(chip, FG_LGE, "Current cc_soc=%d cc_soc_delta_pct=%d total_cc_uah=%lld\n",
+		cc_soc_sw, cc_soc_delta_pct, chip->cl.final_cc_uah);
+#else
 	fg_dbg(chip, FG_CAP_LEARN, "Current cc_soc=%d cc_soc_delta_pct=%u total_cc_uah=%llu\n",
 		cc_soc_sw, cc_soc_delta_pct, chip->cl.final_cc_uah);
+#endif
 	return 0;
 }
 
@@ -1677,6 +1769,7 @@ out:
 	mutex_unlock(&chip->cl.lock);
 }
 
+#ifndef CONFIG_LGE_PM
 #define KI_COEFF_LOW_DISCHG_DEFAULT	800
 #define KI_COEFF_MED_DISCHG_DEFAULT	1500
 #define KI_COEFF_HI_DISCHG_DEFAULT	2200
@@ -1744,6 +1837,7 @@ static int fg_adjust_ki_coeff_dischg(struct fg_chip *chip)
 		ki_coeff_low, ki_coeff_med, ki_coeff_hi);
 	return 0;
 }
+#endif
 
 #define KI_COEFF_FULL_SOC_DEFAULT	733
 static int fg_adjust_ki_coeff_full_soc(struct fg_chip *chip, int batt_temp)
@@ -2155,6 +2249,11 @@ static int fg_adjust_recharge_soc(struct fg_chip *chip)
 				new_recharge_soc = msoc - (FULL_CAPACITY -
 								recharge_soc);
 				chip->recharge_soc_adjusted = true;
+#ifdef CONFIG_LGE_PM
+				if(msoc >= recharge_soc)
+					new_recharge_soc = recharge_soc;
+				fg_dbg(chip, FG_LGE, "resume soc set to %d\n", new_recharge_soc);
+#endif
 			} else {
 				/* adjusted already, do nothing */
 				if (chip->health != POWER_SUPPLY_HEALTH_GOOD)
@@ -2190,7 +2289,6 @@ static int fg_adjust_recharge_soc(struct fg_chip *chip)
 		pr_err("Couldn't set resume SOC for FG, rc=%d\n", rc);
 		return rc;
 	}
-
 	fg_dbg(chip, FG_STATUS, "resume soc set to %d\n", new_recharge_soc);
 	return 0;
 }
@@ -2259,14 +2357,22 @@ static int fg_slope_limit_config(struct fg_chip *chip, int batt_temp)
 	}
 
 	chip->slope_limit_sts = status;
+#ifdef CONFIG_LGE_PM
+	fg_dbg(chip, FG_LGE, "Slope limit status: %d value: %x\n", status,
+		buf);
+#else
 	fg_dbg(chip, FG_STATUS, "Slope limit status: %d value: %x\n", status,
 		buf);
+#endif
 	return 0;
 }
 
 static int __fg_esr_filter_config(struct fg_chip *chip,
 				enum esr_filter_status esr_flt_sts)
 {
+#ifdef CONFIG_LGE_PM
+	const char str_esr_flt_sts[3][11] = {"room temp", "low temp", "relex temp"};
+#endif
 	u8 esr_tight_flt, esr_broad_flt;
 	int esr_tight_flt_upct, esr_broad_flt_upct;
 	int rc;
@@ -2311,7 +2417,16 @@ static int __fg_esr_filter_config(struct fg_chip *chip,
 	}
 
 	chip->esr_flt_sts = esr_flt_sts;
+#ifdef CONFIG_LGE_PM
+	fg_dbg(chip, FG_LGE,
+		"applied ESR filter %d=%s(lvl=%d, time=%dsec), values(tight=%d, broad=%d)\n",
+				esr_flt_sts, str_esr_flt_sts[esr_flt_sts], chip->esr_flt_rt_lvl,
+				chip->esr_flt_rt_lvl < 0 ? 0:
+					chip->dt.esr_flt_rt_duration[chip->esr_flt_rt_lvl]/1000,
+				esr_tight_flt_upct, esr_broad_flt_upct);
+#else
 	fg_dbg(chip, FG_STATUS, "applied ESR filter %d values\n", esr_flt_sts);
+#endif
 	return 0;
 }
 
@@ -2360,13 +2475,28 @@ static int fg_esr_filter_config(struct fg_chip *chip, int batt_temp,
 				 * Starting point for counting. Check if the
 				 * temperature is qualified.
 				 */
+#ifdef CONFIG_LGE_PM
+				chip->esr_flt_rt_lvl = -1;
+				if (batt_temp <= chip->dt.esr_flt_rt_switch_temp[0])
+					chip->esr_flt_rt_lvl = 0;
+				else if (batt_temp <= chip->dt.esr_flt_rt_switch_temp[1])
+					chip->esr_flt_rt_lvl = 1;
+				else if (batt_temp <= chip->dt.esr_flt_rt_switch_temp[2])
+					chip->esr_flt_rt_lvl = 2;
+
+				if (chip->esr_flt_rt_lvl < 0)
+#else
 				if (batt_temp > chip->dt.esr_flt_rt_switch_temp)
+#endif
 					count_temp_irq = false;
 				else
 					chip->last_delta_temp_time =
 						ktime_get();
 			}
 		} else {
+#ifdef CONFIG_LGE_PM
+			chip->esr_flt_rt_lvl = -1;
+#endif
 			chip->delta_temp_irq_count = 0;
 			rc = alarm_try_to_cancel(&chip->esr_filter_alarm);
 			if (rc < 0)
@@ -2405,9 +2535,15 @@ static int fg_esr_filter_config(struct fg_chip *chip, int batt_temp,
 	if (rc < 0)
 		return rc;
 
+#ifdef CONFIG_LGE_PM
+	if (esr_flt_sts == RELAX_TEMP)
+		alarm_start_relative(&chip->esr_filter_alarm,
+			ms_to_ktime(chip->dt.esr_flt_rt_duration[chip->esr_flt_rt_lvl]));
+#else
 	if (esr_flt_sts == RELAX_TEMP)
 		alarm_start_relative(&chip->esr_filter_alarm,
 			ms_to_ktime(ESR_FILTER_ALARM_TIME_MS));
+#endif
 
 	return 0;
 }
@@ -2677,6 +2813,46 @@ static void clear_cycle_counter(struct fg_chip *chip)
 
 	mutex_unlock(&chip->cyc_ctr.lock);
 }
+
+#ifdef CONFIG_LGE_PM
+static void backup_from_cycle_counter(struct fg_chip *chip)
+{
+	int i;
+	/* read cycle count data from sram */
+	restore_cycle_counter(chip);
+	/* backup cycle count*/
+	mutex_lock(&chip->cyc_ctr.lock);
+	for (i = 0; i < BUCKET_COUNT; i++) {
+		fg_dbg(chip, FG_LGE, "backup_from: %d: %d -> %d\n",
+			i, chip->cyc_ctr.count[i], chip->cyc_ctr_backup.count[i]);
+		chip->cyc_ctr_backup.count[i] = chip->cyc_ctr.count[i];
+	}
+	mutex_unlock(&chip->cyc_ctr.lock);
+}
+
+static void backup_to_cycle_counter(struct fg_chip *chip)
+{
+	int rc = 0, i;
+
+	if (!chip->cyc_ctr.en)
+		return;
+
+	mutex_lock(&chip->cyc_ctr.lock);
+	/* restore cycle count from backup*/
+	for (i = 0; i < BUCKET_COUNT; i++) {
+		fg_dbg(chip, FG_LGE, "backup_to: %d: %d <- %d\n",
+			i, chip->cyc_ctr.count[i], chip->cyc_ctr_backup.count[i]);
+		chip->cyc_ctr.count[i] = chip->cyc_ctr_backup.count[i];
+	}
+	/* write backuped cycle count to from sram */
+	rc = fg_sram_write(chip, CYCLE_COUNT_WORD, CYCLE_COUNT_OFFSET,
+			(u8 *)&chip->cyc_ctr.count, sizeof(chip->cyc_ctr.count),
+			FG_IMA_DEFAULT);
+	if (rc < 0)
+		fg_dbg(chip, FG_LGE, "failed to write cycle counter rc=%d\n", rc);
+	mutex_unlock(&chip->cyc_ctr.lock);
+}
+#endif
 
 static int fg_inc_store_cycle_ctr(struct fg_chip *chip, int bucket)
 {
@@ -2953,8 +3129,13 @@ static void status_change_work(struct work_struct *work)
 	if (rc < 0)
 		pr_err("Failed to config SW ESR rc=%d\n", rc);
 
+#ifdef CONFIG_LGE_PM
+	rc = power_supply_get_property(chip->batt_psy, POWER_SUPPLY_PROP_STATUS_RAW,
+			&prop);
+#else
 	rc = power_supply_get_property(chip->batt_psy, POWER_SUPPLY_PROP_STATUS,
 			&prop);
+#endif
 	if (rc < 0) {
 		pr_err("Error in getting charging status, rc=%d\n", rc);
 		goto out;
@@ -2992,9 +3173,23 @@ static void status_change_work(struct work_struct *work)
 	if (rc < 0)
 		pr_err("Error in adjusting recharge_voltage, rc=%d\n", rc);
 
+#ifdef CONFIG_LGE_PM
+{
+	if (chip->dt.dynamic_ki_en)
+		rc = extension_fg_gen3_set_ki_coeff(chip);
+	else
+		rc = override_fg_adjust_ki_coeff_dischg(chip,
+				KI_COEFF_LOW_DISCHG_DEFAULT,
+				KI_COEFF_MED_DISCHG_DEFAULT,
+				KI_COEFF_HI_DISCHG_DEFAULT);
+	if (rc < 0)
+		pr_err("Error in adjusting ki_coeff_dischg, rc=%d\n", rc);
+}
+#else
 	rc = fg_adjust_ki_coeff_dischg(chip);
 	if (rc < 0)
 		pr_err("Error in adjusting ki_coeff_dischg, rc=%d\n", rc);
+#endif
 
 	rc = fg_esr_fcc_config(chip);
 	if (rc < 0)
@@ -3091,7 +3286,11 @@ static bool is_profile_load_required(struct fg_chip *chip)
 		profiles_same = memcmp(chip->batt_profile, buf,
 					PROFILE_COMP_LEN) == 0;
 		if (profiles_same) {
+#ifdef CONFIG_LGE_PM_DEBUG
+			fg_dbg(chip, FG_LGE, "Battery profile is same, not loading it\n");
+#else
 			fg_dbg(chip, FG_STATUS, "Battery profile is same, not loading it\n");
+#endif
 			chip->profile_load_status = PROFILE_LOADED;
 			return false;
 		}
@@ -3109,8 +3308,11 @@ static bool is_profile_load_required(struct fg_chip *chip)
 			chip->profile_load_status = PROFILE_SKIPPED;
 			return false;
 		}
-
+#ifdef CONFIG_LGE_PM_DEBUG
+		fg_dbg(chip, FG_LGE, "Profiles are different, loading the correct one\n");
+#else
 		fg_dbg(chip, FG_STATUS, "Profiles are different, loading the correct one\n");
+#endif
 	} else {
 		fg_dbg(chip, FG_STATUS, "Profile integrity bit is not set\n");
 		if (fg_profile_dump) {
@@ -3264,6 +3466,10 @@ static void profile_load_work(struct work_struct *work)
 	if (!is_profile_load_required(chip))
 		goto done;
 
+#ifdef CONFIG_LGE_PM
+	backup_from_cycle_counter(chip);
+#endif
+
 	clear_cycle_counter(chip);
 	mutex_lock(&chip->cl.lock);
 	chip->cl.learned_cc_uah = 0;
@@ -3303,6 +3509,11 @@ static void profile_load_work(struct work_struct *work)
 
 	fg_dbg(chip, FG_STATUS, "SOC is ready\n");
 	chip->profile_load_status = PROFILE_LOADED;
+
+#ifdef CONFIG_LGE_PM
+	backup_to_cycle_counter(chip);
+#endif
+
 done:
 	rc = fg_bp_params_config(chip);
 	if (rc < 0)
@@ -3342,6 +3553,10 @@ out:
 		fg_stay_awake(chip, FG_STATUS_NOTIFY_WAKE);
 		schedule_work(&chip->status_change_work);
 	}
+#ifdef CONFIG_LGE_PM
+	extension_fg_load_icoeff_dt(chip);
+	calculate_rescaled_soc(chip);
+#endif
 }
 
 static void sram_dump_work(struct work_struct *work)
@@ -3826,12 +4041,24 @@ static int fg_force_esr_meas(struct fg_chip *chip)
 {
 	int rc;
 	int esr_uohms;
+#ifdef CONFIG_LGE_PM
+	u8 buf[4] = {0, 0, 0, 0};
+#endif
 
+	fg_dbg(chip, FG_LGE, "qni: >>> enter\n");
 	mutex_lock(&chip->qnovo_esr_ctrl_lock);
 	/* force esr extraction enable */
+#ifdef CONFIG_LGE_PM
+	buf[0] = ESR_EXTRACTION_ENABLE_BYTE;
+	buf[1] = IVT_ADC_ENABLE_BYTE;
+	rc = fg_sram_write(chip,
+			ESR_EXTRACTION_ENABLE_WORD, ESR_EXTRACTION_ENABLE_OFFSET,
+			buf, 4, FG_IMA_DEFAULT);
+#else
 	rc = fg_sram_masked_write(chip, ESR_EXTRACTION_ENABLE_WORD,
 			ESR_EXTRACTION_ENABLE_OFFSET, BIT(0), BIT(0),
 			FG_IMA_DEFAULT);
+#endif
 	if (rc < 0) {
 		pr_err("failed to enable esr extn rc=%d\n", rc);
 		goto out;
@@ -3871,8 +4098,10 @@ static int fg_force_esr_meas(struct fg_chip *chip)
 	}
 
 	/* If qnovo is disabled, then leave ESR extraction enabled */
-	if (!chip->qnovo_enable)
+	if (!chip->qnovo_enable) {
+		fg_dbg(chip, FG_LGE, "qni: <><> cancel due to disabled qnovo\n");
 		goto done;
+	}
 
 	rc = fg_masked_write(chip, BATT_INFO_QNOVO_CFG(chip),
 			LD_REG_CTRL_BIT, LD_REG_CTRL_BIT);
@@ -3882,17 +4111,27 @@ static int fg_force_esr_meas(struct fg_chip *chip)
 	}
 
 	/* force esr extraction disable */
+#ifdef CONFIG_LGE_PM
+	buf[0] = ESR_EXTRACTION_DISABLE_BYTE;
+	buf[1] = IVT_ADC_ENABLE_BYTE;
+	rc = fg_sram_write(chip,
+			ESR_EXTRACTION_ENABLE_WORD, ESR_EXTRACTION_ENABLE_OFFSET,
+			buf, 4, FG_IMA_DEFAULT);
+#else
 	rc = fg_sram_masked_write(chip, ESR_EXTRACTION_ENABLE_WORD,
 			ESR_EXTRACTION_ENABLE_OFFSET, BIT(0), 0,
 			FG_IMA_DEFAULT);
+#endif
 	if (rc < 0) {
 		pr_err("failed to disable esr extn rc=%d\n", rc);
 		goto out;
 	}
 
 done:
-	fg_get_battery_resistance(chip, &esr_uohms);
-	fg_dbg(chip, FG_STATUS, "ESR uohms = %d\n", esr_uohms);
+	rc = fg_get_sram_prop(chip, FG_SRAM_ESR, &esr_uohms);
+	if (rc < 0)
+		pr_err("error to get ESR, rc=%d\n", rc);
+	fg_dbg(chip, FG_LGE, "qni: <<< exit, ESR uohms = %d\n", esr_uohms);
 out:
 	mutex_unlock(&chip->qnovo_esr_ctrl_lock);
 	return rc;
@@ -3901,13 +4140,23 @@ out:
 static int fg_prepare_for_qnovo(struct fg_chip *chip, int qnovo_enable)
 {
 	int rc = 0;
-
+#ifdef CONFIG_LGE_PM
+	u8 buf[4] = {0, 0, 0, 0};
+#endif
 	mutex_lock(&chip->qnovo_esr_ctrl_lock);
 	/* force esr extraction disable when qnovo enables */
+#ifdef CONFIG_LGE_PM
+	buf[0] = qnovo_enable ? ESR_EXTRACTION_DISABLE_BYTE : ESR_EXTRACTION_ENABLE_BYTE;
+	buf[1] = IVT_ADC_ENABLE_BYTE;
+	rc = fg_sram_write(chip,
+			ESR_EXTRACTION_ENABLE_WORD, ESR_EXTRACTION_ENABLE_OFFSET,
+			buf, 4, FG_IMA_DEFAULT);
+#else
 	rc = fg_sram_masked_write(chip, ESR_EXTRACTION_ENABLE_WORD,
 			ESR_EXTRACTION_ENABLE_OFFSET,
 			BIT(0), qnovo_enable ? 0 : BIT(0),
 			FG_IMA_DEFAULT);
+#endif
 	if (rc < 0) {
 		pr_err("Error in configuring esr extraction rc=%d\n", rc);
 		goto out;
@@ -3920,9 +4169,13 @@ static int fg_prepare_for_qnovo(struct fg_chip *chip, int qnovo_enable)
 		pr_err("Error in configuring qnovo_cfg rc=%d\n", rc);
 		goto out;
 	}
-
+#ifdef CONFIG_LGE_PM_DEBUG
+	fg_dbg(chip, FG_LGE, "%s for Qnovo\n",
+		qnovo_enable ? "Prepared" : "Unprepared");
+#else
 	fg_dbg(chip, FG_STATUS, "%s for Qnovo\n",
 		qnovo_enable ? "Prepared" : "Unprepared");
+#endif
 	chip->qnovo_enable = qnovo_enable;
 out:
 	mutex_unlock(&chip->qnovo_esr_ctrl_lock);
@@ -4426,6 +4679,11 @@ static int fg_hw_init(struct fg_chip *chip)
 	if (chip->dt.delta_soc_thr > 0 && chip->dt.delta_soc_thr < 100) {
 		fg_encode(chip->sp, FG_SRAM_DELTA_MSOC_THR,
 			chip->dt.delta_soc_thr, buf);
+#ifdef CONFIG_LGE_PM
+		// to generate delta soc irq every time the msoc changes by 1
+		// LSB = 0.00048828%, LSB * 0x05 = 0.0024414%
+		buf[0] = 0x05;
+#endif
 		rc = fg_sram_write(chip,
 				chip->sp[FG_SRAM_DELTA_MSOC_THR].addr_word,
 				chip->sp[FG_SRAM_DELTA_MSOC_THR].addr_byte,
@@ -4742,7 +5000,6 @@ static irqreturn_t fg_mem_xcp_irq_handler(int irq, void *data)
 static irqreturn_t fg_vbatt_low_irq_handler(int irq, void *data)
 {
 	struct fg_chip *chip = data;
-
 	fg_dbg(chip, FG_IRQ, "irq %d triggered\n", irq);
 	return IRQ_HANDLED;
 }
@@ -4759,7 +5016,6 @@ static irqreturn_t fg_batt_missing_irq_handler(int irq, void *data)
 			BATT_INFO_INT_RT_STS(chip), rc);
 		return IRQ_HANDLED;
 	}
-
 	fg_dbg(chip, FG_IRQ, "irq %d triggered sts:%d\n", irq, status);
 	chip->battery_missing = (status & BT_MISS_BIT);
 
@@ -4883,9 +5139,24 @@ static irqreturn_t fg_delta_msoc_irq_handler(int irq, void *data)
 	if (rc < 0)
 		pr_err("Error in charge_full_update, rc=%d\n", rc);
 
+#ifdef CONFIG_LGE_PM
+{
+	if (chip->dt.dynamic_ki_en)
+		rc = extension_fg_gen3_set_ki_coeff(chip);
+	else
+		rc = override_fg_adjust_ki_coeff_dischg(chip,
+				KI_COEFF_LOW_DISCHG_DEFAULT,
+				KI_COEFF_MED_DISCHG_DEFAULT,
+				KI_COEFF_HI_DISCHG_DEFAULT);
+
+	if (rc < 0)
+		pr_err("Error in adjusting ki_coeff_dischg, rc=%d\n", rc);
+}
+#else
 	rc = fg_adjust_ki_coeff_dischg(chip);
 	if (rc < 0)
 		pr_err("Error in adjusting ki_coeff_dischg, rc=%d\n", rc);
+#endif
 
 	rc = fg_update_maint_soc(chip);
 	if (rc < 0)
@@ -4899,6 +5170,9 @@ static irqreturn_t fg_delta_msoc_irq_handler(int irq, void *data)
 	if (rc < 0)
 		pr_err("Error in adjusting timebase, rc=%d\n", rc);
 
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+	calculate_rescaled_soc(chip);
+#endif
 	if (batt_psy_initialized(chip))
 		power_supply_changed(chip->batt_psy);
 
@@ -4910,6 +5184,10 @@ static irqreturn_t fg_empty_soc_irq_handler(int irq, void *data)
 	struct fg_chip *chip = data;
 
 	fg_dbg(chip, FG_IRQ, "irq %d triggered\n", irq);
+
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+	calculate_rescaled_soc(chip);
+#endif
 	if (batt_psy_initialized(chip))
 		power_supply_changed(chip->batt_psy);
 
@@ -4921,6 +5199,14 @@ static irqreturn_t fg_soc_irq_handler(int irq, void *data)
 	struct fg_chip *chip = data;
 
 	fg_dbg(chip, FG_IRQ, "irq %d triggered\n", irq);
+
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+	calculate_rescaled_soc(chip);
+
+	if (batt_psy_initialized(chip))
+		power_supply_changed(chip->batt_psy);
+#endif
+
 	return IRQ_HANDLED;
 }
 
@@ -5110,11 +5396,19 @@ static int fg_parse_slope_limit_coefficients(struct fg_chip *chip)
 			return -EINVAL;
 		}
 	}
-
+#ifdef CONFIG_LGE_PM
+	pr_info("slope-limit-thr=%d, coeffs=<%d %d %d %d>\n",
+			chip->dt.slope_limit_temp,
+			chip->dt.slope_limit_coeffs[LOW_TEMP_DISCHARGE],
+			chip->dt.slope_limit_coeffs[LOW_TEMP_CHARGE],
+			chip->dt.slope_limit_coeffs[HIGH_TEMP_DISCHARGE],
+			chip->dt.slope_limit_coeffs[HIGH_TEMP_CHARGE]);
+#endif
 	chip->slope_limit_en = true;
 	return 0;
 }
 
+#ifndef CONFIG_LGE_PM
 static int fg_parse_ki_coefficients(struct fg_chip *chip)
 {
 	struct device_node *node = chip->dev->of_node;
@@ -5180,9 +5474,16 @@ static int fg_parse_ki_coefficients(struct fg_chip *chip)
 			return -EINVAL;
 		}
 	}
+	pr_info("soc[%d], high:%d med%d, low%d\n",
+			chip->dt.ki_coeff_soc[i],
+			chip->dt.ki_coeff_hi_dischg[i],
+			chip->dt.ki_coeff_med_dischg[i],
+			chip->dt.ki_coeff_low_dischg[i]);
 	chip->ki_coeff_dischg_en = true;
+
 	return 0;
 }
+#endif
 
 #define DEFAULT_CUTOFF_VOLT_MV		3200
 #define DEFAULT_EMPTY_VOLT_MV		2850
@@ -5190,7 +5491,11 @@ static int fg_parse_ki_coefficients(struct fg_chip *chip)
 #define DEFAULT_CHG_TERM_CURR_MA	100
 #define DEFAULT_CHG_TERM_BASE_CURR_MA	75
 #define DEFAULT_SYS_TERM_CURR_MA	-125
+#ifdef CONFIG_LGE_PM
+#define DEFAULT_CUTOFF_CURR_MA		200
+#else
 #define DEFAULT_CUTOFF_CURR_MA		500
+#endif
 #define DEFAULT_DELTA_SOC_THR		1
 #define DEFAULT_RECHARGE_SOC_THR	95
 #define DEFAULT_BATT_TEMP_COLD		0
@@ -5223,6 +5528,10 @@ static int fg_parse_dt(struct fg_chip *chip)
 	struct device_node *child, *revid_node, *node = chip->dev->of_node;
 	u32 base, temp;
 	u8 subtype;
+#ifdef CONFIG_LGE_PM
+	struct property *prop;
+	size_t size;
+#endif
 	int rc;
 
 	if (!node)  {
@@ -5509,9 +5818,11 @@ static int fg_parse_dt(struct fg_chip *chip)
 	chip->dt.linearize_soc = of_property_read_bool(node,
 					"qcom,linearize-soc");
 
+#ifndef CONFIG_LGE_PM
 	rc = fg_parse_ki_coefficients(chip);
 	if (rc < 0)
 		pr_err("Error in parsing Ki coefficients, rc=%d\n", rc);
+#endif
 
 	rc = of_property_read_u32(node, "qcom,fg-rconn-mohms", &temp);
 	if (!rc)
@@ -5552,12 +5863,50 @@ static int fg_parse_dt(struct fg_chip *chip)
 	else
 		chip->dt.esr_broad_lt_flt_upct = temp;
 
+#ifdef CONFIG_LGE_PM
+	chip->dt.esr_flt_rt_switch_temp[0] = DEFAULT_ESR_FLT_RT_DECIDEGC;
+	chip->dt.esr_flt_rt_switch_temp[1] = DEFAULT_ESR_FLT_RT_DECIDEGC;
+	chip->dt.esr_flt_rt_switch_temp[2] = DEFAULT_ESR_FLT_RT_DECIDEGC;
+
+	prop = of_find_property(node,
+			"lge,fg-esr-rt-filter-switch-temp", NULL);
+	if (prop) {
+		size = prop->length/sizeof(u32);
+		if (size == MAX_ESR_RT_FILTER_LEVEL) {
+			rc = of_property_read_u32_array(node,
+					"lge,fg-esr-rt-filter-switch-temp",
+					chip->dt.esr_flt_rt_switch_temp, size);
+			if (rc < 0)
+				pr_err("Reading fg-esr-rt-filter-switch-temp failed, "
+						"rc=%d\n", rc);
+		}
+	}
+
+	chip->dt.esr_flt_rt_duration[0] = ESR_FILTER_ALARM_TIME_MS;
+	chip->dt.esr_flt_rt_duration[1] = ESR_FILTER_ALARM_TIME_MS;
+	chip->dt.esr_flt_rt_duration[2] = ESR_FILTER_ALARM_TIME_MS;
+
+	prop = of_find_property(node,
+			"lge,fg-esr-rt-filter-duration", NULL);
+	if (prop) {
+		size = prop->length/sizeof(u32);
+		if (size == MAX_ESR_RT_FILTER_LEVEL) {
+			rc = of_property_read_u32_array(node,
+					"lge,fg-esr-rt-filter-duration",
+					chip->dt.esr_flt_rt_duration, size);
+			if (rc < 0)
+				pr_err("Reading fg-esr-rt-filter-duration failed, "
+						"rc=%d\n", rc);
+		}
+	}
+#else
 	rc = of_property_read_u32(node, "qcom,fg-esr-rt-filter-switch-temp",
 			&temp);
 	if (rc < 0)
 		chip->dt.esr_flt_rt_switch_temp = DEFAULT_ESR_FLT_RT_DECIDEGC;
 	else
 		chip->dt.esr_flt_rt_switch_temp = temp;
+#endif
 
 	rc = of_property_read_u32(node, "qcom,fg-esr-tight-rt-filter-micro-pct",
 			&temp);
@@ -5692,6 +6041,10 @@ static int fg_gen3_probe(struct platform_device *pdev)
 	struct power_supply_config fg_psy_cfg;
 	int rc, msoc, volt_uv, batt_temp;
 
+#ifdef CONFIG_LGE_PM_DEBUG
+	fg_gen3_debug_mask = FG_LGE | FG_IRQ;
+#endif
+
 	chip = devm_kzalloc(&pdev->dev, sizeof(*chip), GFP_KERNEL);
 	if (!chip)
 		return -ENOMEM;
@@ -5774,6 +6127,10 @@ static int fg_gen3_probe(struct platform_device *pdev)
 		goto exit;
 	}
 
+#ifdef CONFIG_LGE_PM
+	extension_fg_load_dt();
+#endif
+
 	mutex_init(&chip->bus_lock);
 	mutex_init(&chip->sram_rw_lock);
 	mutex_init(&chip->cyc_ctr.lock);
@@ -5833,8 +6190,31 @@ static int fg_gen3_probe(struct platform_device *pdev)
 	fg_psy_cfg.of_node = NULL;
 	fg_psy_cfg.supplied_to = NULL;
 	fg_psy_cfg.num_supplicants = 0;
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+{	enum power_supply_property* extension_bms_properties(void);
+	size_t extension_bms_num_properties(void);
+	int extension_bms_get_property(struct power_supply *psy, enum power_supply_property prop, union power_supply_propval *val);
+	int extension_bms_set_property(struct power_supply *psy, enum power_supply_property prop, const union power_supply_propval *val);
+	int extension_bms_property_is_writeable(struct power_supply *psy, enum power_supply_property prop);
+
+	static struct power_supply_desc fg_psy_desc_extension;
+	fg_psy_desc_extension.name = fg_psy_desc.name;
+	fg_psy_desc_extension.type = fg_psy_desc.type;
+	fg_psy_desc_extension.external_power_changed = fg_psy_desc.external_power_changed;
+
+	fg_psy_desc_extension.properties = extension_bms_properties();
+	fg_psy_desc_extension.num_properties = extension_bms_num_properties();
+	fg_psy_desc_extension.get_property = extension_bms_get_property;
+	fg_psy_desc_extension.set_property = extension_bms_set_property;
+	fg_psy_desc_extension.property_is_writeable = extension_bms_property_is_writeable;
+
+	chip->fg_psy = devm_power_supply_register(chip->dev, &fg_psy_desc_extension,
+			&fg_psy_cfg);
+}
+#else
 	chip->fg_psy = devm_power_supply_register(chip->dev, &fg_psy_desc,
 			&fg_psy_cfg);
+#endif
 	if (IS_ERR(chip->fg_psy)) {
 		pr_err("failed to register fg_psy rc = %ld\n",
 				PTR_ERR(chip->fg_psy));
@@ -5904,7 +6284,11 @@ static int fg_gen3_probe(struct platform_device *pdev)
 	device_init_wakeup(chip->dev, true);
 	schedule_delayed_work(&chip->profile_load_work, 0);
 
+#ifdef CONFIG_LGE_PM_DEBUG
+	fg_dbg(chip, FG_LGE, "FG GEN3 driver probed successfully\n");
+#else
 	pr_debug("FG GEN3 driver probed successfully\n");
+#endif
 	return 0;
 exit:
 	fg_cleanup(chip);
@@ -5927,6 +6311,7 @@ static int fg_gen3_suspend(struct device *dev)
 	cancel_delayed_work_sync(&chip->ttf_work);
 	if (fg_sram_dump)
 		cancel_delayed_work_sync(&chip->sram_dump_work);
+	extension_fg_gen3_suspend(chip);
 	return 0;
 }
 
@@ -5952,6 +6337,7 @@ static int fg_gen3_resume(struct device *dev)
 	spin_lock(&chip->suspend_lock);
 	chip->suspended = false;
 	spin_unlock(&chip->suspend_lock);
+	extension_fg_gen3_resume(chip);
 
 	return 0;
 }
@@ -5976,6 +6362,23 @@ static void fg_gen3_shutdown(struct platform_device *pdev)
 	struct fg_chip *chip = dev_get_drvdata(&pdev->dev);
 	int rc, bsoc;
 	u8 mask;
+#ifdef CONFIG_LGE_PM
+	u8 buf[4] = {0, 0, 0, 0};
+
+	fg_masked_write(chip, BATT_INFO_TM_MISC1(chip),
+			ESR_REQ_CTL_BIT | ESR_REQ_CTL_EN_BIT,
+			0);
+
+	fg_masked_write(chip, BATT_INFO_QNOVO_CFG(chip),
+			LD_REG_CTRL_BIT, LD_REG_CTRL_BIT);
+
+	/* force esr extraction disable */
+	buf[0] = ESR_EXTRACTION_ENABLE_BYTE;
+	buf[1] = IVT_ADC_ENABLE_BYTE;
+	rc = fg_sram_write(chip,
+			ESR_EXTRACTION_ENABLE_WORD, ESR_EXTRACTION_ENABLE_OFFSET,
+			buf, 4, FG_IMA_DEFAULT);
+#endif
 
 	if (chip->charge_full) {
 		rc = fg_get_sram_prop(chip, FG_SRAM_BATT_SOC, &bsoc);
@@ -6039,6 +6442,10 @@ static void __exit fg_gen3_exit(void)
 {
 	return platform_driver_unregister(&fg_gen3_driver);
 }
+
+#ifdef CONFIG_LGE_PM_VENEER_PSY
+#include "../lge/extension-fg-gen3.c"
+#endif
 
 module_init(fg_gen3_init);
 module_exit(fg_gen3_exit);

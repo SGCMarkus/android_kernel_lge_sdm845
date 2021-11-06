@@ -24,6 +24,11 @@
 #include "sde_crtc.h"
 #include "sde_rm.h"
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+#include "lge/brightness/lge_brightness.h"
+#include "lge/ambient/lge_backlight_ex.h"
+#endif
+
 #define BL_NODE_NAME_SIZE 32
 
 /* Autorefresh will occur after FRAME_CNT frames. Large values are unlikely */
@@ -73,6 +78,9 @@ static int sde_backlight_device_update_status(struct backlight_device *bd)
 	struct drm_event event;
 	int rc = 0;
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	return lge_backlight_device_update_status(bd);
+#endif
 	brightness = bd->props.brightness;
 
 	if ((bd->props.power != FB_BLANK_UNBLANK) ||
@@ -143,7 +151,11 @@ static int sde_backlight_setup(struct sde_connector *c_conn,
 	display = (struct dsi_display *) c_conn->display;
 	bl_config = &display->panel->bl_config;
 	props.max_brightness = bl_config->brightness_max_level;
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	props.brightness = display->panel->lge.default_brightness;
+#else
 	props.brightness = bl_config->brightness_max_level;
+#endif
 	snprintf(bl_node_name, BL_NODE_NAME_SIZE, "panel%u-backlight",
 							display_count);
 	c_conn->bl_device = backlight_device_register(bl_node_name, dev->dev,
@@ -428,6 +440,7 @@ void sde_connector_schedule_status_work(struct drm_connector *connector,
 	if (en == c_conn->esd_status_check)
 		return;
 
+	pr_info("<-- %pS : check_status work %s\n", __builtin_return_address(0), en?"enable":"disable");
 	sde_connector_get_info(connector, &info);
 	if (c_conn->ops.check_status &&
 		(info.capabilities & MSM_DISPLAY_ESD_ENABLED)) {
@@ -819,6 +832,9 @@ static void sde_connector_destroy(struct drm_connector *connector)
 		drm_property_unreference_blob(c_conn->blob_ext_hdr);
 	msm_property_destroy(&c_conn->property_info);
 
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	lge_backlight_ex_destroy(c_conn);
+#endif
 	if (c_conn->bl_device)
 		backlight_device_unregister(c_conn->bl_device);
 	drm_connector_unregister(connector);
@@ -1413,7 +1429,6 @@ static int sde_connector_dpms(struct drm_connector *connector,
 				     int mode)
 {
 	struct sde_connector *c_conn;
-
 	if (!connector) {
 		SDE_ERROR("invalid connector\n");
 		return -EINVAL;
@@ -1438,7 +1453,6 @@ static int sde_connector_dpms(struct drm_connector *connector,
 	c_conn->dpms_mode = mode;
 	_sde_connector_update_power_locked(c_conn);
 	mutex_unlock(&c_conn->lock);
-
 	/* use helper for boilerplate handling */
 	return drm_atomic_helper_connector_dpms(connector, mode);
 }
@@ -2240,6 +2254,10 @@ struct drm_connector *sde_connector_init(struct drm_device *dev,
 		SDE_ERROR("failed to setup backlight, rc=%d\n", rc);
 		goto error_cleanup_fence;
 	}
+
+#if IS_ENABLED(CONFIG_LGE_DISPLAY_COMMON)
+	lge_backlight_ex_setup(c_conn, dev);
+#endif
 
 	/* create properties */
 	msm_property_init(&c_conn->property_info, &c_conn->base.base, dev,

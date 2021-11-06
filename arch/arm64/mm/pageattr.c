@@ -95,6 +95,20 @@ static int change_memory_common(unsigned long addr, int numpages,
 	return __change_memory_common(start, size, set_mask, clear_mask);
 }
 
+#ifdef CONFIG_LGE_SLUB_UAF_DEBUG
+int set_memory_valid(unsigned long addr, int numpages, int enable)
+{
+if (enable)
+	return __change_memory_common(addr, PAGE_SIZE * numpages,
+				__pgprot(PTE_VALID),
+				__pgprot(0));
+else
+	return __change_memory_common(addr, PAGE_SIZE * numpages,
+				__pgprot(0),
+				__pgprot(PTE_VALID));
+}
+#endif
+
 int set_memory_ro(unsigned long addr, int numpages)
 {
 	return change_memory_common(addr, numpages,

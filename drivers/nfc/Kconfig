@@ -4,6 +4,7 @@
 
 menu "Near Field Communication (NFC) devices"
 	depends on NFC
+endmenu
 
 config NFC_WILINK
 	tristate "Texas Instruments NFC WiLink driver"
@@ -59,17 +60,18 @@ config NFC_PORT100
 
 	  If unsure, say N.
 
-source "drivers/nfc/fdp/Kconfig"
-source "drivers/nfc/pn544/Kconfig"
-source "drivers/nfc/pn533/Kconfig"
-source "drivers/nfc/microread/Kconfig"
-source "drivers/nfc/nfcmrvl/Kconfig"
-source "drivers/nfc/st21nfca/Kconfig"
-source "drivers/nfc/st-nci/Kconfig"
-source "drivers/nfc/nxp-nci/Kconfig"
-source "drivers/nfc/s3fwrn5/Kconfig"
-source "drivers/nfc/st95hf/Kconfig"
-endmenu
+#source "drivers/nfc/fdp/Kconfig"
+#source "drivers/nfc/pn544/Kconfig"
+#source "drivers/nfc/pn533/Kconfig"
+#source "drivers/nfc/microread/Kconfig"
+#source "drivers/nfc/nfcmrvl/Kconfig"
+#source "drivers/nfc/st21nfca/Kconfig"
+#source "drivers/nfc/st-nci/Kconfig"
+#source "drivers/nfc/nxp-nci/Kconfig"
+#source "drivers/nfc/s3fwrn5/Kconfig"
+#source "drivers/nfc/st95hf/Kconfig"
+source "drivers/nfc/pn553/Kconfig"
+source "drivers/nfc/cxd22xx/Kconfig"
 
 config NFC_NQ
         tristate "QTI NCI based NFC Controller Driver for NQx"

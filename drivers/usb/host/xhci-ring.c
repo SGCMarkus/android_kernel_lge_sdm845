@@ -67,6 +67,9 @@
 #include <linux/scatterlist.h>
 #include <linux/slab.h>
 #include <linux/dma-mapping.h>
+#ifdef CONFIG_LGE_DUAL_SCREEN
+#include <linux/lge_ds3.h>
+#endif
 #include "xhci.h"
 #include "xhci-trace.h"
 #include "xhci-mtk.h"
@@ -924,6 +927,13 @@ void xhci_stop_endpoint_command_watchdog(unsigned long arg)
 
 	xhci_warn(xhci, "xHCI host not responding to stop endpoint command.\n");
 	xhci_warn(xhci, "Assuming host is dying, halting host.\n");
+
+#ifdef CONFIG_LGE_DUAL_SCREEN
+	if (check_ds_connect_state() >= DS_STATE_HPD_ENABLED) {
+		set_vbus_recovery(true);
+	}
+#endif
+
 	/* Oops, HC is dead or dying or at least not responding to the stop
 	 * endpoint command.
 	 */
@@ -1631,9 +1641,15 @@ static void handle_port_status(struct xhci_hcd *xhci,
 			bus_state->resume_done[faked_port_index] = jiffies +
 				msecs_to_jiffies(USB_RESUME_TIMEOUT);
 			set_bit(faked_port_index, &bus_state->resuming_ports);
+			/* Do the rest in GetPortStatus after resume time delay.
+			 * Avoid polling roothub status before that so that a
+			 * usb device auto-resume latency around ~40ms.
+			 */
+			set_bit(HCD_FLAG_POLL_RH, &hcd->flags);
 			mod_timer(&hcd->rh_timer,
 				  bus_state->resume_done[faked_port_index]);
-			/* Do the rest in GetPortStatus */
+			usb_hcd_start_port_resume(&hcd->self, faked_port_index);
+			bogus_port_status = true;
 		}
 	}
 

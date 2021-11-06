@@ -16,6 +16,11 @@
 #include "cam_actuator_core.h"
 #include "cam_trace.h"
 
+#if defined (CONFIG_MACH_SDM845_JUDYPN) || defined (CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM) /* LGE_CHANGE, 2018-09-11, OIS,AF Driver update for LG EIS, yonghwan.lym@lge.com */
+extern void actuator_create_sysfs(struct cam_actuator_ctrl_t *a_ctrl);
+extern void actuator_destroy_sysfs(struct cam_actuator_ctrl_t *a_ctrl);
+#endif
+
 static long cam_actuator_subdev_ioctl(struct v4l2_subdev *sd,
 	unsigned int cmd, void *arg)
 {
@@ -220,6 +225,12 @@ static int32_t cam_actuator_driver_i2c_probe(struct i2c_client *client,
 
 	a_ctrl->cam_act_state = CAM_ACTUATOR_INIT;
 
+#if defined (CONFIG_MACH_SDM845_JUDYPN) || defined (CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM) /* LGE_CHANGE, 2018-09-11, OIS,AF Driver update for LG EIS, yonghwan.lym@lge.com */
+	spin_lock_init(&a_ctrl->hall_lock);
+	a_ctrl->camera_class = NULL;
+	actuator_create_sysfs(a_ctrl);
+#endif
+
 	return rc;
 
 unreg_subdev:
@@ -243,6 +254,10 @@ static int32_t cam_actuator_platform_remove(struct platform_device *pdev)
 		CAM_ERR(CAM_ACTUATOR, "Actuator device is NULL");
 		return 0;
 	}
+
+#if defined (CONFIG_MACH_SDM845_JUDYPN) || defined (CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM) /* LGE_CHANGE, 2018-09-11, OIS,AF Driver update for LG EIS, yonghwan.lym@lge.com */
+	actuator_destroy_sysfs(a_ctrl);
+#endif
 
 	soc_private =
 		(struct cam_actuator_soc_private *)a_ctrl->soc_info.soc_private;
@@ -275,6 +290,10 @@ static int32_t cam_actuator_driver_i2c_remove(struct i2c_client *client)
 		CAM_ERR(CAM_ACTUATOR, "Actuator device is NULL");
 		return -EINVAL;
 	}
+
+#if defined (CONFIG_MACH_SDM845_JUDYPN) || defined (CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM) /* LGE_CHANGE, 2018-09-11, OIS,AF Driver update for LG EIS, yonghwan.lym@lge.com */
+	actuator_destroy_sysfs(a_ctrl);
+#endif
 
 	soc_private =
 		(struct cam_actuator_soc_private *)a_ctrl->soc_info.soc_private;
@@ -375,6 +394,12 @@ static int32_t cam_actuator_driver_platform_probe(
 	platform_set_drvdata(pdev, a_ctrl);
 	v4l2_set_subdevdata(&a_ctrl->v4l2_dev_str.sd, a_ctrl);
 	a_ctrl->cam_act_state = CAM_ACTUATOR_INIT;
+
+#if defined (CONFIG_MACH_SDM845_JUDYPN) || defined (CONFIG_MACH_SDM845_STYLE3LM_DCM_JP) || defined(CONFIG_MACH_SDM845_CAYMANSLM) /* LGE_CHANGE, 2018-09-11, OIS,AF Driver update for LG EIS, yonghwan.lym@lge.com */
+	spin_lock_init(&a_ctrl->hall_lock);
+	a_ctrl->camera_class = NULL;
+	actuator_create_sysfs(a_ctrl);
+#endif
 
 	return rc;
 

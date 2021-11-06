@@ -35,6 +35,10 @@
 #include <linux/slab.h>
 #include <linux/sysfs.h>
 
+#ifdef CONFIG_LGE_PM_PRM
+#include "../soc/qcom/lge/power/main/lge_prm.h"
+#endif
+
 #define SUPPORTED_CABLE_MAX	32
 #define CABLE_NAME_MAX		30
 
@@ -172,6 +176,18 @@ struct __extcon_info {
 		.id = EXTCON_DISP_HMD,
 		.name = "HMD",
 	},
+#if defined(CONFIG_MACH_KONA_TIMELM) || defined(CONFIG_LGE_DUAL_SCREEN)
+	[EXTCON_DISP_DS1] = {
+		.type = EXTCON_TYPE_DISP | EXTCON_TYPE_USB,
+		.id = EXTCON_DISP_DS1,
+		.name = "DualDisplay",
+	},
+	[EXTCON_DISP_DS2] = {
+		.type = EXTCON_TYPE_DISP | EXTCON_TYPE_USB,
+		.id = EXTCON_DISP_DS2,
+		.name = "DS2",
+	},
+#endif
 
 	/* Miscellaneous external connector */
 	[EXTCON_DOCK] = {
@@ -368,6 +384,10 @@ static ssize_t state_show(struct device *dev, struct device_attribute *attr,
 	int i, count = 0;
 	struct extcon_dev *edev = dev_get_drvdata(dev);
 
+#ifdef CONFIG_MACH_LGE
+	if(!edev)
+		edev = container_of(dev,struct extcon_dev,dev);
+#endif
 	if (edev->max_supported == 0)
 		return sprintf(buf, "%u\n", edev->state);
 
@@ -386,6 +406,10 @@ static ssize_t name_show(struct device *dev, struct device_attribute *attr,
 {
 	struct extcon_dev *edev = dev_get_drvdata(dev);
 
+#ifdef CONFIG_MACH_LGE
+	if(!edev)
+		edev = container_of(dev,struct extcon_dev,dev);
+#endif
 	return sprintf(buf, "%s\n", edev->name);
 }
 static DEVICE_ATTR_RO(name);
@@ -575,6 +599,17 @@ int extcon_set_state(struct extcon_dev *edev, unsigned int id,
 		edev->state &= ~(BIT(index));
 out:
 	spin_unlock_irqrestore(&edev->lock, flags);
+
+#ifdef CONFIG_LGE_PM_PRM
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	if (id == EXTCON_DISP_DS2) {
+		pr_info("prm_log: DualDisplay2 updated, id:%u, state:%d\n", id, cable_state);
+		lge_prm_display_set_event(LGE_PRM_DISPLAY_EVENT_DD2_STATE, cable_state);
+	} else {
+		pr_debug("prm_log: DualDisplay updated, id:%u, state:%d\n", id, cable_state);
+	}
+#endif
+#endif
 
 	return ret;
 }
@@ -1104,14 +1139,33 @@ int extcon_dev_register(struct extcon_dev *edev)
 	edev->dev.class = extcon_class;
 	edev->dev.release = extcon_dev_release;
 
+#ifdef CONFIG_MACH_LGE
+	if (edev->name != NULL &&
+        (!strcmp(edev->name, "h2w") || !strcmp(edev->name, "sar_backoff") || !strcmp(edev->name, "ram_status") || !strcmp(edev->name, "voc_mute_status"))
+       )
+		dev_info(&edev->dev, "skip assign edev->dev.parent\n");
+	else
+		edev->name = dev_name(edev->dev.parent);
+#else
 	edev->name = dev_name(edev->dev.parent);
+#endif
 	if (IS_ERR_OR_NULL(edev->name)) {
 		dev_err(&edev->dev,
 			"extcon device name is null\n");
 		return -EINVAL;
 	}
+
+#ifdef CONFIG_MACH_LGE
+	if(edev->name != NULL && (!strcmp(edev->name, "h2w"))) {
+		dev_set_name(&edev->dev, "extcon%lu", (unsigned long)100);
+	} else {
+		dev_set_name(&edev->dev, "extcon%lu",
+				(unsigned long)atomic_inc_return(&edev_no));
+	}
+#else
 	dev_set_name(&edev->dev, "extcon%lu",
 			(unsigned long)atomic_inc_return(&edev_no));
+#endif
 
 	if (edev->max_supported) {
 		char buf[10];

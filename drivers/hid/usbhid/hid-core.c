@@ -36,6 +36,7 @@
 #include <linux/hiddev.h>
 #include <linux/hid-debug.h>
 #include <linux/hidraw.h>
+#include <linux/input/lge_touch_notify.h>
 #include "usbhid.h"
 
 /*
@@ -43,7 +44,70 @@
  */
 
 #define DRIVER_DESC "USB HID core driver"
+
 #define DRIVER_LICENSE "GPL"
+#define LGE_HID_TOUCH_NAME		"LGE_DS2"
+
+int dualscreen_connected;
+int uevent_type = 1;
+
+static struct bus_type hid_touch_uevent_subsys = {
+	.name = LGE_HID_TOUCH_NAME,
+	.dev_name = LGE_HID_TOUCH_NAME,
+};
+
+static struct device device_hid_touch_uevent = {
+	.id    = 0,
+	.bus   = &hid_touch_uevent_subsys,
+};
+
+static int  hid_touch_uevent_init(void)
+{
+	int ret = 0;
+
+	HID_TOUCH_TRACE();
+
+	/* Create the "/sys/devices/system/LGE_DS2" directory */
+	ret = subsys_system_register(&hid_touch_uevent_subsys, NULL);
+	if (ret < 0)
+		TOUCH_E(", bus is not registered, ret : %d\n", ret);
+	ret = device_register(&device_hid_touch_uevent);
+	if (ret < 0)
+		TOUCH_E(", device is not registered, ret : %d\n", ret);
+
+	return ret;
+}
+
+char *hid_touch_uevent_str[HID_TOUCH_EVENT_SIZE+1][2] = {
+	{NULL, NULL},
+	{"TOUCH_GESTURE_WAKEUP=WAKEUP", NULL},
+	{"TOUCH_GESTURE_WAKEUP=DS_PEN_WAKEUP", NULL},
+	{"TOUCH_GESTURE_WAKEUP=DS_PEN_WAKEUP_BTN", NULL},
+	{"TOUCH_GESTURE_WAKEUP=DS_PEN_DETECTION", NULL},
+	{"TOUCH_GESTURE_WAKEUP=SWITCH_AES_BOTH", NULL},
+	{"TOUCH_GESTURE_WAKEUP=SWITCH_AES_TO_1", NULL},
+	{"TOUCH_GESTURE_WAKEUP=SWITCH_AES_TO_2", NULL},
+	{"TOUCH_GESTURE_WAKEUP=DS_UPDATE_STATE", NULL},
+};
+
+static void uevent_init_work_func(struct work_struct *work)
+{
+	/*Touch Gesture - Knock On*/
+	kobject_uevent_env(&device_hid_touch_uevent.kobj,
+				KOBJ_CHANGE, hid_touch_uevent_str[uevent_type]);
+}
+
+void hid_touch_send_uevent(struct hid_device *hid, int type)
+{
+	uevent_type = type;
+	if ((hid->uevent_wq != NULL) ||
+			(&hid->uevent_work != NULL) ) {
+		TOUCH_I("[usbhid][%s] %s\n", __func__, hid_touch_uevent_str[type][0]);
+		queue_work(hid->uevent_wq, &hid->uevent_work);
+	} else {
+		TOUCH_E("work queue is NULL!\n");
+	}
+}
 
 /*
  * Module parameters.
@@ -81,6 +145,8 @@ static int hid_start_in(struct hid_device *hid)
 	int rc = 0;
 	struct usbhid_device *usbhid = hid->driver_data;
 
+	HID_TOUCH_TRACE();
+
 	spin_lock_irqsave(&usbhid->lock, flags);
 	if ((hid->open > 0 || hid->quirks & HID_QUIRK_ALWAYS_POLL) &&
 			!test_bit(HID_DISCONNECTED, &usbhid->iofl) &&
@@ -105,6 +171,8 @@ static void hid_retry_timeout(unsigned long _hid)
 	struct hid_device *hid = (struct hid_device *) _hid;
 	struct usbhid_device *usbhid = hid->driver_data;
 
+	HID_TOUCH_TRACE();
+
 	dev_dbg(&usbhid->intf->dev, "retrying intr urb\n");
 	if (hid_start_in(hid))
 		hid_io_error(hid);
@@ -117,6 +185,8 @@ static void hid_reset(struct work_struct *work)
 		container_of(work, struct usbhid_device, reset_work);
 	struct hid_device *hid = usbhid->hid;
 	int rc;
+
+	HID_TOUCH_TRACE();
 
 	if (test_bit(HID_CLEAR_HALT, &usbhid->iofl)) {
 		dev_dbg(&usbhid->intf->dev, "clear halt\n");
@@ -142,6 +212,8 @@ static void hid_io_error(struct hid_device *hid)
 {
 	unsigned long flags;
 	struct usbhid_device *usbhid = hid->driver_data;
+
+	HID_TOUCH_TRACE();
 
 	spin_lock_irqsave(&usbhid->lock, flags);
 
@@ -182,6 +254,8 @@ static void usbhid_mark_busy(struct usbhid_device *usbhid)
 {
 	struct usb_interface *intf = usbhid->intf;
 
+	HID_TOUCH_TRACE();
+
 	usb_mark_last_busy(interface_to_usbdev(intf));
 }
 
@@ -190,6 +264,8 @@ static int usbhid_restart_out_queue(struct usbhid_device *usbhid)
 	struct hid_device *hid = usb_get_intfdata(usbhid->intf);
 	int kicked;
 	int r;
+
+	HID_TOUCH_TRACE();
 
 	if (!hid || test_bit(HID_RESET_PENDING, &usbhid->iofl) ||
 			test_bit(HID_SUSPENDED, &usbhid->iofl))
@@ -228,6 +304,8 @@ static int usbhid_restart_ctrl_queue(struct usbhid_device *usbhid)
 	struct hid_device *hid = usb_get_intfdata(usbhid->intf);
 	int kicked;
 	int r;
+
+	HID_TOUCH_TRACE();
 
 	WARN_ON(hid == NULL);
 	if (!hid || test_bit(HID_RESET_PENDING, &usbhid->iofl) ||
@@ -271,6 +349,8 @@ static void hid_irq_in(struct urb *urb)
 	struct hid_device	*hid = urb->context;
 	struct usbhid_device 	*usbhid = hid->driver_data;
 	int			status;
+
+	HID_TOUCH_TRACE();
 
 	switch (urb->status) {
 	case 0:			/* success */
@@ -337,6 +417,8 @@ static int hid_submit_out(struct hid_device *hid)
 	struct usbhid_device *usbhid = hid->driver_data;
 	int r;
 
+	HID_TOUCH_TRACE();
+
 	report = usbhid->out[usbhid->outtail].report;
 	raw_report = usbhid->out[usbhid->outtail].raw_report;
 
@@ -367,6 +449,8 @@ static int hid_submit_ctrl(struct hid_device *hid)
 	char *raw_report;
 	int len, r;
 	struct usbhid_device *usbhid = hid->driver_data;
+
+	HID_TOUCH_TRACE();
 
 	report = usbhid->ctrl[usbhid->ctrltail].report;
 	raw_report = usbhid->ctrl[usbhid->ctrltail].raw_report;
@@ -431,6 +515,8 @@ static void hid_irq_out(struct urb *urb)
 	unsigned long flags;
 	int unplug = 0;
 
+	HID_TOUCH_TRACE();
+
 	switch (urb->status) {
 	case 0:			/* success */
 		break;
@@ -477,6 +563,8 @@ static void hid_ctrl(struct urb *urb)
 	struct usbhid_device *usbhid = hid->driver_data;
 	int unplug = 0, status = urb->status;
 
+	HID_TOUCH_TRACE();
+
 	switch (status) {
 	case 0:			/* success */
 		if (usbhid->ctrl[usbhid->ctrltail].dir == USB_DIR_IN)
@@ -522,6 +610,8 @@ static void __usbhid_submit_report(struct hid_device *hid, struct hid_report *re
 {
 	int head;
 	struct usbhid_device *usbhid = hid->driver_data;
+
+	HID_TOUCH_TRACE();
 
 	if (((hid->quirks & HID_QUIRK_NOGET) && dir == USB_DIR_IN) ||
 		test_bit(HID_DISCONNECTED, &usbhid->iofl))
@@ -631,6 +721,8 @@ static void usbhid_submit_report(struct hid_device *hid, struct hid_report *repo
 	struct usbhid_device *usbhid = hid->driver_data;
 	unsigned long flags;
 
+	HID_TOUCH_TRACE();
+
 	spin_lock_irqsave(&usbhid->lock, flags);
 	__usbhid_submit_report(hid, report, dir);
 	spin_unlock_irqrestore(&usbhid->lock, flags);
@@ -639,6 +731,8 @@ static void usbhid_submit_report(struct hid_device *hid, struct hid_report *repo
 static int usbhid_wait_io(struct hid_device *hid)
 {
 	struct usbhid_device *usbhid = hid->driver_data;
+
+	HID_TOUCH_TRACE();
 
 	if (!wait_event_timeout(usbhid->wait,
 				(!test_bit(HID_CTRL_RUNNING, &usbhid->iofl) &&
@@ -653,6 +747,8 @@ static int usbhid_wait_io(struct hid_device *hid)
 
 static int hid_set_idle(struct usb_device *dev, int ifnum, int report, int idle)
 {
+	HID_TOUCH_TRACE();
+
 	return usb_control_msg(dev, usb_sndctrlpipe(dev, 0),
 		HID_REQ_SET_IDLE, USB_TYPE_CLASS | USB_RECIP_INTERFACE, (idle << 8) | report,
 		ifnum, NULL, 0, USB_CTRL_SET_TIMEOUT);
@@ -662,6 +758,8 @@ static int hid_get_class_descriptor(struct usb_device *dev, int ifnum,
 		unsigned char type, void *buf, int size)
 {
 	int result, retries = 4;
+
+	HID_TOUCH_TRACE();
 
 	memset(buf, 0, size);
 
@@ -679,6 +777,8 @@ int usbhid_open(struct hid_device *hid)
 	struct usbhid_device *usbhid = hid->driver_data;
 	int res = 0;
 
+
+	HID_TOUCH_TRACE();
 	mutex_lock(&hid_open_mut);
 	if (!hid->open++) {
 		res = usb_autopm_get_interface(usbhid->intf);
@@ -723,6 +823,7 @@ void usbhid_close(struct hid_device *hid)
 {
 	struct usbhid_device *usbhid = hid->driver_data;
 
+	HID_TOUCH_TRACE();
 	mutex_lock(&hid_open_mut);
 
 	/* protecting hid->open to make sure we don't restart
@@ -754,6 +855,7 @@ void usbhid_init_reports(struct hid_device *hid)
 	struct hid_report_enum *report_enum;
 	int err, ret;
 
+	HID_TOUCH_TRACE();
 	if (!(hid->quirks & HID_QUIRK_NO_INIT_INPUT_REPORTS)) {
 		report_enum = &hid->report_enum[HID_INPUT_REPORT];
 		list_for_each_entry(report, &report_enum->report_list, list)
@@ -790,6 +892,8 @@ static int hid_find_field_early(struct hid_device *hid, unsigned int page,
 	struct hid_usage *usage;
 	int i, j;
 
+	HID_TOUCH_TRACE();
+
 	list_for_each_entry(report, &hid->report_enum[HID_OUTPUT_REPORT].report_list, list) {
 		for (i = 0; i < report->maxfield; i++) {
 			field = report->field[i];
@@ -811,6 +915,8 @@ static void usbhid_set_leds(struct hid_device *hid)
 	struct hid_field *field;
 	int offset;
 
+	HID_TOUCH_TRACE();
+
 	if ((offset = hid_find_field_early(hid, HID_UP_LED, 0x01, &field)) != -1) {
 		hid_set_field(field, offset, 0);
 		usbhid_submit_report(hid, field->report, USB_DIR_OUT);
@@ -826,6 +932,8 @@ static void hid_find_max_report(struct hid_device *hid, unsigned int type,
 	struct hid_report *report;
 	unsigned int size;
 
+	HID_TOUCH_TRACE();
+
 	list_for_each_entry(report, &hid->report_enum[type].report_list, list) {
 		size = ((report->size - 1) >> 3) + 1 + hid->report_enum[type].numbered;
 		if (*max < size)
@@ -836,6 +944,8 @@ static void hid_find_max_report(struct hid_device *hid, unsigned int type,
 static int hid_alloc_buffers(struct usb_device *dev, struct hid_device *hid)
 {
 	struct usbhid_device *usbhid = hid->driver_data;
+
+	HID_TOUCH_TRACE();
 
 	usbhid->inbuf = usb_alloc_coherent(dev, usbhid->bufsize, GFP_KERNEL,
 			&usbhid->inbuf_dma);
@@ -861,6 +971,8 @@ static int usbhid_get_raw_report(struct hid_device *hid,
 	struct usb_host_interface *interface = intf->cur_altsetting;
 	int skipped_report_id = 0;
 	int ret;
+
+	HID_TOUCH_TRACE();
 
 	/* Byte 0 is the report number. Report data starts at byte 1.*/
 	buf[0] = report_number;
@@ -893,6 +1005,8 @@ static int usbhid_set_raw_report(struct hid_device *hid, unsigned int reportnum,
 	struct usb_interface *intf = usbhid->intf;
 	struct usb_host_interface *interface = intf->cur_altsetting;
 	int ret, skipped_report_id = 0;
+
+	HID_TOUCH_TRACE();
 
 	/* Byte 0 is the report number. Report data starts at byte 1.*/
 	if ((rtype == HID_OUTPUT_REPORT) &&
@@ -927,6 +1041,8 @@ static int usbhid_output_report(struct hid_device *hid, __u8 *buf, size_t count)
 	struct usb_device *dev = hid_to_usb_dev(hid);
 	int actual_length, skipped_report_id = 0, ret;
 
+	HID_TOUCH_TRACE();
+
 	if (!usbhid->urbout)
 		return -ENOSYS;
 
@@ -955,6 +1071,8 @@ static void hid_free_buffers(struct usb_device *dev, struct hid_device *hid)
 {
 	struct usbhid_device *usbhid = hid->driver_data;
 
+	HID_TOUCH_TRACE();
+
 	usb_free_coherent(dev, usbhid->bufsize, usbhid->inbuf, usbhid->inbuf_dma);
 	usb_free_coherent(dev, usbhid->bufsize, usbhid->outbuf, usbhid->outbuf_dma);
 	kfree(usbhid->cr);
@@ -973,6 +1091,8 @@ static int usbhid_parse(struct hid_device *hid)
 	int ret, n;
 	int num_descriptors;
 	size_t offset = offsetof(struct hid_descriptor, desc);
+
+	HID_TOUCH_TRACE();
 
 	quirks = usbhid_lookup_quirk(le16_to_cpu(dev->descriptor.idVendor),
 			le16_to_cpu(dev->descriptor.idProduct));
@@ -1052,6 +1172,8 @@ static int usbhid_start(struct hid_device *hid)
 	struct usbhid_device *usbhid = hid->driver_data;
 	unsigned int n, insize = 0;
 	int ret;
+
+	HID_TOUCH_TRACE();
 
 	clear_bit(HID_DISCONNECTED, &usbhid->iofl);
 
@@ -1178,11 +1300,21 @@ static void usbhid_stop(struct hid_device *hid)
 {
 	struct usbhid_device *usbhid = hid->driver_data;
 
+	HID_TOUCH_TRACE();
+
 	if (WARN_ON(!usbhid))
 		return;
 
 	if (hid->quirks & HID_QUIRK_ALWAYS_POLL)
 		usbhid->intf->needs_remote_wakeup = 0;
+	if (hid->product == 0x637a) {
+		TOUCH_I("[%s] remove 'uevent_wq'\n", __func__);
+		dualscreen_connected = 0;
+		touch_notifier_call_chain(NOTIFY_DUALSCREEN_STATE, &dualscreen_connected);
+		cancel_work_sync(&hid->uevent_work);
+		flush_workqueue(hid->uevent_wq);
+		destroy_workqueue(hid->uevent_wq);
+	}
 
 	clear_bit(HID_STARTED, &usbhid->iofl);
 	spin_lock_irq(&usbhid->lock);	/* Sync with error and led handlers */
@@ -1210,6 +1342,8 @@ static int usbhid_power(struct hid_device *hid, int lvl)
 {
 	int r = 0;
 
+	HID_TOUCH_TRACE();
+
 	switch (lvl) {
 	case PM_HINT_FULLON:
 		r = usbhid_get_power(hid);
@@ -1223,6 +1357,8 @@ static int usbhid_power(struct hid_device *hid, int lvl)
 
 static void usbhid_request(struct hid_device *hid, struct hid_report *rep, int reqtype)
 {
+	HID_TOUCH_TRACE();
+
 	switch (reqtype) {
 	case HID_REQ_GET_REPORT:
 		usbhid_submit_report(hid, rep, USB_DIR_IN);
@@ -1237,6 +1373,8 @@ static int usbhid_raw_request(struct hid_device *hid, unsigned char reportnum,
 			      __u8 *buf, size_t len, unsigned char rtype,
 			      int reqtype)
 {
+	HID_TOUCH_TRACE();
+
 	switch (reqtype) {
 	case HID_REQ_GET_REPORT:
 		return usbhid_get_raw_report(hid, reportnum, buf, len, rtype);
@@ -1254,6 +1392,8 @@ static int usbhid_idle(struct hid_device *hid, int report, int idle,
 	struct usb_interface *intf = to_usb_interface(hid->dev.parent);
 	struct usb_host_interface *interface = intf->cur_altsetting;
 	int ifnum = interface->desc.bInterfaceNumber;
+
+	HID_TOUCH_TRACE();
 
 	if (reqtype != HID_REQ_SET_IDLE)
 		return -EINVAL;
@@ -1284,6 +1424,8 @@ static int usbhid_probe(struct usb_interface *intf, const struct usb_device_id *
 	unsigned int n, has_in = 0;
 	size_t len;
 	int ret;
+
+	HID_TOUCH_TRACE();
 
 	dbg_hid("HID probe called for ifnum %d\n",
 			intf->altsetting->desc.bInterfaceNumber);
@@ -1361,6 +1503,22 @@ static int usbhid_probe(struct usb_interface *intf, const struct usb_device_id *
 	setup_timer(&usbhid->io_retry, hid_retry_timeout, (unsigned long) hid);
 	spin_lock_init(&usbhid->lock);
 
+	if (hid->product != 0x637a) {
+		TOUCH_I("HID Product ID : %04x\n", hid->product);
+	} else {
+		TOUCH_I("Attach LGE Dualscreen 2 !!! [%s]\n", hid->name);
+		/* Create hid touch gesture wake-up uevent queue */
+		dualscreen_connected = 1;
+		touch_notifier_call_chain(NOTIFY_DUALSCREEN_STATE, &dualscreen_connected);
+		hid->uevent_wq = create_singlethread_workqueue("uevent_wq");
+		if (!hid->uevent_wq) {
+			TOUCH_E(", failed to create uevent workqueue\n");
+			return -ENOMEM;
+		}
+		INIT_WORK(&hid->uevent_work, uevent_init_work_func);
+	}
+	TOUCH_I("[usbhid][%s] HID touch uevent Init_work done\n", __func__);
+
 	ret = hid_add_device(hid);
 	if (ret) {
 		if (ret != -ENODEV)
@@ -1381,6 +1539,8 @@ static void usbhid_disconnect(struct usb_interface *intf)
 	struct hid_device *hid = usb_get_intfdata(intf);
 	struct usbhid_device *usbhid;
 
+	HID_TOUCH_TRACE();
+
 	if (WARN_ON(!hid))
 		return;
 
@@ -1394,12 +1554,16 @@ static void usbhid_disconnect(struct usb_interface *intf)
 
 static void hid_cancel_delayed_stuff(struct usbhid_device *usbhid)
 {
+	HID_TOUCH_TRACE();
+
 	del_timer_sync(&usbhid->io_retry);
 	cancel_work_sync(&usbhid->reset_work);
 }
 
 static void hid_cease_io(struct usbhid_device *usbhid)
 {
+	HID_TOUCH_TRACE();
+
 	del_timer_sync(&usbhid->io_retry);
 	usb_kill_urb(usbhid->urbin);
 	usb_kill_urb(usbhid->urbctrl);
@@ -1411,6 +1575,8 @@ static void hid_restart_io(struct hid_device *hid)
 	struct usbhid_device *usbhid = hid->driver_data;
 	int clear_halt = test_bit(HID_CLEAR_HALT, &usbhid->iofl);
 	int reset_pending = test_bit(HID_RESET_PENDING, &usbhid->iofl);
+
+	HID_TOUCH_TRACE();
 
 	spin_lock_irq(&usbhid->lock);
 	clear_bit(HID_SUSPENDED, &usbhid->iofl);
@@ -1443,6 +1609,8 @@ static int hid_pre_reset(struct usb_interface *intf)
 	struct hid_device *hid = usb_get_intfdata(intf);
 	struct usbhid_device *usbhid = hid->driver_data;
 
+	HID_TOUCH_TRACE();
+
 	spin_lock_irq(&usbhid->lock);
 	set_bit(HID_RESET_PENDING, &usbhid->iofl);
 	spin_unlock_irq(&usbhid->lock);
@@ -1460,6 +1628,8 @@ static int hid_post_reset(struct usb_interface *intf)
 	struct usb_host_interface *interface = intf->cur_altsetting;
 	int status;
 	char *rdesc;
+
+	HID_TOUCH_TRACE();
 
 	/* Fetch and examine the HID report descriptor. If this
 	 * has changed, then rebind. Since usbcore's check of the
@@ -1518,6 +1688,8 @@ static int hid_resume_common(struct hid_device *hid, bool driver_suspended)
 {
 	int status = 0;
 
+	HID_TOUCH_TRACE();
+
 	hid_restart_io(hid);
 	if (driver_suspended && hid->driver && hid->driver->resume)
 		status = hid->driver->resume(hid);
@@ -1531,6 +1703,8 @@ static int hid_suspend(struct usb_interface *intf, pm_message_t message)
 	int status = 0;
 	bool driver_suspended = false;
 	unsigned int ledcount;
+
+	HID_TOUCH_TRACE();
 
 	if (PMSG_IS_AUTO(message)) {
 		ledcount = hidinput_count_leds(hid);
@@ -1589,6 +1763,8 @@ static int hid_resume(struct usb_interface *intf)
 	struct hid_device *hid = usb_get_intfdata (intf);
 	int status;
 
+	HID_TOUCH_TRACE();
+
 	status = hid_resume_common(hid, true);
 	dev_dbg(&intf->dev, "resume status %d\n", status);
 	return 0;
@@ -1598,6 +1774,8 @@ static int hid_reset_resume(struct usb_interface *intf)
 {
 	struct hid_device *hid = usb_get_intfdata(intf);
 	int status;
+
+	HID_TOUCH_TRACE();
 
 	status = hid_post_reset(intf);
 	if (status >= 0 && hid->driver && hid->driver->reset_resume) {
@@ -1635,12 +1813,19 @@ static struct usb_driver hid_driver = {
 
 struct usb_interface *usbhid_find_interface(int minor)
 {
+	HID_TOUCH_TRACE();
 	return usb_find_interface(&hid_driver, minor);
 }
 
 static int __init hid_init(void)
 {
 	int retval = -ENOMEM;
+
+	HID_TOUCH_TRACE();
+
+	retval = hid_touch_uevent_init();
+	if (retval)
+		goto usbhid_quirks_init_fail;
 
 	retval = usbhid_quirks_init(quirks_param);
 	if (retval)
@@ -1659,8 +1844,10 @@ usbhid_quirks_init_fail:
 
 static void __exit hid_exit(void)
 {
+	HID_TOUCH_TRACE();
 	usb_deregister(&hid_driver);
 	usbhid_quirks_exit();
+	device_unregister(&device_hid_touch_uevent);
 }
 
 module_init(hid_init);

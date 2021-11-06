@@ -32,6 +32,62 @@
 #include <linux/of_gpio.h>
 #include <linux/of_irq.h>
 #include <linux/spinlock.h>
+#include <linux/hall_ic.h>
+
+#ifdef CONFIG_LGE_HANDLE_PANIC
+#include <soc/qcom/lge/lge_handle_panic.h>
+#endif
+
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+#include <linux/lge_ds3.h>
+#include <soc/qcom/lge/board_lge.h>
+extern bool lge_get_mfts_mode(void);
+extern bool lge_get_factory_boot(void);
+#endif
+
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+//extern int lge_get_dual_display_support(void);
+struct hallic_dev luke_sdev = {
+       .name = "coverdisplay",
+};
+struct hallic_dev cover_fw_dev = {
+       .name = "cover_fw",
+       .state = -1,
+};
+struct hallic_dev cover_recovery = {
+	.name = "cover_recovery",
+	.state = 0,
+};
+int ready_dd_on;
+#endif
+#define CONFIG_LGE_SUPPORT_HALLIC
+
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+
+#include <soc/qcom/lge/board_lge.h>
+
+struct hallic_dev sdev = {
+	.name = "smartcover",
+	.state = 0,
+};
+
+struct hallic_dev ndev = {
+	.name = "nfccover",
+	.state = 0,
+};
+
+static bool hallic_check_hydra_name(void)
+{
+	int hydra_name = lge_get_hydra_name();
+	pr_info ("%s hydra_name = %d\n", __func__, hydra_name);
+
+	if (hydra_name == HYDRA_SIGNATURE)
+		return true;
+	else
+		return false;
+}
+
+#endif
 
 struct gpio_button_data {
 	const struct gpio_keys_button *button;
@@ -169,6 +225,65 @@ static void gpio_keys_enable_button(struct gpio_button_data *bdata)
 	}
 }
 
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+static void send_recovery_event(int num)
+{
+	if (!cover_recovery.state) {
+		pr_info("[DD] %s\n", __func__);
+		hallic_set_state(&cover_recovery, num);
+	}
+}
+#endif
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+void request_dualscreen_recovery(void)
+{
+	pr_info("[DD] %s\n", __func__);
+	send_recovery_event(1);
+	cover_recovery.state = 0;
+}
+EXPORT_SYMBOL(request_dualscreen_recovery);
+#endif
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+static ssize_t virtual_mcu_firmware_write_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count){
+	unsigned long val = simple_strtoul(buf, NULL, 10);
+
+	pr_info("[MCU_FW] virtual_mcu_firmware_write set to [%d]\n", (int)val);
+
+	switch ((int)val) {
+	case DD_MCU_FORCE_UPDATE:
+		hallic_set_state(&cover_fw_dev, UPDATE_NO_NEED);
+		mdelay(100);
+		hallic_set_state(&cover_fw_dev, UPDATE_NEED);
+		pr_info("[MCU_FW][%s] cover_fw set to %d\n", __func__, UPDATE_NEED);
+		break;
+	case DD_MCU_CANCEL:
+		hallic_set_state(&cover_fw_dev, UPDATE_NO_NEED);
+		pr_info("[MCU_FW][%s] cover_fw set to %d\n", __func__, UPDATE_NO_NEED);
+		break;
+	case DD_MCU_RECOVERY:
+		hallic_set_state(&cover_fw_dev, UPDATE_NO_NEED);
+		mdelay(100);
+		hallic_set_state(&cover_fw_dev, RECOVERY_NEED);
+		pr_info("[MCU_FW][%s] cover_fw set to %d\n", __func__, RECOVERY_NEED);
+	}
+
+	return count;
+}
+#endif
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+static ssize_t cover_recovery_req_store(struct device *dev, struct device_attribute *attr, const char *buf, size_t count){
+	int delay;
+	ssize_t ret = strnlen(buf, PAGE_SIZE);
+
+	sscanf(buf, "%d", &delay);
+	pr_err("%s : %d\n", __func__, delay);
+
+	send_recovery_event(1);
+	cover_recovery.state = 0;       //FIXME : This value is set if power on control receivced from framework in DS1.
+
+    return ret;
+}
+#endif
 /**
  * gpio_keys_attr_show_helper() - fill in stringified bitmap of buttons
  * @ddata: pointer to drvdata
@@ -343,11 +458,23 @@ static DEVICE_ATTR(disabled_switches, S_IWUSR | S_IRUGO,
 		   gpio_keys_show_disabled_switches,
 		   gpio_keys_store_disabled_switches);
 
+#if defined (CONFIG_LGE_DUAL_SCREEN)
+static DEVICE_ATTR(virtual_mcu_firmware_write, S_IRUGO | S_IWUSR | S_IWGRP,
+       NULL,
+       virtual_mcu_firmware_write_store);
+static DEVICE_ATTR(cover_recovery_req, S_IRUGO | S_IWUSR | S_IWGRP,
+       NULL,
+       cover_recovery_req_store);
+#endif
 static struct attribute *gpio_keys_attrs[] = {
 	&dev_attr_keys.attr,
 	&dev_attr_switches.attr,
 	&dev_attr_disabled_keys.attr,
 	&dev_attr_disabled_switches.attr,
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	&dev_attr_virtual_mcu_firmware_write.attr,
+	&dev_attr_cover_recovery_req.attr,
+#endif
 	NULL,
 };
 
@@ -373,9 +500,125 @@ static void gpio_keys_gpio_report_event(struct gpio_button_data *bdata)
 		if (state)
 			input_event(input, type, button->code, button->value);
 	} else {
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+		if (is_ds_connected() && ((button->code == 115) || (button->code == 377)) ) {
+			pr_err("gpio_keys_report_event: skip report event! is_ds_connected(%d), code(%d), value(%d)\n", is_ds_connected(), button->code, state);
+		} else {
+			input_event(input, type, button->code, state);
+			pr_err("gpio_keys_report_event: code(%d), value(%d)\n",button->code, state);
+		}
+#else
 		input_event(input, type, button->code, state);
+		pr_err("gpio_keys_report_event: code(%d), value(%d)\n",button->code, state);
+#endif
+#ifdef CONFIG_LGE_HANDLE_PANIC
+		lge_gen_key_panic(button->code, state);
+#endif
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+		if (!strncmp(bdata->button->desc, "smart_cover", 11) &&
+		    1 /* lge_get_dual_display_support() */ &&
+		    !is_ds_connected()) {
+#else
+		if (!strncmp(bdata->button->desc, "smart_cover", 11)) {
+#endif
+			if (sdev.state_front != state) {
+				sdev.state_front = state;
+				hallic_set_state(&sdev, state);
+				pr_err("[Display] smart_cover state switched to %s \n", (state ? "CLOSE" : "OPEN"));
+			}
+		}
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+		if (!strncmp(bdata->button->desc, "ds3_smart_cover", 15) &&
+		    1 /* lge_get_dual_display_support() */) {
+				if (sdev.state_front != state) {
+					sdev.state_front = state;
+					if (is_ds_connected() || lge_get_factory_boot()) {
+						hallic_set_state(&sdev, state);
+						pr_err("[Display][hallIC] %s: ds3_smart_cover state switched to %s \n", __func__, (state ? "CLOSE" : "OPEN"));
+					}
+				}
+			}
+#endif
+
+		if (!strncmp(bdata->button->desc, "nfc_cover", 9)){
+			if (ndev.state != !!state) {
+				hallic_set_state(&ndev, state);
+				pr_err("[Display] nfc_cover state switched to %s \n", (state ? "CLOSE" : "OPEN"));
+			} else {
+				pr_err("%s: discard wrong nfc_cover irq %s \n", __func__, (state ? "CLOSE" : "OPEN"));
+				return;
+			}
+		}
+#endif
+
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+		if (!strncmp(bdata->button->desc, "ds3_cover_display_back", 22) &&
+		    1 /* lge_get_dual_display_support() */) {
+			if (state) {
+				state = BACKCOVER_CLOSE;
+			}
+			if (sdev.state_back != state) {
+				sdev.state_back = state;
+				if (is_ds_connected() || lge_get_factory_boot()) {
+					hallic_set_state(&sdev, state);
+					pr_err("[Display][hallIC] %s: ds3_cover_display_back state switched to %s \n", __func__, (state ? "CLOSE" : "OPEN"));
+				}
+			}
+		}
+#endif
+#if defined (CONFIG_LGE_DUAL_SCREEN)
+		if (!strncmp(bdata->button->desc, "luke", 4) &&
+		    1 /* lge_get_dual_display_support() */) {
+
+			// when second display is connected
+			if (state == 1) {
+				if(lge_get_mfts_mode())
+					luke_sdev.state = 1;
+				if (!lge_get_factory_boot()) {
+					if (sdev.state_front) {
+						hallic_set_state(&sdev, sdev.state_front);
+						pr_info("[Display][hallIC] Set ds3_smart_cover to close\n");
+					}
+					if (sdev.state_back) {
+						hallic_set_state(&sdev, sdev.state_back);
+						pr_info("[Display][hallIC] Set ds3_cover_display_back to close\n");
+					}
+				}
+				set_hallic_status(true);
+				pr_info("[Display][hallIC] DS3 cover hallic connected\n");
+			} else if (state == 0) { // when second display is disconnected
+				if(lge_get_mfts_mode())
+					luke_sdev.state = 0;
+				if (!lge_get_factory_boot()) {
+					if (sdev.state_front) {
+						sdev.state_front = 0;
+						pr_info("[Display][hallIC] Reset ds3_smart_cover to open");
+					}
+					if (sdev.state_back) {
+						sdev.state_back = 0;
+						pr_info("[Display][hallIC] Reset ds3_cover_display_back to open");
+					}
+					hallic_set_state(&sdev, 0);
+				}
+				pr_info("[Display][hallIC] DS3 cover hallic disconnected\n");
+				set_hallic_status(false);
+			}
+		}
+#endif
+#ifdef CONFIG_LGE_PM
+		if (!strncmp(bdata->button->desc, "luke", 4)) {
+			extern void workaround_update_hall_ic(bool hall_ic);
+			workaround_update_hall_ic(!!state);
+		}
+#endif
 	}
+#if defined (CONFIG_LGE_DUAL_SCREEN)
+	if (!(is_ds_connected() && ((button->code == 115) || (button->code == 377))))
+		input_sync(input);
+#else
 	input_sync(input);
+#endif
 }
 
 static void gpio_keys_gpio_work_func(struct work_struct *work)
@@ -511,7 +754,49 @@ static int gpio_keys_setup_key(struct platform_device *pdev,
 				bdata->software_debounce =
 						button->debounce_interval;
 		}
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+		if (bdata->button->desc != NULL) {
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+			if (!strncmp(bdata->button->desc, "ds3_smart_cover", 15)) {
+				if (hallic_register(&sdev) < 0) {
+					pr_err("ds3_smart_cover switch registration failed\n");
+				}
+				pr_err("ds3_smart_cover_dev switch registration success\n");
+			}
+			if (!strncmp(bdata->button->desc, "ds3_cover_display_back", 22))
+				pr_err("ds3_cover_display_back register");
 
+			if (!strncmp(bdata->button->desc, "smart_cover", 11) &&
+			    1 /* lge_get_dual_display_support() */)
+#else
+			if (!strncmp(bdata->button->desc, "smart_cover", 11))
+#endif
+			{
+				if (hallic_register(&sdev) < 0) {
+					pr_err("smart_cover switch registration failed\n");
+				}
+				pr_err("smart_cover_dev switch registration success\n");
+			}
+		}
+
+		if (bdata->button->desc != NULL) {
+			if (!strncmp(bdata->button->desc, "nfc_cover", 9)) {
+				hallic_register(&ndev);
+				pr_err("hallic_dev switch registration success\n");
+			}
+		}
+#endif
+
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+		if (bdata->button->desc &&
+		    !strncmp(bdata->button->desc, "luke", 4) &&
+			     1 /* lge_get_dual_display_support() */) {
+			if (hallic_register(&luke_sdev) < 0) {
+				pr_err("ds3 luke_dev switch registration failed\n");
+			}
+			pr_err("ds3 luke_dev switch registration success\n");
+		}
+#endif
 		if (button->irq) {
 			bdata->irq = button->irq;
 		} else {
@@ -709,6 +994,17 @@ gpio_keys_get_devtree_pdata(struct device *dev)
 		if (of_property_read_u32(pp, "debounce-interval",
 					 &button->debounce_interval))
 			button->debounce_interval = 5;
+
+#ifdef CONFIG_LGE_SUPPORT_HALLIC
+		if (button->desc != NULL) {
+		    if (hallic_check_hydra_name()) {
+			    if (!strncmp(button->desc, "nfc_cover", 9)) {
+				    button->desc = "smart_cover";
+				    button->debounce_interval = 15;
+			    }
+		    }
+		}
+#endif
 	}
 
 	if (pdata->nbuttons == 0)
@@ -797,6 +1093,24 @@ static int gpio_keys_probe(struct platform_device *pdev)
 			wakeup = 1;
 	}
 
+#if defined(CONFIG_LGE_DUAL_SCREEN)
+	if (!cover_fw_dev.dev) {
+		error = hallic_register(&cover_fw_dev);
+		if (error) {
+			pr_err("cover_fw_dev switch dev register failed\n");
+			return error;
+		}
+		else
+			pr_err("cover_fw_dev switch registration success\n");
+	}
+	if (!cover_recovery.dev) {
+		error = hallic_register(&cover_recovery);
+		if(error) {
+			pr_err("cover recovery switch dev register failed\n");
+			return error;
+		}
+	}
+#endif
 	error = sysfs_create_group(&pdev->dev.kobj, &gpio_keys_attr_group);
 	if (error) {
 		dev_err(dev, "Unable to export keys/switches, error: %d\n",

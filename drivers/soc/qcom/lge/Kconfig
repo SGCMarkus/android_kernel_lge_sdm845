@@ -1,0 +1,460 @@
+config MACH_LGE
+	bool "Machine LGE"
+	help
+	  Support for machine LGE.
+
+menu "LGE Board Selection"
+
+config MACH_SDM845_JUDY
+	bool "SDM845 JUDY"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	select LGE_DM_VERITY_RECOVERY
+	help
+	  Support for the Qualcomm SDM845 JUDY device.
+
+config MACH_SDM845_JUDY_KR
+	bool "SDM845 JUDY_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY_KR device.
+
+config MACH_SDM845_JUDY_LGU_KR
+	bool "SDM845 JUDY_LGU_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY_LGU_KR device.
+
+config MACH_SDM845_JUDY_SKT_KR
+        bool "SDM845 JUDY_SKT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDY_SKT_KR device.
+
+config MACH_SDM845_JUDY_KT_KR
+        bool "SDM845 JUDY_KT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDY_KT_KR device.
+
+config MACH_SDM845_JUDY_LAO_COM
+	bool "SDM845 JUDY_LAO_COM"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY_LAO_COM device.
+
+config MACH_SDM845_JUDY_LAO_LDU
+	bool "SDM845 JUDY_LAO_LDU"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY_LAO_LDU device.
+
+config MACH_SDM845_JUDY_VZW
+	bool "SDM845 JUDY_VZW"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY_VZW device.
+
+config MACH_SDM845_JUDY_SPR
+	bool "SDM845 JUDY_SPR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY_SPR device.
+
+config MACH_SDM845_JUDY_DCM_JP
+	bool "SDM845 JUDY_DCM_JP"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY_DCM_JP device.
+
+config MACH_SDM845_JUDYLN
+	bool "SDM845 JUDY"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY device.
+
+config MACH_SDM845_JUDYLN_KR
+	bool "SDM845 JUDYLN_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYLN_KR device.
+
+config MACH_SDM845_JUDYLN_LGU_KR
+	bool "SDM845 JUDYLN_LGU_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYLN_LGU_KR device.
+
+config MACH_SDM845_JUDYLN_SKT_KR
+        bool "SDM845 JUDYLN_SKT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDYLN_SKT_KR device.
+
+config MACH_SDM845_JUDYLN_KT_KR
+        bool "SDM845 JUDYLN_KT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDYLN_KT_KR device.
+
+config MACH_SDM845_JUDYLN_LAO_COM
+	bool "SDM845 JUDYLN_LAO_COM"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYLN_LAO_COM device.
+
+config MACH_SDM845_JUDYLN_LAO_LDU
+	bool "SDM845 JUDYLN_LAO_LDU"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYLN_LAO_LDU device.
+
+config MACH_SDM845_JUDYLN_VZW
+	bool "SDM845 JUDYLN_VZW"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYLN_VZW device.
+
+config MACH_SDM845_JUDYLN_SPR
+	bool "SDM845 JUDYLN_SPR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYLN_SPR device.
+
+config MACH_SDM845_JUDYLN_DCM_JP
+	bool "SDM845 JUDYLN_DCM_JP"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYLN_DCM_JP device.
+
+config MACH_SDM845_JUDYPN
+	bool "SDM845 JUDY"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY device.
+
+config MACH_SDM845_JUDYPN_KR
+	bool "SDM845 JUDYPN_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYPN_KR device.
+
+config MACH_SDM845_JUDYPN_LGU_KR
+	bool "SDM845 JUDYPN_LGU_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYPN_LGU_KR device.
+
+config MACH_SDM845_JUDYPN_SKT_KR
+        bool "SDM845 JUDYPN_SKT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDYPN_SKT_KR device.
+
+config MACH_SDM845_JUDYPN_KT_KR
+        bool "SDM845 JUDYPN_KT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDYPN_KT_KR device.
+
+config MACH_SDM845_JUDYPN_LAO_COM
+	bool "SDM845 JUDYPN_LAO_COM"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYPN_LAO_COM device.
+
+config MACH_SDM845_JUDYPN_VZW
+	bool "SDM845 JUDYPN_VZW"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYPN_VZW device.
+
+config MACH_SDM845_JUDYPN_SPR
+	bool "SDM845 JUDYPN_SPR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYPN_SPR device.
+
+config MACH_SDM845_JUDYP
+	bool "SDM845 JUDY"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDY device.
+
+config MACH_SDM845_JUDYP_KR
+	bool "SDM845 JUDYP_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYP_KR device.
+
+config MACH_SDM845_JUDYP_LGU_KR
+	bool "SDM845 JUDYP_LGU_KR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYP_LGU_KR device.
+
+config MACH_SDM845_JUDYP_SKT_KR
+        bool "SDM845 JUDYP_SKT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDYP_SKT_KR device.
+
+config MACH_SDM845_JUDYP_KT_KR
+        bool "SDM845 JUDYP_KT_KR"
+        depends on ARCH_SDM845
+        select MACH_LGE
+        help
+          Support for the Qualcomm SDM845 JUDYP_KT_KR device.
+
+config MACH_SDM845_JUDYP_LAO_COM
+	bool "SDM845 JUDYP_LAO_COM"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYP_LAO_COM device.
+
+config MACH_SDM845_JUDYP_VZW
+	bool "SDM845 JUDYP_VZW"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYP_VZW device.
+
+config MACH_SDM845_JUDYP_SPR
+	bool "SDM845 JUDYP_SPR"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 JUDYP_SPR device.
+
+config MACH_SDM845_CAYMANSLM
+	bool "SDM845 CAYMANSLM"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 CAYMANSLM device.
+
+config MACH_SDM845_STYLE3LM_DCM_JP
+	bool "SDM845 STYLE3LM_DCM_JP"
+	depends on ARCH_SDM845
+	select MACH_LGE
+	help
+	  Support for the Qualcomm SDM845 STYLE3LM_DCM_JP device.
+
+config LGE_BOOTLOADER_LOG
+	tristate "Support LGE bootloader log"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE bootloader log
+
+config LGE_BOOTLOADER_TIME_CHECKER
+	tristate "Supprt bootloader(LK, SBL) time"
+	default n
+	depends on MACH_LGE
+	help
+	  Check LK, SBL booting time at
+	  sys/module/lge_bootloader_time_checker/parameters/lk_time
+	  sys/module/lge_bootloader_time_checker/parameters/sbl_time
+
+config LGE_PM
+	tristate "SDM845 LGE POWER Feature"
+	depends on SPMI || MSM_SPMI
+	help
+	  Say Y here to enable support for SDM845/PMI8998 chip lge feature.
+	  Power Management, Battery charging, Battery Monitoring System
+	  with battery FET and fuel gauge.
+
+config LGE_PM_DEBUG
+        tristate "Support LGE PM Debug Feature"
+        default n
+        depends on MACH_LGE
+        help
+	  LGE PM Debug Feature
+
+config LGE_PM_PRM
+	tristate "Support LGE Power resource manager"
+	help
+	  LGE power resource manager
+
+config LGE_PM_BOB_VOLT
+	tristate "Support LGE PM BOB VOLTAGE ONLY Feature"
+	default n
+	depends on MACH_LGE
+	help
+	  say Y to enable only bob voltage control.
+
+config LGE_PM_BOB_PWM
+	tristate "Support LGE PM BOB VOLTAGE AND MODE Feature"
+	default n
+	depends on MACH_LGE
+	help
+	  say Y to enable bob voltage and mode control.
+endmenu
+
+menu "LGE Specific Patches"
+
+config LGE_HANDLE_PANIC
+	tristate "Support LGE Crash Handler"
+	default n
+	depends on MACH_LGE
+	select LGE_HANDLE_PANIC_RPMH_TIMEOUT
+	help
+	  LGE Crash Handler
+
+config LGE_HANDLE_PANIC_RPMH_TIMEOUT
+	tristate "Support LGE Crash Handler RPMH Timeout"
+	default n
+	depends on LGE_HANDLE_PANIC
+	help
+	  LGE Crash Handler
+
+config LGE_PM_SMPL_COUNTER
+	tristate "Support LGE SMPL COUNTER feature"
+	default n
+	depends on MACH_LGE
+	help
+	  Say y to enable smpl_cnt module, that count when
+	  booted by SMPL
+
+config LGE_QSDL_SUPPORT
+	tristate "Support for Quality Statistics Data Logging"
+	default n
+	depends on MACH_LGE
+	help
+	  QSDL is a feature which notify infomation for quality statistics
+	  data logging of device.
+
+config LGE_PSTORE_BACKUP
+	tristate "Support pstore backup"
+	default n
+	depends on MACH_LGE
+	help
+	  Ramoops region is backed up to pstore partition
+
+config LGE_PKM
+        tristate "Support PKM driver with QSEE"
+        depends on MACH_LGE
+        default y
+        help
+          Say Y here to enable Mobile Kernel Integrity driver for LG PKM
+
+config LGE_ONE_BINARY_SKU
+        tristate "Support LGE One binary sku carrier"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE One Binary sku carrier
+
+config LGE_DUAL_SCREEN
+        bool "Support Dual Screen"
+        depends on MACH_LGE
+        help
+          Say 'y" here to include support for dual screen.
+
+config LGE_MME_BUS
+        bool "Clock booster for LGE MME"
+        depends on MACH_LGE
+        default y
+        help
+          Say 'y' here to include support for the clock booster
+          of msm bus to support LGE MME.
+
+config LGE_PAY_MME
+        tristate "Support WMC driver"
+        depends on MACH_LGE
+        default y
+        help
+          Say 'y' here to enable Wireless Magnetic Communication driver for LG pay
+
+config LGE_PAY_MME_TEST
+        tristate "Support WMC test"
+        depends on MACH_LGE
+        default n
+        help
+          Say 'y' here to enable Wireless Magnetic Communication test
+
+config LGE_DM_VERITY_RECOVERY
+	tristate "Support dm verity corrupt recovery"
+	default n
+	depends on MACH_LGE
+	help
+	  Sometimes, dm-bufio has invalid data. If data is corrupted,
+	  try to recover data.
+
+config LGE_POWEROFF_TIMEOUT
+	bool "Support shutdown and reboot timeout"
+	depends on MACH_LGE
+	default y
+	help
+	  Say 'y" here to include support for shutdown and reboot timeout.
+
+config LGE_DUAL_SCREEN
+        bool "Support Dual Screen"
+        depends on MACH_LGE
+        help
+          Say 'y" here to include support for dual screen.
+
+config LGE_SLUB_SIMPLE_DEBUG
+        bool "Support SLUB UAF debug"
+		depends on MACH_LGE && !SLUB_DEBUG
+		default n
+		help
+		  Say 'y' here to include SLUB debug feature for UAF.
+
+config LGE_SLUB_FREEPOINTER_DEBUG
+        bool "Support SLUB freepointer debug"
+		depends on LGE_SLUB_SIMPLE_DEBUG
+		default y
+		help
+		  Say 'y' here to include SLUB freepointer debug feature.
+config LGE_SLUB_UAF_DEBUG
+        bool "Support SLUB UAF debug using page attribute"
+		depends on LGE_SLUB_SIMPLE_DEBUG
+		default n
+		help
+		  Say 'y' here to include another SLUB UAF feature"
+
+endmenu
+
+menu "LGE QFPROM Values"
+
+config LGE_QFPROM_INTERFACE
+	bool "Support qfprom interface"
+	default n
+	depends on MACH_LGE
+	help
+	  LGE QFPROM DRIVER.
+
+endmenu

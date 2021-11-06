@@ -39,6 +39,9 @@
 #include "diag_usb.h"
 #include "diag_mux.h"
 #include "diag_ipc_logging.h"
+#ifdef CONFIG_LGE_USB_DIAG_LOCK
+#include "diag_lock.h"
+#endif
 
 #define STM_CMD_VERSION_OFFSET	4
 #define STM_CMD_MASK_OFFSET	5
@@ -542,6 +545,23 @@ void diag_update_md_clients(unsigned int type)
 	wake_up_interruptible(&driver->wait_q);
 	mutex_unlock(&driver->diagchar_mutex);
 }
+
+void diag_update_sleeping_process_atd(int data_type)
+{
+	int i;
+
+	mutex_lock(&driver->diagchar_mutex);
+	for (i = 0; i < driver->num_clients; i++)
+		if (!strcmp(driver->client_map[i].name, "atd")) {
+			pr_info("%s: process atd found\n", __func__);
+			driver->data_ready[i] |= data_type;
+			atomic_inc(&driver->data_ready_notif[i]);
+			break;
+		}
+	wake_up_interruptible(&driver->wait_q);
+	mutex_unlock(&driver->diagchar_mutex);
+}
+
 void diag_update_sleeping_process(int process_id, int data_type)
 {
 	int i;
@@ -564,6 +584,21 @@ static int diag_send_data(struct diag_cmd_reg_t *entry, unsigned char *buf,
 {
 	if (!entry)
 		return -EIO;
+
+	if ((*(unsigned char *)(buf)) == 0x27) {
+		if (((*(unsigned char *)(buf+1)) == 0x16) && ((*(unsigned char *)(buf+2)) == 0x84)) {
+			diag_update_pkt_buffer(buf, len, PKT_TYPE);
+			diag_update_sleeping_process_atd(PKT_TYPE);
+		}
+
+		if (entry->proc == APPS_DATA) {
+			pr_info("%s: forwarding DIAG_NV_WRITE_F to PERIPHERAL_MODEM\n", __func__);
+			return diagfwd_write(0, TYPE_CMD, buf, len); /* PERIPHERAL_MODEM:0 */
+		} else {
+			pr_info("%s: forwarding DIAG_NV_WRITE_F to entry->proc\n", __func__);
+			return diagfwd_write(entry->proc, TYPE_CMD, buf, len);
+		}
+	}
 
 	if (entry->proc == APPS_DATA) {
 		diag_update_pkt_buffer(buf, len, PKT_TYPE);
@@ -1036,6 +1071,28 @@ int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 	if (!buf || len <= 0)
 		return -EIO;
 
+#ifdef CONFIG_LGE_USB_DIAG_LOCK
+
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+	if (driver->logging_mode != DIAG_MEMORY_DEVICE_MODE)
+	{
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
+
+	if (!diag_lock_is_allowed_command(buf)) {
+#if defined(CONFIG_LGE_USB_DIAG_LOCK_SPR)
+		*(uint8_t *)driver->apps_rsp_buf = 0x18; // DIAG_BAD_MODE_F(24)
+		diag_send_rsp(driver->apps_rsp_buf, 1, pid);
+#endif
+		return 0;
+	}
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+	}
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
+#endif /* CONFIG_LGE_USB_DIAG_LOCK */
 	/* Check if the command is a supported mask command */
 	mask_ret = diag_process_apps_masks(buf, len, pid);
 	if (mask_ret > 0) {
@@ -1095,6 +1152,17 @@ int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 				write_len = diag_send_data(reg_item, buf, len);
 		} else {
 			mutex_unlock(&driver->md_session_lock);
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+			if (driver->logging_mode == DIAG_MEMORY_DEVICE_MODE)
+			{
+//				pr_debug("in %s, Testmode cmd on DIAG_MEMORY_DEVICE_MODE(%d)!!", __func__, DIAG_MEMORY_DEVICE_MODE);
+				write_len = diag_send_data(reg_item, buf, len);
+			}
+			else
+			{
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 			if (MD_PERIPHERAL_MASK(reg_item->proc) &
 				driver->logging_mask) {
 				mutex_unlock(&driver->cmd_reg_mutex);
@@ -1103,6 +1171,11 @@ int diag_process_apps_pkt(unsigned char *buf, int len, int pid)
 			}
 			else
 				write_len = diag_send_data(reg_item, buf, len);
+/* [LGE_S][BSP_Modem] LGSSL to support testmode cmd */
+#ifdef CONFIG_LGE_DM_APP
+			}
+#endif
+/* [LGE_E][BSP_Modem] LGSSL to support testmode cmd */
 		}
 		mutex_unlock(&driver->cmd_reg_mutex);
 		return write_len;
@@ -1361,6 +1434,15 @@ void diag_process_hdlc_pkt(void *data, unsigned int len, int pid)
 		goto fail;
 	}
 
+#ifdef CONFIG_LGE_USB_GADGET
+	if (!strncasecmp(driver->hdlc_buf, "AT", 2)) {
+		pr_err_ratelimited("[DEBUG] diag: In %s, AT command. Dropping packet\n",
+		       __func__);
+		driver->hdlc_buf_len = 0;
+		goto end;
+	}
+#endif
+
 	if (ret == HDLC_COMPLETE) {
 		err = crc_check(driver->hdlc_buf, driver->hdlc_buf_len);
 		if (err) {
@@ -1511,7 +1593,6 @@ static uint8_t hdlc_reset;
 static void hdlc_reset_timer_start(int pid)
 {
 	struct diag_md_session_t *info = NULL;
-
 	mutex_lock(&driver->md_session_lock);
 	info = diag_md_session_get_pid(pid);
 	if (!hdlc_timer_in_progress) {
@@ -2065,3 +2146,9 @@ void diagfwd_exit(void)
 	kfree(driver->user_space_data_buf);
 	destroy_workqueue(driver->diag_wq);
 }
+
+#ifdef CONFIG_LGE_DIAG_BYPASS
+int diagfwd_mux_write_done_bypass(unsigned char *buf, int len, int buf_ctx, int id) {
+    return diagfwd_mux_write_done(buf, len, buf_ctx, id);
+}
+#endif

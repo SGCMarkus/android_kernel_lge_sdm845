@@ -160,4 +160,9 @@ static inline int usbpd_exit_mode(struct usbpd *pd, u16 svid, int mode,
 			SVDM_CMD_TYPE_INITIATOR, mode, vdo, vdo ? 1 : 0);
 }
 
+#ifdef CONFIG_LGE_DUAL_SCREEN
+struct usbpd_svid_handler *usbpd_find_dp_handler(struct usbpd *pd);
+#endif
+void set_ds3_start(bool hallic_state);
+
 #endif /* __LINUX_USB_USBPD_H */

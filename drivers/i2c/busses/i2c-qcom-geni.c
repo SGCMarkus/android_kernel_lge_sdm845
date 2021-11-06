@@ -122,6 +122,7 @@ struct geni_i2c_dev {
 	struct msm_gpi_dma_async_tx_cb_param rx_cb;
 	enum i2c_se_mode se_mode;
 	bool autosuspend_disable;
+	bool cmd_done;
 };
 
 struct geni_i2c_err_log {
@@ -247,6 +248,7 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 
 	if (!cur || (m_stat & M_CMD_FAILURE_EN) ||
 		    (dm_rx_st & (DM_I2C_CB_ERR)) ||
+		    (m_stat & M_CMD_CANCEL_EN) ||
 		    (m_stat & M_CMD_ABORT_EN)) {
 
 		if (m_stat & M_GP_IRQ_1_EN)
@@ -267,6 +269,7 @@ static irqreturn_t geni_i2c_irq(int irq, void *dev)
 		if (!dma)
 			writel_relaxed(0, (gi2c->base +
 					   SE_GENI_TX_WATERMARK_REG));
+		gi2c->cmd_done = true;
 		goto irqret;
 	}
 
@@ -329,12 +332,17 @@ irqret:
 		/* Ensure all writes are done before returning from ISR. */
 		wmb();
 		if ((dm_tx_st & TX_DMA_DONE) || (dm_rx_st & RX_DMA_DONE))
-			complete(&gi2c->xfer);
+			gi2c->cmd_done = true;
 
 	}
-	/* if this is err with done-bit not set, handle that thr' timeout. */
+
 	else if (m_stat & M_CMD_DONE_EN)
+		gi2c->cmd_done = true;
+
+	if (gi2c->cmd_done) {
+		gi2c->cmd_done = false;
 		complete(&gi2c->xfer);
+	}
 
 	return IRQ_HANDLED;
 }
@@ -736,13 +744,18 @@ static int geni_i2c_xfer(struct i2c_adapter *adap,
 		mb();
 		timeout = wait_for_completion_timeout(&gi2c->xfer,
 						gi2c->xfer_timeout);
-		if (!timeout) {
+		if (!timeout)
 			geni_i2c_err(gi2c, GENI_TIMEOUT);
+
+		if (gi2c->err) {
 			reinit_completion(&gi2c->xfer);
 			gi2c->cur = NULL;
-			geni_abort_m_cmd(gi2c->base);
+			geni_cancel_m_cmd(gi2c->base);
 			timeout = wait_for_completion_timeout(&gi2c->xfer, HZ);
+			if (!timeout)
+				geni_abort_m_cmd(gi2c->base);
 		}
+
 		gi2c->cur_wr = 0;
 		gi2c->cur_rd = 0;
 		if (mode == SE_DMA) {
@@ -1033,6 +1046,8 @@ static int geni_i2c_runtime_resume(struct device *dev)
 
 static int geni_i2c_suspend_noirq(struct device *device)
 {
+#ifdef CONFIG_LGE_PM
+	/* CR#2121218 */
 	struct geni_i2c_dev *gi2c = dev_get_drvdata(device);
 	int ret;
 
@@ -1043,13 +1058,19 @@ static int geni_i2c_suspend_noirq(struct device *device)
 				"late I2C transaction request\n");
 		return -EBUSY;
 	}
+
 	if (!pm_runtime_status_suspended(device)) {
 		geni_i2c_runtime_suspend(device);
 		pm_runtime_disable(device);
 		pm_runtime_set_suspended(device);
 		pm_runtime_enable(device);
 	}
+
 	i2c_unlock_bus(&gi2c->adap, I2C_LOCK_SEGMENT);
+#else
+	if (!pm_runtime_status_suspended(device))
+		return -EBUSY;
+#endif
 	return 0;
 }
 #else
