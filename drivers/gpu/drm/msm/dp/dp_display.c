@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2017-2020, The Linux Foundation. All rights reserved.
+ * Copyright (c) 2017-2021, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -23,6 +23,7 @@
 #include <linux/of_irq.h>
 #include <linux/hdcp_qseecom.h>
 
+#include <drm/drm_client.h>
 #include "sde_connector.h"
 
 #include "msm_drv.h"
@@ -138,6 +139,8 @@ static const struct of_device_id dp_dt_match[] = {
 	{}
 };
 
+static void dp_display_update_hdcp_info(struct dp_display_private *dp);
+
 static bool dp_display_framework_ready(struct dp_display_private *dp)
 {
 	return dp->dp_display.post_open ? false : true;
@@ -182,6 +185,13 @@ static void dp_display_hdcp_cb_work(struct work_struct *work)
 	u32 hdcp_auth_state;
 
 	dp = container_of(dw, struct dp_display_private, hdcp_cb_work);
+
+	dp_display_update_hdcp_info(dp);
+
+	if (!dp_display_is_hdcp_enabled(dp))
+		return;
+
+	dp->link->hdcp_status.hdcp_state = HDCP_STATE_AUTHENTICATING;
 
 	rc = dp->catalog->ctrl.read_hdcp_status(&dp->catalog->ctrl);
 	if (rc >= 0) {
@@ -563,11 +573,17 @@ static int dp_display_send_hpd_notification(struct dp_display_private *dp,
 	dp->dp_display.is_connected = hpd;
 
 #if defined(CONFIG_LGE_DUAL_SCREEN)
-	if (!dp_display_framework_ready(dp) && !is_ds_connected())
+	if (!dp_display_framework_ready(dp) && !is_ds_connected()) {
 #else
-	if (!dp_display_framework_ready(dp))
+	if (!dp_display_framework_ready(dp)) {
 #endif
+		if (!dp->dp_display.is_bootsplash_en) {
+			dp->dp_display.is_bootsplash_en = true;
+			drm_client_dev_register(dp->dp_display.drm_dev);
+		}
 		return ret;
+        }
+}
 
 	dp->aux->state |= DP_STATE_NOTIFICATION_SENT;
 
@@ -954,6 +970,9 @@ static int dp_display_usbpd_attention_cb(struct device *dev)
 	}
 #endif
 
+	if (dp->usbpd->hpd_high && dp->usbpd->hpd_irq)
+		drm_dp_cec_irq(dp->aux->drm_aux);
+
 	if (dp->usbpd->hpd_irq && dp->usbpd->hpd_high &&
 	    dp->power_on) {
 		dp->link->process_request(dp->link);
@@ -1320,13 +1339,10 @@ static int dp_display_post_enable(struct dp_display *dp_display)
 		dp->audio_status = dp->audio->on(dp->audio);
 	}
 
-	dp_display_update_hdcp_info(dp);
-
-	if (dp_display_is_hdcp_enabled(dp)) {
+	if (dp->hdcp.feature_enabled && 0) { /* bootsplash check */
 		cancel_delayed_work_sync(&dp->hdcp_cb_work);
 
-		dp->link->hdcp_status.hdcp_state = HDCP_STATE_AUTHENTICATING;
-		queue_delayed_work(dp->wq, &dp->hdcp_cb_work, HZ * 3);
+		queue_delayed_work(dp->wq, &dp->hdcp_cb_work, HZ / 2);
 	}
 
 	dp->panel->setup_hdr(dp->panel, NULL);

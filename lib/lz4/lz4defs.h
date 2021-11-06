@@ -83,9 +83,7 @@ typedef uintptr_t uptrval;
 
 /* Increase this value ==> compression run slower on incompressible data */
 #define LZ4_SKIPTRIGGER 6
-
 #define HASH_UNIT sizeof(size_t)
-
 #define KB (1 << 10)
 #define MB (1 << 20)
 #define GB (1U << 30)
