@@ -1088,13 +1088,10 @@ static int touch_core_probe_normal(struct platform_device *pdev)
 		pm_qos_add_request(&ts->pm_touch_req, PM_QOS_CPU_DMA_LATENCY,
 				PM_QOS_DEFAULT_VALUE);
 
-<<<<<<< HEAD
 
 	ts->irqflags |= IRQF_ONESHOT | IRQF_PERF_CRITICAL;
 	ret = touch_request_irq(ts->irq, touch_irq_handler, touch_irq_thread,
 				ts->irqflags, LGE_TOUCH_NAME, ts);
-=======
->>>>>>> origin/caf-v
 
 	if (ret) {
 		TOUCH_E("failed to request_thread_irq(irq:%d, ret:%d)\n",

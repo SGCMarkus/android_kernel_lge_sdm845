@@ -573,17 +573,11 @@ static int dp_display_send_hpd_notification(struct dp_display_private *dp,
 	dp->dp_display.is_connected = hpd;
 
 #if defined(CONFIG_LGE_DUAL_SCREEN)
-	if (!dp_display_framework_ready(dp) && !is_ds_connected()) {
+	if (!dp_display_framework_ready(dp) && !is_ds_connected())
 #else
-	if (!dp_display_framework_ready(dp)) {
+	if (!dp_display_framework_ready(dp))
 #endif
-		if (!dp->dp_display.is_bootsplash_en) {
-			dp->dp_display.is_bootsplash_en = true;
-			drm_client_dev_register(dp->dp_display.drm_dev);
-		}
 		return ret;
-        }
-}
 
 	dp->aux->state |= DP_STATE_NOTIFICATION_SENT;
 
