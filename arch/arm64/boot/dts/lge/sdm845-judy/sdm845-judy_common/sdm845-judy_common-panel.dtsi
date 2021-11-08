@@ -69,7 +69,7 @@
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-brightness-max-level = <255>;
+	qcom,mdss-brightness-max-level = <511>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,panel-pins =
 		<&tlmm 2 0>;  // vddio
@@ -87,7 +87,7 @@
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_wled";
 	qcom,mdss-dsi-bl-min-level = <1>;
 	qcom,mdss-dsi-bl-max-level = <4095>;
-	qcom,mdss-brightness-max-level = <255>;
+	qcom,mdss-brightness-max-level = <511>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,panel-pins =
 		<&tlmm 2 0>;  // vddio
@@ -140,8 +140,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408";
@@ -159,8 +159,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408a";
@@ -178,8 +178,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408a";
@@ -197,8 +197,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408a";
@@ -216,8 +216,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408a";
@@ -235,8 +235,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408a";
@@ -254,8 +254,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408a";
@@ -273,8 +273,8 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,mdss-dsi-bl-pmic-control-type = "bl_ctrl_dcs";
 	qcom,mdss-dsi-bl-min-level = <10>;
-	qcom,mdss-dsi-bl-max-level = <511>;
-	qcom,mdss-brightness-max-level = <511>;
+	qcom,mdss-dsi-bl-max-level = <366>;
+	qcom,mdss-brightness-max-level = <366>;
 	qcom,platform-reset-gpio = <&tlmm 6 0>;
 	lge,man-name = "LGD";
 	lge,ddic-name = "sw43408a";
